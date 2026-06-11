@@ -419,44 +419,57 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
       <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
         Minimal Python sketch
       </h3>
-      <pre><code><span class="code-comment">"""
-Minimal Powersort sketch (illustrative, not production-ready).
-For the full reference implementation see wild-inter.net/publications/munro-wild-2018
-"""</span>
+      <pre><code>"""
+Minimal illustrative Powersort sketch. 
+For helper functions, see https://tiny.cc/timsort.
+"""
 
-<span class="code-keyword">def</span> <span class="code-func">node_power</span>(left, left_len, right_len, n):
-    <span class="code-comment">"""Return the node power of two adjacent runs."""</span>
-    a = <span class="code-number">2</span> * left + left_len
-    b = a + right_len
-    power = <span class="code-number">0</span>
-    <span class="code-keyword">while</span> a // n == b // n:
-        power += <span class="code-number">1</span>; a = <span class="code-number">2</span> * a - n * (a // n); b = <span class="code-number">2</span> * b - n * (b // n)
-    <span class="code-keyword">return</span> power
+import math 
 
+def power(run1, run2, n):
+    # Compute the "power" of the run boundary.
+    # Given are two adjacent runs from a list of total length n.
+    # See listsort.txt for details; code follows CPython.
+    i1 = run1[0];  n1 = run1[1]
+    i2 = run2[0];  n2 = run2[1]
+    a = 2 * i1 + n1       
+    b = a + n1 + n2       
+    l = 0
+    while True:
+        l += 1
+        if a >= n:
+            assert b >= a
+            a -= n;  b -= n
+        elif b >= n:
+            break
+        assert a < b < n
+        a <<= 1;  b <<= 1
+    return l
 
-<span class="code-keyword">def</span> <span class="code-func">powersort</span>(arr):
-    n = len(arr)
-    <span class="code-keyword">if</span> n &lt; <span class="code-number">2</span>:
-        <span class="code-keyword">return</span> arr
-    stack = []   <span class="code-comment"># [(start, length, power), ...]</span>
-    i = <span class="code-number">0</span>
-    <span class="code-keyword">while</span> i &lt; n:
-        run_start, run_len = i, _extend_run(arr, i, n)
-        i += run_len
-        power = node_power(run_start, run_len, n - i <span class="code-keyword">if</span> i == n <span class="code-keyword">else</span> _next_run_len(arr, i, n), n)
-        <span class="code-comment"># merge pending runs with higher or equal power</span>
-        <span class="code-keyword">while</span> stack <span class="code-keyword">and</span> stack[-<span class="code-number">1</span>][<span class="code-number">2</span>] &gt;= power:
-            s, l, _ = stack.pop()
-            arr[s:s + l + run_len] = _merge(arr[s:s + l], arr[run_start:run_start + run_len])
-            run_start, run_len = s, l + run_len
-        stack.append((run_start, run_len, power))
-    <span class="code-comment"># flush remaining runs</span>
-    <span class="code-keyword">while</span> len(stack) &gt; <span class="code-number">1</span>:
-        (s1, l1, _), (s2, l2, _) = stack[-<span class="code-number">2</span>], stack[-<span class="code-number">1</span>]
-        arr[s1:s1 + l1 + l2] = _merge(arr[s1:s1 + l1], arr[s2:s2 + l2])
-        stack[-<span class="code-number">2</span>] = (s1, l1 + l2, <span class="code-number">0</span>)
-        stack.pop()
-    <span class="code-keyword">return</span> arr</code></pre>
+def powersort(a, extend_run=extend_run):
+    """
+    Sort a list using powersort.
+    This is a slick variant for managing the stack 
+    (no need to update the power inside the stack).
+    It stores the run-boundary power in the right run, 
+    CPython stores it in the left run.
+    """
+    n = len(a)
+    i = 0
+    runs = []  # stack of (start, length, power) tuples
+    j = extend_run(a, i)
+    runs.append((i, j-i, 0))
+    i = j
+    while i < n:
+        j = extend_run(a, i)
+        p = power(runs[-1], (i,j-i), n)
+        while p <= runs[-1][2]:
+            merge_topmost_2(a, runs)
+        runs.append((i,j-i,p))
+        i = j
+    while len(runs) >= 2:
+        merge_topmost_2(a, runs)
+  </code></pre>
     </div>
   </section>
 
