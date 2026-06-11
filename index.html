@@ -15,7 +15,7 @@
 </head>
 <body>
 
-<div id="splash-screen" class="splash-screen" aria-hidden="false">
+<div id="splash-screen" class="splash-screen" aria-hidden="true">
   <div class="splash-content">
     <div class="splash-words" aria-hidden="true">
       <span class="word word-1">adaptive</span>
@@ -556,18 +556,22 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
   (() => {
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
+    splash.setAttribute('aria-hidden', 'false');
     const SPLASH_FALLBACK_TIMEOUT_MS = 2600;
     const SPLASH_POST_LOAD_DELAY_MS = 900;
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
-        hideSplash();
-      }
-    };
     const hideSplash = () => {
       if (splash.classList.contains('is-hidden')) return;
       splash.classList.add('is-hidden');
       splash.setAttribute('aria-hidden', 'true');
+      splash.removeEventListener('click', hideSplash);
       window.removeEventListener('keydown', onKeyDown);
+    };
+    const onKeyDown = (event) => {
+      if (splash.classList.contains('is-hidden')) return;
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        hideSplash();
+      }
     };
     const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_TIMEOUT_MS);
     splash.addEventListener('click', hideSplash, { once: true });
