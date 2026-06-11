@@ -437,6 +437,13 @@ pre code {
   font-size: inherit;
 }
 
+pre a,
+pre a:visited {
+  color: var(--clr-accent);
+  text-decoration: underline;
+}
+pre a:hover { color: #ffffff; }
+
 .code-comment { color: #8ecae6; }
 .code-keyword { color: var(--clr-highlight); font-weight: 600; }
 .code-func    { color: #90e0ef; }
