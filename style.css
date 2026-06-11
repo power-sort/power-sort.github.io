@@ -1,7 +1,7 @@
 /* =========================================================
    Powersort – main stylesheet
    Fonts: IBM Plex Sans Bold + IBM Plex Mono Medium
-   Palette: dark navy (#0f2464), cyan (#00c8ff), lime (#aaeb18)
+   Palette: dark navy (#001c6b), cyan (#0be5f2), lime (#abf304)
    ========================================================= */
 
 /* ---------- reset & base ---------- */
@@ -15,9 +15,9 @@
   /* Logo-matched palette: dark navy, cyan, lime green */
   --clr-bg:          #f8f9fb;
   --clr-surface:     #ffffff;
-  --clr-primary:     #0f2464;   /* dark navy (logo background) */
-  --clr-accent:      #00c8ff;   /* cyan (logo "POWER" text)    */
-  --clr-highlight:   #aaeb18;   /* lime green (logo "sort:=↑") */
+  --clr-primary:     #001c6b;   /* dark navy (logo background) */
+  --clr-accent:      #0be5f2;   /* cyan (logo "POWER" text)    */
+  --clr-highlight:   #abf304;   /* lime green (logo "sort:=↑") */
   --clr-text:        #1c2333;
   --clr-muted:       #5a6a7e;
   --clr-border:      #d0d7e3;
@@ -43,7 +43,7 @@ body {
 }
 
 a {
-  color: var(--clr-accent);
+  color: var(--clr-primary);
   text-decoration: none;
 }
 a:hover { text-decoration: underline; }
@@ -97,7 +97,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   z-index: 1000;
   display: grid;
   place-items: center;
-  background: rgba(15, 36, 100, .97);
+  background: rgba(0, 28, 107, .97);
   color: #fff;
   transition: opacity .45s ease, visibility .45s ease;
 }
@@ -412,7 +412,7 @@ pre code {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: linear-gradient(135deg, #0f2464 0%, #1a5fa8 100%);
+  background: linear-gradient(135deg, #001c6b 0%, #1a5fa8 100%);
   color: #fff;
   border-radius: var(--radius);
   padding: 1.5rem 2rem;
@@ -516,14 +516,14 @@ pre code {
 }
 
 .btn-primary {
-  background: var(--clr-accent);
+  background: var(--clr-primary);
   color: #fff;
 }
-.btn-primary:hover { background: var(--clr-primary); text-decoration: none; }
+.btn-primary:hover { background: #002d9c; text-decoration: none; }
 
 .btn-outline {
-  border: 1.5px solid var(--clr-accent);
-  color: var(--clr-accent);
+  border: 1.5px solid var(--clr-primary);
+  color: var(--clr-primary);
   background: transparent;
 }
 .btn-outline:hover { background: var(--clr-code-bg); text-decoration: none; }
