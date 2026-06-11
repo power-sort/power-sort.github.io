@@ -1,6 +1,7 @@
 /* =========================================================
    Powersort – main stylesheet
-   Palette derived from the powersort GitHub organisation logo
+   Fonts: IBM Plex Sans + IBM Plex Mono (matches the logo)
+   Palette inspired by the Powersort presentation
    ========================================================= */
 
 /* ---------- reset & base ---------- */
@@ -11,19 +12,19 @@
 }
 
 :root {
-  /* Logo-inspired palette */
-  --clr-bg:          #f5f7fa;
+  /* Presentation-inspired palette */
+  --clr-bg:          #f8f9fb;
   --clr-surface:     #ffffff;
-  --clr-primary:     #1a5276;   /* deep navy blue  */
-  --clr-accent:      #2e86c1;   /* medium blue      */
-  --clr-highlight:   #d4ac0d;   /* amber / gold     */
-  --clr-text:        #1c2833;
-  --clr-muted:       #5d6d7e;
-  --clr-border:      #d5d8dc;
-  --clr-code-bg:     #eaf0fb;
+  --clr-primary:     #1b3a5c;   /* deep navy blue  */
+  --clr-accent:      #0f6cbd;   /* bright blue      */
+  --clr-highlight:   #e8a317;   /* amber / gold     */
+  --clr-text:        #1c2333;
+  --clr-muted:       #5a6a7e;
+  --clr-border:      #d0d7e3;
+  --clr-code-bg:     #e8f0fb;
 
-  --font-sans:  'Segoe UI', system-ui, -apple-system, sans-serif;
-  --font-mono:  'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --font-sans:  'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono:  'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 
   --radius:     6px;
   --max-width:  900px;
