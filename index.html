@@ -173,7 +173,7 @@
       </figure>
 
       <figure class="asset-panel animation-panel">
-        <video controls muted loop playsinline preload="metadata" poster="assets/Powersort_AdaptiveSorting_01_.jpg">
+        <video controls muted loop playsinline preload="metadata" poster="assets/Powersort_AdaptiveSorting_01_.jpg" aria-label="Adaptive stable sorting animation source clip">
           <source src="assets/Powersort_04_1.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
@@ -559,8 +559,11 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
     const hideSplash = () => splash.classList.add('is-hidden');
-    window.addEventListener('load', () => setTimeout(hideSplash, 1800), { once: true });
-    setTimeout(hideSplash, 3200);
+    const fallbackTimer = setTimeout(hideSplash, 3200);
+    window.addEventListener('load', () => {
+      clearTimeout(fallbackTimer);
+      setTimeout(hideSplash, 1800);
+    }, { once: true });
   })();
 </script>
 
