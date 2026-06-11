@@ -77,8 +77,7 @@
         <div class="card">
           <div class="card-icon">⚡</div>
           <h3>Nearly Optimal</h3>
-          <p>Performs <em>n&nbsp;log₂&nbsp;n&nbsp;+&nbsp;O(n)</em> comparisons
-             and achieves merge cost ≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em>.</p>
+          <p>Adapts nearly optimally to existing runs in the input, thereby using <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;3<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>) comparisons.</p>
         </div>
         <div class="card">
           <div class="card-icon">📈</div>
@@ -172,13 +171,13 @@
         <figcaption>Powersort in action (animated)</figcaption>
       </figure>
 
-      <figure class="asset-panel animation-panel" aria-labelledby="adaptive-video-caption">
+      <!-- <figure class="asset-panel animation-panel" aria-labelledby="adaptive-video-caption">
         <video controls muted loop playsinline preload="metadata" poster="assets/Powersort_AdaptiveSorting_01_.jpg">
           <source src="assets/Powersort_04_1.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         <figcaption id="adaptive-video-caption">Adaptive stable sorting animation source clip</figcaption>
-      </figure>
+      </figure> -->
 
       <!-- Node power formula -->
       <div class="formula-box">
@@ -227,14 +226,14 @@
         </thead>
         <tbody>
           <tr>
-            <td>Merge strategy</td>
-            <td>Stack-based heuristic (4 invariants)</td>
+            <td>Merge policy</td>
+            <td>Ad-hoc heuristic (4 length-based rules)</td>
             <td><span class="badge-good">Node-power merge policy</span></td>
           </tr>
           <tr>
             <td>Optimality guarantee</td>
             <td>≤ 1.5&nbsp;·&nbsp;<em>OPT</em>&nbsp;+&nbsp;O(<em>n</em>) merge cost</td>
-            <td><span class="badge-good">≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>) merge cost</span></td>
+            <td><span class="badge-good">≤ <em>OPT</em>&nbsp;+&nbsp;O(<em>n</em>) merge cost</span></td>
           </tr>
           <tr>
             <td>Worst-case comparisons</td>
@@ -243,7 +242,7 @@
           </tr>
           <tr>
             <td>Adaptive to runs</td>
-            <td>Yes</td>
+            <td>Yes (but not optimally)</td>
             <td><span class="badge-good">Yes (near-optimal)</span></td>
           </tr>
           <tr>
@@ -253,7 +252,7 @@
           </tr>
           <tr>
             <td>Stable sort</td>
-            <td>Yes</td>
+            <span class="badge-good">Yes</span>
             <td><span class="badge-good">Yes</span></td>
           </tr>
           <tr>
