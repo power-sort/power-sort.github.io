@@ -404,6 +404,10 @@ section:nth-child(even) { background: var(--clr-surface); }
   border-radius: 3px;
 }
 
+.formula-box pre code {
+  padding: 0;
+}
+
 /* ---------- inline code / code blocks ---------- */
 code {
   font-family: var(--font-mono);
