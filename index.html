@@ -11,10 +11,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@700&display=swap" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Favicon reuse from GitHub org avatar -->
-  <link rel="icon" href="https://avatars.githubusercontent.com/u/292742844?s=32" type="image/png" />
+  <link rel="icon" href="assets/powersort-logo-square.svg" type="image/svg+xml" />
 </head>
 <body>
+
+<div id="splash-screen" class="splash-screen" aria-hidden="true">
+  <div class="splash-content">
+    <img src="assets/powersort-logo-square.svg" alt="" width="84" height="84" />
+    <p>Adaptive stable sorting in action</p>
+    <div class="splash-runs">
+      <span class="run run-1"></span>
+      <span class="run run-2"></span>
+      <span class="run run-3"></span>
+      <span class="run run-4"></span>
+      <span class="run run-5"></span>
+    </div>
+  </div>
+</div>
 
 <a class="skip-link" href="#main">Skip to main content</a>
 
@@ -22,7 +35,7 @@
 <header class="site-header">
   <div class="container header-inner">
     <img class="logo"
-         src="https://avatars.githubusercontent.com/u/292742844?s=200&v=4"
+         src="assets/powersort-logo-square.svg"
          alt="Powersort organisation logo"
          width="96" height="96" />
     <div class="header-text">
@@ -86,6 +99,17 @@
              strategy, with zero API changes for users.</p>
         </div>
       </div>
+
+      <div class="asset-gallery" aria-label="Powersort visuals">
+        <figure class="asset-panel">
+          <img src="assets/Powersort_AdaptiveSorting_01_.jpg" alt="Adaptive stable sorting visualization" loading="lazy" />
+          <figcaption>Adaptive stable sorting visualisation</figcaption>
+        </figure>
+        <figure class="asset-panel">
+          <img src="assets/Powersort_MergeTree_01_.jpg" alt="Merge tree structure diagram showing node relationships" loading="lazy" />
+          <figcaption>Merge tree structure for node-power decisions</figcaption>
+        </figure>
+      </div>
     </div>
   </section>
 
@@ -142,6 +166,19 @@
           </div>
         </div>
       </div>
+
+      <figure class="asset-panel animation-panel">
+        <img src="assets/Powersort_in_Action_.gif" alt="Animated Powersort process from the project assets" loading="lazy" />
+        <figcaption>Powersort in action (animated)</figcaption>
+      </figure>
+
+      <figure class="asset-panel animation-panel" aria-labelledby="adaptive-video-caption">
+        <video controls muted loop playsinline preload="metadata" poster="assets/Powersort_AdaptiveSorting_01_.jpg">
+          <source src="assets/Powersort_04_1.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        <figcaption id="adaptive-video-caption">Adaptive stable sorting animation source clip</figcaption>
+      </figure>
 
       <!-- Node power formula -->
       <div class="formula-box">
@@ -516,6 +553,21 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
     </span>
   </div>
 </footer>
+
+<script>
+  (() => {
+    const splash = document.getElementById('splash-screen');
+    if (!splash) return;
+    const SPLASH_FALLBACK_TIMEOUT_MS = 3200;
+    const SPLASH_POST_LOAD_DELAY_MS = 1800;
+    const hideSplash = () => splash.classList.add('is-hidden');
+    const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_TIMEOUT_MS);
+    window.addEventListener('load', () => {
+      clearTimeout(fallbackTimer);
+      setTimeout(hideSplash, SPLASH_POST_LOAD_DELAY_MS);
+    }, { once: true });
+  })();
+</script>
 
 </body>
 </html>
