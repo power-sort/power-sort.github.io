@@ -130,7 +130,9 @@ section:nth-child(even) { background: var(--clr-surface); }
   max-width: 100%;
   justify-items: start;
   text-align: left;
-  animation: splashWordsHide 2s ease forwards;
+  --word-column-width: 8ch;
+  animation: splashWordsHide .45s ease forwards;
+  animation-delay: 1.55s;
 }
 
 .splash-words .word-line {
@@ -142,7 +144,7 @@ section:nth-child(even) { background: var(--clr-surface); }
 
 .splash-words .word-text {
   display: inline-block;
-  width: 8ch;
+  width: var(--word-column-width);
   animation: splashWordFade 2s ease forwards;
 }
 
@@ -182,8 +184,8 @@ section:nth-child(even) { background: var(--clr-surface); }
 }
 
 @keyframes splashWordsHide {
-  0%, 78% { opacity: 1; }
-  100% { opacity: 0; }
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes splashWordFade {
