@@ -66,19 +66,19 @@
     <div class="container">
       <h2 class="section-heading">What is Powersort?</h2>
       <p class="section-intro">
-        Powersort is a <em>run-based</em> merge-sort algorithm that is provably nearly optimal in the
-        number of element comparisons it performs. It was designed by
+        Powersort is a <em>run-based</em> merge-sort algorithm with provably near-optimal merge
+        cost (≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>)). It was designed by
         <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
-        and presented at SODA&nbsp;2018. In&nbsp;Python&nbsp;3.11 it replaced the merge-strategy used
-        by Timsort, making it the default sort for all Python lists.
+        and published at ESA&nbsp;2018. In&nbsp;Python&nbsp;3.11 it replaced Timsort's merge policy
+        in CPython, and it is also used beyond CPython (including PyPy and NumPy).
       </p>
 
       <div class="card-grid">
         <div class="card">
           <div class="card-icon">⚡</div>
           <h3>Nearly Optimal</h3>
-          <p>Performs at most <em>n&nbsp;log₂&nbsp;n&nbsp;+&nbsp;O(n)</em> comparisons on any
-             input — matching information-theoretic lower bounds within a small additive term.</p>
+          <p>Performs <em>n&nbsp;log₂&nbsp;n&nbsp;+&nbsp;O(n)</em> comparisons
+             and achieves merge cost ≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em>.</p>
         </div>
         <div class="card">
           <div class="card-icon">📈</div>
@@ -89,8 +89,8 @@
         <div class="card">
           <div class="card-icon">🔀</div>
           <h3>Optimal Merge Tree</h3>
-          <p>Uses a mathematically grounded <em>node power</em> heuristic to build a merge tree
-             that is provably within a factor of&nbsp;2 of optimal.</p>
+          <p>Uses a mathematically grounded <em>node-power merge policy</em> to build merge trees
+             with provable cost at most <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em>.</p>
         </div>
         <div class="card">
           <div class="card-icon">🐍</div>
@@ -216,7 +216,7 @@
       </div>
 
       <!-- Comparison table -->
-      <h3 style="margin-top:2.5rem; color:var(--clr-primary);">Comparison with Timsort</h3>
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary);">Comparison with Timsort merge policy</h3>
       <table class="compare-table" aria-label="Algorithm comparison">
         <thead>
           <tr>
@@ -228,17 +228,17 @@
         <tbody>
           <tr>
             <td>Merge strategy</td>
-            <td>Stack-based heuristic (3 invariants)</td>
-            <td><span class="badge-good">Node-power optimal tree</span></td>
+            <td>Stack-based heuristic (4 invariants)</td>
+            <td><span class="badge-good">Node-power merge policy</span></td>
           </tr>
           <tr>
             <td>Optimality guarantee</td>
-            <td>None (can be sub-optimal)</td>
-            <td><span class="badge-good">Provably ≤ 2× optimal merge cost</span></td>
+            <td>≤ 1.5&nbsp;·&nbsp;<em>OPT</em>&nbsp;+&nbsp;O(<em>n</em>) merge cost</td>
+            <td><span class="badge-good">≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>) merge cost</span></td>
           </tr>
           <tr>
             <td>Worst-case comparisons</td>
-            <td><em>n</em> log₂ <em>n</em> + O(<em>n</em>)</td>
+            <td>1.5&nbsp;·&nbsp;<em>n</em> log₂ <em>n</em> + O(<em>n</em>)</td>
             <td><span class="badge-good"><em>n</em> log₂ <em>n</em> + O(<em>n</em>)</span></td>
           </tr>
           <tr>
@@ -282,10 +282,10 @@
         <div>
           <h3>Merged into CPython 3.11</h3>
           <p>
-            Sebastian Wild contributed the Powersort implementation to CPython. The change was
-            accepted in <strong>bpo-34561</strong> and is active in all Python releases from
-            3.11 onwards. No API changes — <code>list.sort()</code> works exactly as before,
-            just faster and provably better on adversarial inputs.
+            The Powersort merge policy for CPython was integrated via <strong>bpo-34561</strong>,
+            with the final implementation committed by Tim Peters. It is active in all Python
+            releases from 3.11 onwards. No API changes — <code>list.sort()</code> works exactly
+            as before, just faster and provably better on adversarial inputs.
           </p>
         </div>
       </div>
@@ -299,13 +299,17 @@
             floating-point arithmetic.
           </li>
           <li>
-            <strong>Timsort's complex merge invariants</strong> (the "galloping" mode and
-            stack-balance checks) were simplified while retaining all existing optimisations
+            <strong>Timsort's complex merge invariants</strong> (stack-balance checks) were
+            simplified while retaining all existing optimisations
             such as galloping merges and binary insertion sort for short runs.
           </li>
           <li>
-            <strong>Performance</strong> is equivalent or faster across all benchmarks, with
-            measurable wins on adversarial sequences that Timsort handled sub-optimally.
+            <strong>Performance</strong> is equivalent or faster across benchmark sets, with
+            measurable wins on adversarial sequences that Timsort handled sub-optimally
+            (see <a href="https://www.wild-inter.net/posts/powersort-in-python-3.11"
+            target="_blank" rel="noopener">benchmark discussion</a> and
+            <a href="https://bugs.python.org/issue34561"
+            target="_blank" rel="noopener">bpo-34561</a>).
           </li>
           <li>
             <strong>Full backwards compatibility</strong>: the sort is still stable, in-place
@@ -342,21 +346,21 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
           <span class="impl-lang python">Python</span>
           <div>
             <h3>
-              <a href="https://www.wild-inter.net/publications/munro-wild-2018"
+              <a href="https://github.com/pypy/pypy/blob/main/rpython/rlib/listsort.py"
                  target="_blank" rel="noopener">
-                Reference Python implementation
+                PyPy source (<code>listsort.py</code>)
               </a>
             </h3>
             <p>
-              Pure-Python prototype of Powersort by Sebastian Wild, including the node-power
-              computation and full merge logic. Useful for experimenting and understanding the
-              algorithm without the CPython C layer.
+              Powersort has also been adapted by Carl Friedrich Bolz-Tereick for
+              <a href="https://www.pypy.org/" target="_blank" rel="noopener">PyPy</a>.
+              See the Python source on GitHub in <code>rpython/rlib/listsort.py</code>.
             </p>
           </div>
         </div>
 
         <div class="impl-item">
-          <span class="impl-lang python">Python</span>
+          <span class="impl-lang c">C</span>
           <div>
             <h3>
               <a href="https://github.com/python/cpython/blob/main/Objects/listobject.c"
@@ -365,7 +369,7 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
               </a>
             </h3>
             <p>
-              The production C implementation powering <code>list.sort()</code> in every
+              The production C source code powering <code>list.sort()</code> in every
               Python&nbsp;3.11+ installation. Look for <code>powerloop</code> in the source.
             </p>
           </div>
@@ -383,23 +387,23 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
             <p>
               A Java implementation suitable for benchmarking against Java's standard
               <code>Arrays.sort</code>, also developed by Sebastian Wild as part of the
-              research artefacts for the SODA 2018 paper.
+              research artefacts for the ESA 2018 paper.
             </p>
           </div>
         </div>
 
         <div class="impl-item">
-          <span class="impl-lang c">C</span>
+          <span class="impl-lang c">C++</span>
           <div>
             <h3>
-              <a href="https://www.wild-inter.net/publications/munro-wild-2018"
+              <a href="https://github.com/sebawild/powersort"
                  target="_blank" rel="noopener">
-                C implementation
+                C++ implementation
               </a>
             </h3>
             <p>
-              Low-level C implementation suitable for direct comparison with the CPython
-              code. Includes instrumented variants that count comparisons and merges.
+              Low-level C++ implementation repository with variants useful for experiments and
+              direct comparison against other implementations.
             </p>
           </div>
         </div>
@@ -470,14 +474,13 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
           </div>
           <div class="pub-authors">J.&nbsp;Ian&nbsp;Munro &amp; Sebastian&nbsp;Wild</div>
           <div class="pub-venue">
-            26th Annual European Symposium on Algorithms (ESA 2018); also appeared at
-            ACM–SIAM Symposium on Discrete Algorithms (SODA 2018)
+            26th Annual European Symposium on Algorithms (ESA 2018)
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
                href="https://www.wild-inter.net/publications/munro-wild-2018"
                target="_blank" rel="noopener">
-              Paper &amp; Code ↗
+              Paper ↗
             </a>
             <a class="btn btn-outline"
                href="https://en.wikipedia.org/wiki/Powersort"
