@@ -420,95 +420,56 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
         Minimal Python sketch
       </h3>
       <pre><code>"""
-Minimal Powersort sketch (illustrative, not production-ready).
-For the full reference implementation see wild-inter.net/publications/munro-wild-2018
+Minimal illustrative Powersort sketch. 
+For helper functions, see https://tiny.cc/timsort.
 """
 
-import math
+import math 
 
-MERGE_COST = 0
+def power(run1, run2, n):
+    # Compute the "power" of the run boundary.
+    # Given are two adjacent runs from a list of total length n.
+    # See listsort.txt for details; code follows CPython.
+    i1 = run1[0];  n1 = run1[1]
+    i2 = run2[0];  n2 = run2[1]
+    a = 2 * i1 + n1       
+    b = a + n1 + n2       
+    l = 0
+    while True:
+        l += 1
+        if a >= n:
+            assert b >= a
+            a -= n;  b -= n
+        elif b >= n:
+            break
+        assert a < b < n
+        a <<= 1;  b <<= 1
+    return l
 
-
-def merge(run1, run2):
-    """Merge two runs in a list"""
-    result = []
-    while len(run1) &gt; 0 and len(run2) &gt; 0:
-        if run1[0] &lt; run2[0]:
-            result.append(run1.pop(0))
-        else:
-            result.append(run2.pop(0))
-    result.extend(run1)
-    result.extend(run2)
-    return result
-
-
-def merge_inplace(a, i, m, j):
-    print(f'Merge({i}, {m}, {j})')
-    global MERGE_COST
-    MERGE_COST += j - i
-    a[i:j] = merge(a[i:m], a[m:j])
-
-
-def extend_run(a, i):
-    """Extend a run in a list"""
-    if i == len(a) - 1:
-        return i + 1
-    j = i + 1
-    if a[i] &lt;= a[j]:
-        while j &lt; len(a) and a[j - 1] &lt;= a[j]:
-            j += 1
-    else:
-        while j &lt; len(a) and a[j - 1] &gt; a[j]:
-            j += 1
-        a[i:j] = reversed(a[i:j])
-    return j
-
-
-def extend_run_increasing_only(a, i):
-    """Extend a run in a list"""
-    if i == len(a) - 1:
-        return i + 1
-    j = i + 1
-    while j &lt; len(a) and a[j - 1] &lt;= a[j]:
-        j += 1
-    return j
-
-
-def node_power(s1, n1, n2, n):
-    """Return the node power of two adjacent runs."""
-    a = 2 * s1 + n1
-    b = a + n2
-    p = 0
-    while a // n == b // n:
-        p += 1
-        a = 2 * a - n * (a // n)
-        b = 2 * b - n * (b // n)
-    return p
-
-
-def powersort(a):
+def powersort(a, extend_run=extend_run):
+    """
+    Sort a list using powersort.
+    This is a slick variant for managing the stack 
+    (no need to update the power inside the stack).
+    It stores the run-boundary power in the right run, 
+    CPython stores it in the left run.
+    """
     n = len(a)
-    if n &lt; 2:
-        return a
-    stack = []  # [(start, length, power), ...]
     i = 0
-    while i &lt; n:
+    runs = []  # stack of (start, length, power) tuples
+    j = extend_run(a, i)
+    runs.append((i, j-i, 0))
+    i = j
+    while i < n:
         j = extend_run(a, i)
-        n1 = j - i
-        n2 = 0 if j == n else extend_run_increasing_only(a, j) - j
-        p = node_power(i, n1, n2, n)
-        while stack and stack[-1][2] &gt;= p:
-            s, l, _ = stack.pop()
-            merge_inplace(a, s, s + l, j)
-            i, n1 = s, j - s
-        stack.append((i, n1, p))
+        p = power(runs[-1], (i,j-i), n)
+        while p <= runs[-1][2]:
+            merge_topmost_2(a, runs)
+        runs.append((i,j-i,p))
         i = j
-    while len(stack) &gt; 1:
-        (s1, l1, _), (s2, l2, _) = stack[-2], stack[-1]
-        merge_inplace(a, s1, s2, s2 + l2)
-        stack[-2] = (s1, l1 + l2, 0)
-        stack.pop()
-    return a</code></pre>
+    while len(runs) >= 2:
+        merge_topmost_2(a, runs)
+  </code></pre>
     </div>
   </section>
 
