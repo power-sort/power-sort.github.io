@@ -258,7 +258,7 @@
           </tr>
           <tr>
             <td>Stable sort</td>
-            <span class="badge-good">Yes</span>
+            <td><span class="badge-good">Yes</span></td>
             <td><span class="badge-good">Yes</span></td>
           </tr>
           <tr>
@@ -413,6 +413,25 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
           </div>
         </div>
 
+        <div class="impl-item">
+          <span class="impl-lang c">C++</span>
+          <div>
+            <h3>
+              <a href="https://github.com/numpy/numpy/blob/main/numpy/_core/src/npysort/timsort.hpp"
+                 target="_blank" rel="noopener">
+                NumPy (<code>numpy/_core/src/npysort/timsort.hpp</code>)
+              </a>
+            </h3>
+            <p>
+              NumPy adopted Powersort's merge strategy in its sort implementation.
+              See <code>powerloop</code> and <code>found_new_run_</code> in the source,
+              introduced via
+              <a href="https://github.com/numpy/numpy/pull/29208"
+                 target="_blank" rel="noopener">NumPy PR&nbsp;#29208</a>.
+            </p>
+          </div>
+        </div>
+
       </div>
 
       <!-- Mini code sample -->
@@ -499,10 +518,40 @@ For helper functions, see https://tiny.cc/timsort.
                target="_blank" rel="noopener">
               Paper ↗
             </a>
-            <a class="btn btn-outline"
+          </div>
+        </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Powersort — Wikipedia
+          </div>
+          <div class="pub-venue">
+            Wikipedia — encyclopaedic overview of the Powersort algorithm, its history,
+            and its adoption into Python and NumPy.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
                href="https://en.wikipedia.org/wiki/Powersort"
                target="_blank" rel="noopener">
               Wikipedia ↗
+            </a>
+          </div>
+        </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            listsort.txt — Tim Peters's Description of CPython's List Sort
+          </div>
+          <div class="pub-authors">Tim&nbsp;Peters</div>
+          <div class="pub-venue">
+            CPython source tree — the original detailed description of the Timsort algorithm,
+            including the merge strategy that Powersort later replaced.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://github.com/python/cpython/blob/main/Objects/listsort.txt"
+               target="_blank" rel="noopener">
+              View on GitHub ↗
             </a>
           </div>
         </div>
@@ -613,6 +662,24 @@ For helper functions, see https://tiny.cc/timsort.
                href="https://powersort-competition.github.io/PowersortCompetitionWebsite/#/"
                target="_blank" rel="noopener">
               Visit Competition ↗
+            </a>
+          </div>
+        </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            An Interactive Explanation of Powersort (Blog Post)
+          </div>
+          <div class="pub-authors">Moritz&nbsp;Groß</div>
+          <div class="pub-venue">
+            moritz-gross.github.io — interactive walk-through of the Powersort algorithm with
+            manipulatable animations that let readers explore the merge strategy step by step.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://moritz-gross.github.io/posts/powersort/"
+               target="_blank" rel="noopener">
+              Read Blog Post ↗
             </a>
           </div>
         </div>
