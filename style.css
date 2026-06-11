@@ -99,6 +99,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   place-items: center;
   background: rgba(0, 28, 107, .97);
   color: #fff;
+  cursor: pointer;
   transition: opacity .45s ease, visibility .45s ease;
 }
 
@@ -109,45 +110,109 @@ section:nth-child(even) { background: var(--clr-surface); }
 }
 
 .splash-content {
-  width: min(560px, 92vw);
-  text-align: center;
-}
-
-.splash-content img {
-  display: block;
-  margin: 0 auto .8rem;
-}
-
-.splash-content p {
-  margin-bottom: 1rem;
-  color: rgba(255,255,255,.9);
-}
-
-.splash-runs {
-  height: 84px;
+  width: min(760px, 92vw);
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: .65rem;
-  align-items: end;
+  justify-items: center;
 }
 
-.splash-runs .run {
-  display: block;
-  border-radius: 4px 4px 0 0;
-  background: linear-gradient(180deg, var(--clr-accent), #57dbff);
-  animation: runPulse 1.2s ease-in-out infinite;
-  transform-origin: bottom center;
+.splash-words {
+  margin-bottom: 1.2rem;
+  display: grid;
+  gap: .25rem;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  font-size: clamp(2.9rem, 11.5vw, 5.2rem);
+  line-height: .95;
+  letter-spacing: 0;
+  color: var(--clr-accent);
+  width: fit-content;
+  max-width: 100%;
+  justify-items: start;
+  text-align: left;
+  /* Longest splash word is "adaptive" (8 chars); keep cursor column aligned. */
+  --word-column-width: 8ch;
+  animation: splashWordsHide .45s ease forwards;
+  animation-delay: 1.55s;
 }
 
-.splash-runs .run-1 { height: 30%; animation-delay: 0s; }
-.splash-runs .run-2 { height: 75%; animation-delay: .15s; }
-.splash-runs .run-3 { height: 45%; animation-delay: .3s; }
-.splash-runs .run-4 { height: 90%; animation-delay: .45s; }
-.splash-runs .run-5 { height: 55%; animation-delay: .6s; }
+.splash-words .word-line {
+  display: inline-flex;
+  justify-self: start;
+  align-items: baseline;
+  gap: .1em;
+}
 
-@keyframes runPulse {
-  0%, 100% { transform: scaleY(.55); background: linear-gradient(180deg, var(--clr-accent), #57dbff); }
-  45% { transform: scaleY(1); background: linear-gradient(180deg, var(--clr-highlight), #d6ff6b); }
+.splash-words .word-text {
+  display: inline-block;
+  width: var(--word-column-width);
+  animation: splashWordFade 2s ease forwards;
+}
+
+.splash-words .word-cursor {
+  display: inline-block;
+  min-width: .75em;
+  color: var(--clr-highlight);
+  transform: translate3d(0,0,0);
+  animation:
+    splashCursorBlink .55s steps(1, end) infinite,
+    splashCursorMove 2s cubic-bezier(.22,.61,.36,1) forwards;
+}
+
+.word-line-1 .word-cursor {
+  --cursor-x: -1.35em;
+  --cursor-y: 1.55em;
+}
+
+.word-line-2 .word-cursor {
+  --cursor-x: -1.35em;
+  --cursor-y: .5em;
+}
+
+.word-line-3 .word-cursor {
+  --cursor-x: -1.35em;
+  --cursor-y: -.55em;
+}
+
+.splash-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.9);
+  animation: splashLogoReveal .45s ease forwards;
+  animation-delay: 2s;
+}
+
+@keyframes splashWordsHide {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes splashWordFade {
+  0%, 54% { opacity: 1; }
+  72%, 100% { opacity: 0; }
+}
+
+@keyframes splashCursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes splashCursorMove {
+  0%, 56% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(var(--cursor-x), var(--cursor-y), 0);
+  }
+}
+
+@keyframes splashLogoReveal {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.9); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 .header-text h1 {
@@ -551,12 +616,16 @@ pre code {
 /* ---------- responsive ---------- */
 @media (max-width: 600px) {
   .header-inner { flex-direction: column; text-align: center; }
-  .splash-runs { height: 72px; gap: .45rem; }
   .python-banner { flex-direction: column; text-align: center; }
   .impl-item { flex-direction: column; }
   .footer-inner { flex-direction: column; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .splash-runs .run { animation: none; }
+  .splash-words { display: none; }
+  .splash-logo {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }

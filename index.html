@@ -17,15 +17,21 @@
 
 <div id="splash-screen" class="splash-screen" aria-hidden="true">
   <div class="splash-content">
-    <img src="assets/powersort-logo-square.svg" alt="" width="84" height="84" />
-    <p>Adaptive stable sorting in action</p>
-    <div class="splash-runs">
-      <span class="run run-1"></span>
-      <span class="run run-2"></span>
-      <span class="run run-3"></span>
-      <span class="run run-4"></span>
-      <span class="run run-5"></span>
+    <div class="splash-words" aria-hidden="true">
+      <span class="word-line word-line-1">
+        <span class="word-text">adaptive</span>
+        <span class="word-cursor" aria-hidden="true">_</span>
+      </span>
+      <span class="word-line word-line-2">
+        <span class="word-text">stable</span>
+        <span class="word-cursor" aria-hidden="true">_</span>
+      </span>
+      <span class="word-line word-line-3">
+        <span class="word-text">sorting</span>
+        <span class="word-cursor" aria-hidden="true">_</span>
+      </span>
     </div>
+    <img class="splash-logo" src="assets/powersort-logo-square.svg" alt="" width="84" height="84" />
   </div>
 </div>
 
@@ -544,7 +550,7 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
 <footer class="site-footer">
   <div class="container footer-inner">
     <span>
-      &copy; 2024 J.&nbsp;Ian&nbsp;Munro &amp; Sebastian&nbsp;Wild.
+      &copy; 2026 Sebastian&nbsp;Wild.
       Algorithm described in <a href="https://www.wild-inter.net/publications/munro-wild-2018"
         target="_blank" rel="noopener">Munro &amp; Wild 2018</a>.
     </span>
@@ -560,13 +566,34 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
   (() => {
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
-    const SPLASH_FALLBACK_TIMEOUT_MS = 3200;
-    const SPLASH_POST_LOAD_DELAY_MS = 1800;
-    const hideSplash = () => splash.classList.add('is-hidden');
+    splash.setAttribute('aria-hidden', 'false');
+    const SPLASH_MIN_VISIBLE_MS = 2600;
+    const SPLASH_FALLBACK_TIMEOUT_MS = 3800;
+    const SPLASH_POST_LOAD_DELAY_MS = 250;
+    const splashShownAt = performance.now();
+    const hideSplash = () => {
+      if (splash.classList.contains('is-hidden')) return;
+      splash.classList.add('is-hidden');
+      splash.setAttribute('aria-hidden', 'true');
+      splash.removeEventListener('click', hideSplash);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+    const onKeyDown = (event) => {
+      if (splash.classList.contains('is-hidden')) return;
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        hideSplash();
+      }
+    };
     const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_TIMEOUT_MS);
+    splash.addEventListener('click', hideSplash, { once: true });
+    window.addEventListener('keydown', onKeyDown);
     window.addEventListener('load', () => {
       clearTimeout(fallbackTimer);
-      setTimeout(hideSplash, SPLASH_POST_LOAD_DELAY_MS);
+      const elapsedMs = performance.now() - splashShownAt;
+      const remainingVisibleMs = Math.max(0, SPLASH_MIN_VISIBLE_MS - elapsedMs);
+      const hideDelayMs = remainingVisibleMs + SPLASH_POST_LOAD_DELAY_MS;
+      setTimeout(hideSplash, hideDelayMs);
     }, { once: true });
   })();
 </script>
