@@ -172,12 +172,12 @@
         <figcaption>Powersort in action (animated)</figcaption>
       </figure>
 
-      <figure class="asset-panel animation-panel">
-        <video controls muted loop playsinline preload="metadata" poster="assets/Powersort_AdaptiveSorting_01_.jpg" aria-label="Adaptive stable sorting animation source clip">
+      <figure class="asset-panel animation-panel" aria-labelledby="adaptive-video-caption">
+        <video controls muted loop playsinline preload="metadata" poster="assets/Powersort_AdaptiveSorting_01_.jpg">
           <source src="assets/Powersort_04_1.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-        <figcaption>Adaptive stable sorting animation source clip</figcaption>
+        <figcaption id="adaptive-video-caption">Adaptive stable sorting animation source clip</figcaption>
       </figure>
 
       <!-- Node power formula -->
@@ -558,11 +558,13 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
   (() => {
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
+    const SPLASH_FALLBACK_DELAY_MS = 3200;
+    const SPLASH_DISPLAY_AFTER_LOAD_MS = 1800;
     const hideSplash = () => splash.classList.add('is-hidden');
-    const fallbackTimer = setTimeout(hideSplash, 3200);
+    const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_DELAY_MS);
     window.addEventListener('load', () => {
       clearTimeout(fallbackTimer);
-      setTimeout(hideSplash, 1800);
+      setTimeout(hideSplash, SPLASH_DISPLAY_AFTER_LOAD_MS);
     }, { once: true });
   })();
 </script>
