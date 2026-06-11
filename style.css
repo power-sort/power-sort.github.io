@@ -130,6 +130,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   max-width: 100%;
   justify-items: start;
   text-align: left;
+  /* Longest splash word is "adaptive" (8 chars); keep cursor column aligned. */
   --word-column-width: 8ch;
   animation: splashWordsHide .45s ease forwards;
   animation-delay: 1.55s;
