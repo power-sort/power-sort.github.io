@@ -102,11 +102,11 @@
 
       <div class="asset-gallery" aria-label="Powersort visuals">
         <figure class="asset-panel">
-          <img src="assets/Powersort_AdaptiveSorting_01_.jpg" alt="Adaptive stable sorting visualisation from the Powersort assets" loading="lazy" />
+          <img src="assets/Powersort_AdaptiveSorting_01_.jpg" alt="Adaptive stable sorting visualization" loading="lazy" />
           <figcaption>Adaptive stable sorting visualisation</figcaption>
         </figure>
         <figure class="asset-panel">
-          <img src="assets/Powersort_MergeTree_01_.jpg" alt="Merge tree visualisation used to explain node-power scheduling" loading="lazy" />
+          <img src="assets/Powersort_MergeTree_01_.jpg" alt="Merge tree structure diagram showing node relationships" loading="lazy" />
           <figcaption>Merge tree structure for node-power decisions</figcaption>
         </figure>
       </div>
@@ -558,13 +558,13 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
   (() => {
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
-    const SPLASH_MAX_DISPLAY_MS = 3200;
-    const SPLASH_MIN_DISPLAY_MS = 1800;
+    const SPLASH_FALLBACK_TIMEOUT_MS = 3200;
+    const SPLASH_POST_LOAD_DELAY_MS = 1800;
     const hideSplash = () => splash.classList.add('is-hidden');
-    const fallbackTimer = setTimeout(hideSplash, SPLASH_MAX_DISPLAY_MS);
+    const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_TIMEOUT_MS);
     window.addEventListener('load', () => {
       clearTimeout(fallbackTimer);
-      setTimeout(hideSplash, SPLASH_MIN_DISPLAY_MS);
+      setTimeout(hideSplash, SPLASH_POST_LOAD_DELAY_MS);
     }, { once: true });
   })();
 </script>
