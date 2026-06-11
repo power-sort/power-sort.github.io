@@ -66,8 +66,8 @@
     <div class="container">
       <h2 class="section-heading">What is Powersort?</h2>
       <p class="section-intro">
-        Powersort is a <em>run-based</em> merge-sort algorithm that is provably nearly optimal with
-        respect to merge cost. It was designed by
+        Powersort is a <em>run-based</em> merge-sort algorithm with provably near-optimal merge
+        cost (<em>OPT&nbsp;+&nbsp;2n</em>). It was designed by
         <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
         and published at ESA&nbsp;2018. In&nbsp;Python&nbsp;3.11 it replaced Timsort's merge policy
         in CPython, and it is also used beyond CPython (including PyPy and NumPy).
@@ -78,6 +78,7 @@
           <div class="card-icon">⚡</div>
           <h3>Nearly Optimal</h3>
           <p>Performs <em>n&nbsp;log₂&nbsp;n&nbsp;+&nbsp;n&nbsp;𝓗&nbsp;+&nbsp;O(n)</em> comparisons
+             (with 𝓗 denoting run-length entropy)
              and achieves merge cost <em>OPT&nbsp;+&nbsp;2n</em>.</p>
         </div>
         <div class="card">
@@ -370,7 +371,7 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
             </h3>
             <p>
               The production C source code powering <code>list.sort()</code> in every
-              Python&nbsp;3.11+ installation. Look for the <code>powerloop</code> code path.
+              Python&nbsp;3.11+ installation. Look for <code>powerloop</code> in the source.
             </p>
           </div>
         </div>
