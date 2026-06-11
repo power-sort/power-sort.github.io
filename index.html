@@ -565,8 +565,10 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
     splash.setAttribute('aria-hidden', 'false');
-    const SPLASH_FALLBACK_TIMEOUT_MS = 2600;
+    const SPLASH_MIN_VISIBLE_MS = 2200;
+    const SPLASH_FALLBACK_TIMEOUT_MS = 3200;
     const SPLASH_POST_LOAD_DELAY_MS = 900;
+    const splashShownAt = performance.now();
     const hideSplash = () => {
       if (splash.classList.contains('is-hidden')) return;
       splash.classList.add('is-hidden');
@@ -586,7 +588,10 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('load', () => {
       clearTimeout(fallbackTimer);
-      setTimeout(hideSplash, SPLASH_POST_LOAD_DELAY_MS);
+      const elapsedMs = performance.now() - splashShownAt;
+      const remainingVisibleMs = Math.max(0, SPLASH_MIN_VISIBLE_MS - elapsedMs);
+      const hideDelayMs = Math.max(SPLASH_POST_LOAD_DELAY_MS, remainingVisibleMs);
+      setTimeout(hideSplash, hideDelayMs);
     }, { once: true });
   })();
 </script>

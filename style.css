@@ -113,7 +113,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   width: min(760px, 92vw);
   position: relative;
   display: grid;
-  justify-items: center;
+  justify-items: start;
 }
 
 .splash-words {
@@ -126,11 +126,14 @@ section:nth-child(even) { background: var(--clr-surface); }
   line-height: .95;
   letter-spacing: 0;
   color: var(--clr-accent);
+  width: 100%;
+  justify-items: start;
+  text-align: left;
 }
 
 .splash-words .word-line {
   display: inline-flex;
-  justify-self: center;
+  justify-self: start;
   align-items: baseline;
   gap: .1em;
 }
