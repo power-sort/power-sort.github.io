@@ -131,7 +131,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   justify-items: start;
   text-align: left;
   /* Longest splash word is "adaptive" (8 chars); keep cursor column aligned. */
-  --word-column-width: 8ch;
+  /* --word-column-width: 8ch; */
   animation: splashWordsHide .45s ease forwards;
   animation-delay: 1.55s;
 }
@@ -145,7 +145,7 @@ section:nth-child(even) { background: var(--clr-surface); }
 
 .splash-words .word-text {
   display: inline-block;
-  width: var(--word-column-width);
+  /* width: var(--word-column-width); */
   animation: splashWordFade 2s ease forwards;
 }
 
