@@ -1,0 +1,466 @@
+/* =========================================================
+   Powersort – main stylesheet
+   Palette derived from the powersort GitHub organisation logo
+   ========================================================= */
+
+/* ---------- reset & base ---------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Logo-inspired palette */
+  --clr-bg:          #f5f7fa;
+  --clr-surface:     #ffffff;
+  --clr-primary:     #1a5276;   /* deep navy blue  */
+  --clr-accent:      #2e86c1;   /* medium blue      */
+  --clr-highlight:   #d4ac0d;   /* amber / gold     */
+  --clr-text:        #1c2833;
+  --clr-muted:       #5d6d7e;
+  --clr-border:      #d5d8dc;
+  --clr-code-bg:     #eaf0fb;
+
+  --font-sans:  'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono:  'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  --radius:     6px;
+  --max-width:  900px;
+  --gap:        2rem;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  line-height: 1.7;
+  font-size: 1rem;
+}
+
+a {
+  color: var(--clr-accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+/* ---------- layout helpers ---------- */
+.container {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+section { padding-block: 3rem; }
+section:nth-child(even) { background: var(--clr-surface); }
+
+/* ---------- skip link ---------- */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  padding: .5rem 1rem;
+  background: var(--clr-primary);
+  color: #fff;
+  z-index: 999;
+  border-radius: 0 0 var(--radius) 0;
+}
+.skip-link:focus { top: 0; }
+
+/* ---------- site header / hero ---------- */
+.site-header {
+  background: var(--clr-primary);
+  color: #fff;
+  padding-block: 3.5rem 2.5rem;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 4px solid var(--clr-highlight);
+  flex-shrink: 0;
+  background: var(--clr-accent);   /* placeholder tint while image loads */
+  object-fit: cover;
+}
+
+.header-text h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.header-text .tagline {
+  margin-top: .5rem;
+  font-size: 1.125rem;
+  opacity: .85;
+}
+
+/* ---------- nav ---------- */
+.site-nav {
+  background: var(--clr-primary);
+  border-top: 1px solid rgba(255,255,255,.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.site-nav ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.site-nav a {
+  display: block;
+  padding: .75rem 1.25rem;
+  color: rgba(255,255,255,.85);
+  font-size: .9rem;
+  font-weight: 500;
+  transition: background .15s, color .15s;
+}
+
+.site-nav a:hover {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  text-decoration: none;
+}
+
+/* ---------- section headings ---------- */
+.section-heading {
+  font-size: 1.65rem;
+  color: var(--clr-primary);
+  margin-bottom: 1.25rem;
+  border-left: 4px solid var(--clr-highlight);
+  padding-left: .75rem;
+}
+
+.section-intro {
+  color: var(--clr-muted);
+  font-size: 1.05rem;
+  margin-bottom: 1.5rem;
+  max-width: 70ch;
+}
+
+/* ---------- feature cards (overview row) ---------- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  transition: box-shadow .2s;
+}
+
+.card:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+
+.card .card-icon {
+  font-size: 1.75rem;
+  margin-bottom: .5rem;
+}
+
+.card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--clr-primary);
+  margin-bottom: .4rem;
+}
+
+.card p { font-size: .92rem; color: var(--clr-muted); }
+
+/* ---------- algorithm explainer ---------- */
+.algo-steps {
+  display: grid;
+  gap: 1.25rem;
+  counter-reset: step;
+  margin-top: 1.5rem;
+}
+
+.algo-step {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.algo-step::before {
+  counter-increment: step;
+  content: counter(step);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--clr-primary);
+  color: #fff;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.algo-step h3 {
+  font-size: 1rem;
+  color: var(--clr-primary);
+  margin-bottom: .25rem;
+}
+
+.algo-step p { font-size: .93rem; }
+
+/* ---------- node-power formula box ---------- */
+.formula-box {
+  background: var(--clr-code-bg);
+  border: 1px solid var(--clr-border);
+  border-left: 4px solid var(--clr-accent);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-top: 1.5rem;
+  font-size: .93rem;
+}
+
+.formula-box .label {
+  font-weight: 700;
+  color: var(--clr-primary);
+  margin-bottom: .5rem;
+  font-size: 1rem;
+}
+
+.formula-box code {
+  font-family: var(--font-mono);
+  background: rgba(0,0,0,.06);
+  padding: .1em .35em;
+  border-radius: 3px;
+}
+
+/* ---------- inline code / code blocks ---------- */
+code {
+  font-family: var(--font-mono);
+  font-size: .88em;
+  background: var(--clr-code-bg);
+  padding: .1em .35em;
+  border-radius: 3px;
+}
+
+pre {
+  background: var(--clr-primary);
+  color: #e8f0fe;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  font-size: .875rem;
+  line-height: 1.6;
+  margin-top: 1rem;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+.code-comment { color: #8ecae6; }
+.code-keyword { color: var(--clr-highlight); font-weight: 600; }
+.code-func    { color: #90e0ef; }
+.code-number  { color: #caf0f8; }
+
+/* ---------- comparison table ---------- */
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5rem;
+  font-size: .93rem;
+}
+
+.compare-table th {
+  background: var(--clr-primary);
+  color: #fff;
+  padding: .6rem 1rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.compare-table td {
+  padding: .6rem 1rem;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.compare-table tr:nth-child(even) td { background: var(--clr-code-bg); }
+.compare-table tr:hover td { background: #dbeafe; }
+
+.badge-good {
+  display: inline-block;
+  background: #d4edda;
+  color: #155724;
+  padding: .15em .55em;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+/* ---------- Python 3.11 banner ---------- */
+.python-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: linear-gradient(135deg, #1a3c5e 0%, #2e86c1 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  margin-top: 1.5rem;
+}
+
+.python-banner .py-logo {
+  font-size: 3rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.python-banner h3 {
+  font-size: 1.2rem;
+  margin-bottom: .3rem;
+}
+
+.python-banner p { font-size: .93rem; opacity: .9; }
+
+/* ---------- code links / implementations ---------- */
+.impl-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.impl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  transition: box-shadow .2s;
+}
+
+.impl-item:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+
+.impl-lang {
+  background: var(--clr-primary);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .3em .7em;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: .1rem;
+}
+
+.impl-lang.python  { background: #306998; }
+.impl-lang.java    { background: #b07219; }
+.impl-lang.c       { background: #555555; }
+
+.impl-item h3 { font-size: .98rem; color: var(--clr-primary); margin-bottom: .2rem; }
+.impl-item p  { font-size: .88rem; color: var(--clr-muted); }
+
+/* ---------- publications ---------- */
+.pub-list { display: grid; gap: 1.25rem; margin-top: 1.5rem; }
+
+.pub-entry {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+}
+
+.pub-entry .pub-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--clr-primary);
+  margin-bottom: .3rem;
+}
+
+.pub-entry .pub-authors {
+  font-size: .9rem;
+  color: var(--clr-muted);
+  margin-bottom: .4rem;
+}
+
+.pub-entry .pub-venue {
+  font-size: .88rem;
+  font-style: italic;
+  color: var(--clr-muted);
+  margin-bottom: .6rem;
+}
+
+.pub-entry .pub-links { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .35em .85em;
+  border-radius: var(--radius);
+  font-size: .85rem;
+  font-weight: 600;
+  transition: background .15s;
+}
+
+.btn-primary {
+  background: var(--clr-accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--clr-primary); text-decoration: none; }
+
+.btn-outline {
+  border: 1.5px solid var(--clr-accent);
+  color: var(--clr-accent);
+  background: transparent;
+}
+.btn-outline:hover { background: var(--clr-code-bg); text-decoration: none; }
+
+/* ---------- site footer ---------- */
+.site-footer {
+  background: var(--clr-primary);
+  color: rgba(255,255,255,.75);
+  padding-block: 2rem;
+  font-size: .88rem;
+  margin-top: 2rem;
+}
+
+.site-footer a { color: rgba(255,255,255,.9); }
+.site-footer a:hover { color: #fff; }
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 600px) {
+  .header-inner { flex-direction: column; text-align: center; }
+  .python-banner { flex-direction: column; text-align: center; }
+  .impl-item { flex-direction: column; }
+  .footer-inner { flex-direction: column; text-align: center; }
+}

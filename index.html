@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+        content="Powersort – a nearly-optimal, run-adaptive sorting algorithm by J. Ian Munro and Sebastian Wild, adopted as Python's default sort since version 3.11." />
+  <title>Powersort – Nearly-Optimal Adaptive Sorting</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Canonical favicón reuse from GitHub org avatar -->
+  <link rel="icon" href="https://avatars.githubusercontent.com/u/292742844?s=32" type="image/png" />
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<!-- ===================== HEADER ===================== -->
+<header class="site-header">
+  <div class="container header-inner">
+    <img class="logo"
+         src="https://avatars.githubusercontent.com/u/292742844?s=200&v=4"
+         alt="Powersort organisation logo"
+         width="96" height="96" />
+    <div class="header-text">
+      <h1>Powersort</h1>
+      <p class="tagline">A nearly-optimal, run-adaptive merge sort &mdash; now powering Python&nbsp;3.11+</p>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== NAV ===================== -->
+<nav class="site-nav" aria-label="Page sections">
+  <div class="container">
+    <ul>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#algorithm">Algorithm</a></li>
+      <li><a href="#python">Python 3.11</a></li>
+      <li><a href="#code">Code</a></li>
+      <li><a href="#publications">Publications</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ===================== MAIN ===================== -->
+<main id="main">
+
+  <!-- ---- OVERVIEW ---- -->
+  <section id="overview">
+    <div class="container">
+      <h2 class="section-heading">What is Powersort?</h2>
+      <p class="section-intro">
+        Powersort is a <em>run-based</em> merge-sort algorithm that is provably nearly optimal in the
+        number of element comparisons it performs. It was designed by
+        <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
+        and presented at SODA&nbsp;2018. In&nbsp;Python&nbsp;3.11 it replaced the merge-strategy used
+        by Timsort, making it the default sort for all Python lists.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <h3>Nearly Optimal</h3>
+          <p>Performs at most <em>n&nbsp;log₂&nbsp;n&nbsp;+&nbsp;O(n)</em> comparisons on any
+             input — matching information-theoretic lower bounds within a small additive term.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📈</div>
+          <h3>Adaptive to Existing Order</h3>
+          <p>Exploits natural ascending and descending <em>runs</em> already present in the data,
+             requiring far fewer comparisons on partially-sorted inputs.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔀</div>
+          <h3>Optimal Merge Tree</h3>
+          <p>Uses a mathematically grounded <em>node power</em> heuristic to build a merge tree
+             that is provably within a factor of&nbsp;2 of optimal.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🐍</div>
+          <h3>Python 3.11 Default</h3>
+          <p>Adopted in CPython&nbsp;3.11 as a drop-in improvement over Timsort's original merge
+             strategy, with zero API changes for users.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---- ALGORITHM ---- -->
+  <section id="algorithm">
+    <div class="container">
+      <h2 class="section-heading">How the Algorithm Works</h2>
+      <p class="section-intro">
+        Like Timsort, Powersort scans the input for <em>natural runs</em> — maximal ascending
+        (or reversed-descending) sequences. The innovation is in <em>how</em> those runs are
+        merged: instead of Timsort's stack-based heuristic, Powersort uses a carefully computed
+        <strong>node power</strong> to schedule merges in a near-optimal order.
+      </p>
+
+      <div class="algo-steps">
+        <div class="algo-step">
+          <div>
+            <h3>Detect Natural Runs</h3>
+            <p>
+              Scan left-to-right. A <em>run</em> is a maximal non-decreasing subsequence
+              (descending runs are reversed in-place). If a run is shorter than
+              <code>MIN_RUN</code> (≈ 32–64 elements) it is extended using binary insertion sort.
+            </p>
+          </div>
+        </div>
+        <div class="algo-step">
+          <div>
+            <h3>Compute Node Power</h3>
+            <p>
+              For two adjacent runs <em>A</em> and <em>B</em> in an array of total length
+              <em>n</em>, the <strong>node power</strong> is computed from their start positions
+              and lengths. Intuitively, it represents the level in a balanced binary tree at
+              which the interval spanned by A&nbsp;∪&nbsp;B would first appear.
+            </p>
+          </div>
+        </div>
+        <div class="algo-step">
+          <div>
+            <h3>Maintain a Run Stack</h3>
+            <p>
+              Runs are pushed onto a stack. Before pushing a new run, any pending runs on the
+              stack whose node power is <em>greater than or equal</em> to the new run's power
+              are merged first. This guarantees the merge tree is nearly optimal.
+            </p>
+          </div>
+        </div>
+        <div class="algo-step">
+          <div>
+            <h3>Flush Remaining Runs</h3>
+            <p>
+              After the entire input has been scanned, all remaining runs on the stack are
+              merged right-to-left, completing the sort.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Node power formula -->
+      <div class="formula-box">
+        <div class="label">Node Power — Key Formula</div>
+        <p>
+          Given an array of length <code>n</code>, two adjacent runs starting at position
+          <code>i</code> and <code>j = i + |A|</code> (where <code>|A|</code> is the length
+          of run&nbsp;A), the node power <em>k</em> is the number of leading identical bits in
+          the binary representations of the fractions
+          <code>(i − 1) / n</code> and <code>(j + |B| − 1) / n</code>
+          <em>before</em> the bit representing the boundary between them.
+          Equivalently, using integer arithmetic:
+        </p>
+        <pre><code><span class="code-comment"># integer bit-trick (no floating-point required)</span>
+<span class="code-keyword">def</span> <span class="code-func">node_power</span>(left, left_len, right_len, n):
+    <span class="code-comment">"""
+    left      : start index of the left run
+    left_len  : length of the left run
+    right_len : length of the right run
+    n         : total array length
+    """</span>
+    a = <span class="code-number">2</span> * left + left_len      <span class="code-comment"># = 2 * midpoint numerator (left side)</span>
+    b = <span class="code-number">2</span> * left + left_len + right_len  <span class="code-comment"># right side</span>
+    power = <span class="code-number">0</span>
+    <span class="code-keyword">while</span> a // n == b // n:
+        power += <span class="code-number">1</span>
+        a = <span class="code-number">2</span> * a - n * (a // n)
+        b = <span class="code-number">2</span> * b - n * (b // n)
+    <span class="code-keyword">return</span> power</code></pre>
+        <p style="margin-top:.75rem; font-size:.9rem; color:var(--clr-muted);">
+          A higher node power means the two runs should be merged <em>later</em> (at a higher
+          level of the merge tree). The stack invariant ensures that merges always happen in the
+          right order.
+        </p>
+      </div>
+
+      <!-- Comparison table -->
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary);">Comparison with Timsort</h3>
+      <table class="compare-table" aria-label="Algorithm comparison">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Timsort</th>
+            <th>Powersort</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Merge strategy</td>
+            <td>Stack-based heuristic (3 invariants)</td>
+            <td><span class="badge-good">Node-power optimal tree</span></td>
+          </tr>
+          <tr>
+            <td>Optimality guarantee</td>
+            <td>None (can be sub-optimal)</td>
+            <td><span class="badge-good">Provably ≤ 2× optimal merge cost</span></td>
+          </tr>
+          <tr>
+            <td>Worst-case comparisons</td>
+            <td><em>n</em> log₂ <em>n</em> + O(<em>n</em>)</td>
+            <td><span class="badge-good"><em>n</em> log₂ <em>n</em> + O(<em>n</em>)</span></td>
+          </tr>
+          <tr>
+            <td>Adaptive to runs</td>
+            <td>Yes</td>
+            <td><span class="badge-good">Yes (near-optimal)</span></td>
+          </tr>
+          <tr>
+            <td>Algorithm complexity</td>
+            <td>Complex stack invariants, hard to prove correct</td>
+            <td><span class="badge-good">Simple, clean invariant</span></td>
+          </tr>
+          <tr>
+            <td>Stable sort</td>
+            <td>Yes</td>
+            <td><span class="badge-good">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Extra memory</td>
+            <td>O(<em>n</em>)</td>
+            <td>O(<em>n</em>)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ---- PYTHON 3.11 ---- -->
+  <section id="python">
+    <div class="container">
+      <h2 class="section-heading">Powersort in Python 3.11</h2>
+      <p class="section-intro">
+        Python's built-in <code>list.sort()</code> and <code>sorted()</code> have used Timsort
+        since Python&nbsp;2.3. With <strong>Python&nbsp;3.11</strong> (released October 2022),
+        the CPython team adopted Powersort's merge strategy, making every Python program that
+        sorts data an implicit beneficiary of this research.
+      </p>
+
+      <div class="python-banner">
+        <div class="py-logo" aria-hidden="true">🐍</div>
+        <div>
+          <h3>Merged into CPython 3.11</h3>
+          <p>
+            Sebastian Wild contributed the Powersort implementation to CPython. The change was
+            accepted in <strong>bpo-34561</strong> and is active in all Python releases from
+            3.11 onwards. No API changes — <code>list.sort()</code> works exactly as before,
+            just faster and provably better on adversarial inputs.
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top:2rem;">
+        <h3 style="color:var(--clr-primary); margin-bottom:.75rem;">What changed?</h3>
+        <ul style="padding-left:1.5rem; display:grid; gap:.6rem; font-size:.95rem;">
+          <li>
+            <strong>The merge-decision logic</strong> inside Timsort's run-stacking loop was
+            replaced with the node-power computation — a single integer loop needing no
+            floating-point arithmetic.
+          </li>
+          <li>
+            <strong>Timsort's complex merge invariants</strong> (the "galloping" mode and
+            stack-balance checks) were simplified while retaining all existing optimisations
+            such as galloping merges and binary insertion sort for short runs.
+          </li>
+          <li>
+            <strong>Performance</strong> is equivalent or faster across all benchmarks, with
+            measurable wins on adversarial sequences that Timsort handled sub-optimally.
+          </li>
+          <li>
+            <strong>Full backwards compatibility</strong>: the sort is still stable, in-place
+            (logically), and respects custom key functions and comparison operators.
+          </li>
+        </ul>
+      </div>
+
+      <div style="margin-top:1.5rem;">
+        <h3 style="color:var(--clr-primary); margin-bottom:.75rem;">Try it yourself</h3>
+        <pre><code><span class="code-comment"># Python 3.11+ uses Powersort under the hood automatically</span>
+<span class="code-keyword">import</span> sys
+print(sys.version)  <span class="code-comment"># 3.11.x ...</span>
+
+data = [<span class="code-number">5</span>, <span class="code-number">3</span>, <span class="code-number">1</span>, <span class="code-number">4</span>, <span class="code-number">1</span>, <span class="code-number">5</span>, <span class="code-number">9</span>, <span class="code-number">2</span>, <span class="code-number">6</span>]
+data.sort()       <span class="code-comment"># Powersort at work!</span>
+print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---- CODE ---- -->
+  <section id="code">
+    <div class="container">
+      <h2 class="section-heading">Implementations &amp; Code</h2>
+      <p class="section-intro">
+        Reference implementations of Powersort are available in several languages, alongside
+        the production-quality CPython implementation. All links below are to open-source code.
+      </p>
+
+      <div class="impl-list">
+
+        <div class="impl-item">
+          <span class="impl-lang python">Python</span>
+          <div>
+            <h3>
+              <a href="https://www.wild-inter.net/publications/munro-wild-2018"
+                 target="_blank" rel="noopener">
+                Reference Python implementation
+              </a>
+            </h3>
+            <p>
+              Pure-Python prototype of Powersort by Sebastian Wild, including the node-power
+              computation and full merge logic. Useful for experimenting and understanding the
+              algorithm without the CPython C layer.
+            </p>
+          </div>
+        </div>
+
+        <div class="impl-item">
+          <span class="impl-lang python">Python</span>
+          <div>
+            <h3>
+              <a href="https://github.com/python/cpython/blob/main/Objects/listobject.c"
+                 target="_blank" rel="noopener">
+                CPython 3.11+ (<code>Objects/listobject.c</code>)
+              </a>
+            </h3>
+            <p>
+              The production C implementation powering <code>list.sort()</code> in every
+              Python&nbsp;3.11+ installation. Look for <code>powerloop</code> in the source.
+            </p>
+          </div>
+        </div>
+
+        <div class="impl-item">
+          <span class="impl-lang java">Java</span>
+          <div>
+            <h3>
+              <a href="https://www.wild-inter.net/publications/munro-wild-2018"
+                 target="_blank" rel="noopener">
+                Java implementation
+              </a>
+            </h3>
+            <p>
+              A Java implementation suitable for benchmarking against Java's standard
+              <code>Arrays.sort</code>, also developed by Sebastian Wild as part of the
+              research artefacts for the SODA 2018 paper.
+            </p>
+          </div>
+        </div>
+
+        <div class="impl-item">
+          <span class="impl-lang c">C</span>
+          <div>
+            <h3>
+              <a href="https://www.wild-inter.net/publications/munro-wild-2018"
+                 target="_blank" rel="noopener">
+                C implementation
+              </a>
+            </h3>
+            <p>
+              Low-level C implementation suitable for direct comparison with the CPython
+              code. Includes instrumented variants that count comparisons and merges.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mini code sample -->
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
+        Minimal Python sketch
+      </h3>
+      <pre><code><span class="code-comment">"""
+Minimal Powersort sketch (illustrative, not production-ready).
+For the full reference implementation see wild-inter.net/publications/munro-wild-2018
+"""</span>
+
+<span class="code-keyword">def</span> <span class="code-func">node_power</span>(left, left_len, right_len, n):
+    <span class="code-comment">"""Return the node power of two adjacent runs."""</span>
+    a = <span class="code-number">2</span> * left + left_len
+    b = a + right_len
+    power = <span class="code-number">0</span>
+    <span class="code-keyword">while</span> a // n == b // n:
+        power += <span class="code-number">1</span>; a = <span class="code-number">2</span> * a - n * (a // n); b = <span class="code-number">2</span> * b - n * (b // n)
+    <span class="code-keyword">return</span> power
+
+
+<span class="code-keyword">def</span> <span class="code-func">powersort</span>(arr):
+    n = len(arr)
+    <span class="code-keyword">if</span> n &lt; <span class="code-number">2</span>:
+        <span class="code-keyword">return</span> arr
+    stack = []   <span class="code-comment"># [(start, length, power), ...]</span>
+    i = <span class="code-number">0</span>
+    <span class="code-keyword">while</span> i &lt; n:
+        run_start, run_len = i, _extend_run(arr, i, n)
+        i += run_len
+        power = node_power(run_start, run_len, n - i <span class="code-keyword">if</span> i == n <span class="code-keyword">else</span> _next_run_len(arr, i, n), n)
+        <span class="code-comment"># merge pending runs with higher or equal power</span>
+        <span class="code-keyword">while</span> stack <span class="code-keyword">and</span> stack[-<span class="code-number">1</span>][<span class="code-number">2</span>] &gt;= power:
+            s, l, _ = stack.pop()
+            arr[s:s + l + run_len] = _merge(arr[s:s + l], arr[run_start:run_start + run_len])
+            run_start, run_len = s, l + run_len
+        stack.append((run_start, run_len, power))
+    <span class="code-comment"># flush remaining runs</span>
+    <span class="code-keyword">while</span> len(stack) &gt; <span class="code-number">1</span>:
+        (s1, l1, _), (s2, l2, _) = stack[-<span class="code-number">2</span>], stack[-<span class="code-number">1</span>]
+        arr[s1:s1 + l1 + l2] = _merge(arr[s1:s1 + l1], arr[s2:s2 + l2])
+        stack[-<span class="code-number">2</span>] = (s1, l1 + l2, <span class="code-number">0</span>)
+        stack.pop()
+    <span class="code-keyword">return</span> arr</code></pre>
+    </div>
+  </section>
+
+  <!-- ---- PUBLICATIONS ---- -->
+  <section id="publications">
+    <div class="container">
+      <h2 class="section-heading">Publications &amp; Further Reading</h2>
+      <p class="section-intro">
+        The Powersort algorithm and its theoretical analysis are described in the following work.
+        All supporting code, slides, and extended versions are available via Sebastian Wild's
+        publications page.
+      </p>
+
+      <div class="pub-list">
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Nearly-Optimal Mergesorts: Fast, Practical Sorting Methods That Optimally Adapt to
+            Existing Runs
+          </div>
+          <div class="pub-authors">J.&nbsp;Ian&nbsp;Munro &amp; Sebastian&nbsp;Wild</div>
+          <div class="pub-venue">
+            26th Annual European Symposium on Algorithms (ESA 2018); also appeared at
+            ACM–SIAM Symposium on Discrete Algorithms (SODA 2018)
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/publications/munro-wild-2018"
+               target="_blank" rel="noopener">
+              Paper &amp; Code ↗
+            </a>
+            <a class="btn btn-outline"
+               href="https://en.wikipedia.org/wiki/Powersort"
+               target="_blank" rel="noopener">
+              Wikipedia ↗
+            </a>
+          </div>
+        </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Powersort in Python 3.11 (Blog Post)
+          </div>
+          <div class="pub-authors">Sebastian&nbsp;Wild</div>
+          <div class="pub-venue">
+            wild-inter.net — detailed walk-through of the algorithm, its adoption into CPython,
+            and an analysis of the performance improvements.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/posts/powersort-in-python-3.11"
+               target="_blank" rel="noopener">
+              Read Blog Post ↗
+            </a>
+          </div>
+        </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            CPython Issue: Replace Timsort merge strategy with Powersort (bpo-34561)
+          </div>
+          <div class="pub-authors">Sebastian&nbsp;Wild &amp; CPython contributors</div>
+          <div class="pub-venue">
+            bugs.python.org — the original CPython issue tracking the integration of Powersort.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-outline"
+               href="https://bugs.python.org/issue34561"
+               target="_blank" rel="noopener">
+              Python Issue Tracker ↗
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:2rem; padding:1.25rem 1.5rem; background:var(--clr-code-bg);
+                  border-radius:var(--radius); border:1px solid var(--clr-border); font-size:.92rem;">
+        <strong>Contact:</strong>
+        Questions or contributions?
+        Email <a href="mailto:powersort@liverpool.ac.uk">powersort@liverpool.ac.uk</a>
+        or open an issue on the
+        <a href="https://github.com/powersort" target="_blank" rel="noopener">
+          powersort GitHub organisation ↗</a>.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <span>
+      &copy; 2024 J.&nbsp;Ian&nbsp;Munro &amp; Sebastian&nbsp;Wild.
+      Algorithm described in <a href="https://www.wild-inter.net/publications/munro-wild-2018"
+        target="_blank" rel="noopener">Munro &amp; Wild 2018</a>.
+    </span>
+    <span>
+      <a href="https://github.com/powersort" target="_blank" rel="noopener">GitHub</a> &nbsp;|&nbsp;
+      <a href="https://en.wikipedia.org/wiki/Powersort" target="_blank" rel="noopener">Wikipedia</a> &nbsp;|&nbsp;
+      <a href="mailto:powersort@liverpool.ac.uk">Contact</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>
