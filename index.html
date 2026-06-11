@@ -558,13 +558,13 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
   (() => {
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
-    const SPLASH_FALLBACK_DELAY_MS = 3200;
-    const SPLASH_DISPLAY_AFTER_LOAD_MS = 1800;
+    const SPLASH_MAX_DISPLAY_MS = 3200;
+    const SPLASH_MIN_DISPLAY_MS = 1800;
     const hideSplash = () => splash.classList.add('is-hidden');
-    const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_DELAY_MS);
+    const fallbackTimer = setTimeout(hideSplash, SPLASH_MAX_DISPLAY_MS);
     window.addEventListener('load', () => {
       clearTimeout(fallbackTimer);
-      setTimeout(hideSplash, SPLASH_DISPLAY_AFTER_LOAD_MS);
+      setTimeout(hideSplash, SPLASH_MIN_DISPLAY_MS);
     }, { once: true });
   })();
 </script>
