@@ -15,17 +15,15 @@
 </head>
 <body>
 
-<div id="splash-screen" class="splash-screen" aria-hidden="true">
+<div id="splash-screen" class="splash-screen" aria-hidden="false">
   <div class="splash-content">
-    <img src="assets/powersort-logo-square.svg" alt="" width="84" height="84" />
-    <p>Adaptive stable sorting in action</p>
-    <div class="splash-runs">
-      <span class="run run-1"></span>
-      <span class="run run-2"></span>
-      <span class="run run-3"></span>
-      <span class="run run-4"></span>
-      <span class="run run-5"></span>
+    <div class="splash-words" aria-hidden="true">
+      <span class="word word-1">adaptive</span>
+      <span class="word word-2">stable</span>
+      <span class="word word-3">sorting</span>
     </div>
+    <img class="splash-logo" src="assets/powersort-logo-square.svg" alt="" width="84" height="84" />
+    <p class="splash-hint">Click anywhere to continue</p>
   </div>
 </div>
 
@@ -558,10 +556,22 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
   (() => {
     const splash = document.getElementById('splash-screen');
     if (!splash) return;
-    const SPLASH_FALLBACK_TIMEOUT_MS = 3200;
-    const SPLASH_POST_LOAD_DELAY_MS = 1800;
-    const hideSplash = () => splash.classList.add('is-hidden');
+    const SPLASH_FALLBACK_TIMEOUT_MS = 2600;
+    const SPLASH_POST_LOAD_DELAY_MS = 900;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        hideSplash();
+      }
+    };
+    const hideSplash = () => {
+      if (splash.classList.contains('is-hidden')) return;
+      splash.classList.add('is-hidden');
+      splash.setAttribute('aria-hidden', 'true');
+      window.removeEventListener('keydown', onKeyDown);
+    };
     const fallbackTimer = setTimeout(hideSplash, SPLASH_FALLBACK_TIMEOUT_MS);
+    splash.addEventListener('click', hideSplash, { once: true });
+    window.addEventListener('keydown', onKeyDown);
     window.addEventListener('load', () => {
       clearTimeout(fallbackTimer);
       setTimeout(hideSplash, SPLASH_POST_LOAD_DELAY_MS);

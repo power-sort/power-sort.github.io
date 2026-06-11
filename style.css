@@ -99,6 +99,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   place-items: center;
   background: rgba(0, 28, 107, .97);
   color: #fff;
+  cursor: pointer;
   transition: opacity .45s ease, visibility .45s ease;
 }
 
@@ -123,31 +124,48 @@ section:nth-child(even) { background: var(--clr-surface); }
   color: rgba(255,255,255,.9);
 }
 
-.splash-runs {
-  height: 84px;
+.splash-words {
+  margin-bottom: 1rem;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: .65rem;
-  align-items: end;
+  gap: .35rem;
+  justify-items: center;
+  text-transform: lowercase;
 }
 
-.splash-runs .run {
-  display: block;
-  border-radius: 4px 4px 0 0;
-  background: linear-gradient(180deg, var(--clr-accent), #57dbff);
-  animation: runPulse 1.2s ease-in-out infinite;
-  transform-origin: bottom center;
+.splash-words .word {
+  opacity: 0;
+  color: rgba(255,255,255,.95);
+  letter-spacing: .08em;
+  font-weight: 700;
+  font-size: clamp(1.1rem, 3.6vw, 1.45rem);
+  animation: splashWordReveal .45s ease forwards;
 }
 
-.splash-runs .run-1 { height: 30%; animation-delay: 0s; }
-.splash-runs .run-2 { height: 75%; animation-delay: .15s; }
-.splash-runs .run-3 { height: 45%; animation-delay: .3s; }
-.splash-runs .run-4 { height: 90%; animation-delay: .45s; }
-.splash-runs .run-5 { height: 55%; animation-delay: .6s; }
+.splash-words .word-1 { animation-delay: .05s; }
+.splash-words .word-2 { animation-delay: .45s; }
+.splash-words .word-3 { animation-delay: .85s; }
 
-@keyframes runPulse {
-  0%, 100% { transform: scaleY(.55); background: linear-gradient(180deg, var(--clr-accent), #57dbff); }
-  45% { transform: scaleY(1); background: linear-gradient(180deg, var(--clr-highlight), #d6ff6b); }
+.splash-logo {
+  opacity: 0;
+  transform: translateY(8px) scale(.96);
+  animation: splashLogoReveal .5s ease forwards;
+  animation-delay: 1.35s;
+}
+
+.splash-hint {
+  margin-top: .6rem;
+  font-size: .92rem;
+  opacity: .75;
+}
+
+@keyframes splashWordReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashLogoReveal {
+  from { opacity: 0; transform: translateY(8px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .header-text h1 {
@@ -551,12 +569,16 @@ pre code {
 /* ---------- responsive ---------- */
 @media (max-width: 600px) {
   .header-inner { flex-direction: column; text-align: center; }
-  .splash-runs { height: 72px; gap: .45rem; }
   .python-banner { flex-direction: column; text-align: center; }
   .impl-item { flex-direction: column; }
   .footer-inner { flex-direction: column; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .splash-runs .run { animation: none; }
+  .splash-words .word,
+  .splash-logo {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
