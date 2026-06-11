@@ -419,57 +419,56 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
       <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
         Minimal Python sketch
       </h3>
-      <pre><code>"""
-Minimal illustrative Powersort sketch. 
+      <pre><code><span class="code-comment">"""
+Minimal illustrative Powersort sketch.
 For helper functions, see https://tiny.cc/timsort.
-"""
+"""</span>
+<span class="code-keyword">import</span> math
 
-import math 
-
-def power(run1, run2, n):
-    # Compute the "power" of the run boundary.
-    # Given are two adjacent runs from a list of total length n.
-    # See listsort.txt for details; code follows CPython.
-    i1 = run1[0];  n1 = run1[1]
-    i2 = run2[0];  n2 = run2[1]
-    a = 2 * i1 + n1       
-    b = a + n1 + n2       
-    l = 0
-    while True:
-        l += 1
-        if a >= n:
-            assert b >= a
+<span class="code-keyword">def</span> <span class="code-func">power</span>(run1, run2, n):
+    <span class="code-comment"># Compute the "power" of the run boundary.</span>
+    <span class="code-comment"># Given are two adjacent runs from a list of total length n.</span>
+    <span class="code-comment"># See listsort.txt for details; code follows CPython.</span>
+    i1 = run1[<span class="code-number">0</span>];  n1 = run1[<span class="code-number">1</span>]
+    i2 = run2[<span class="code-number">0</span>];  n2 = run2[<span class="code-number">1</span>]
+    a = <span class="code-number">2</span> * i1 + n1
+    b = a + n1 + n2
+    l = <span class="code-number">0</span>
+    <span class="code-keyword">while</span> True:
+        l += <span class="code-number">1</span>
+        <span class="code-keyword">if</span> a >= n:
+            <span class="code-keyword">assert</span> b >= a
             a -= n;  b -= n
-        elif b >= n:
-            break
-        assert a < b < n
-        a <<= 1;  b <<= 1
-    return l
+        <span class="code-keyword">elif</span> b >= n:
+            <span class="code-keyword">break</span>
+        <span class="code-keyword">assert</span> a &lt; b &lt; n
+        a &lt;&lt;= <span class="code-number">1</span>;  b &lt;&lt;= <span class="code-number">1</span>
+    <span class="code-keyword">return</span> l
 
-def powersort(a, extend_run=extend_run):
-    """
+
+<span class="code-keyword">def</span> <span class="code-func">powersort</span>(a, extend_run=extend_run):
+    <span class="code-comment">"""
     Sort a list using powersort.
-    This is a slick variant for managing the stack 
+    This is a slick variant for managing the stack
     (no need to update the power inside the stack).
-    It stores the run-boundary power in the right run, 
+    It stores the run-boundary power in the right run,
     CPython stores it in the left run.
-    """
+    """</span>
     n = len(a)
-    i = 0
-    runs = []  # stack of (start, length, power) tuples
+    i = <span class="code-number">0</span>
+    runs = []  <span class="code-comment"># stack of (start, length, power) tuples</span>
     j = extend_run(a, i)
-    runs.append((i, j-i, 0))
+    runs.append((i, j-i, <span class="code-number">0</span>))
     i = j
-    while i < n:
+    <span class="code-keyword">while</span> i &lt; n:
         j = extend_run(a, i)
-        p = power(runs[-1], (i,j-i), n)
-        while p <= runs[-1][2]:
+        p = power(runs[-<span class="code-number">1</span>], (i,j-i), n)
+        <span class="code-keyword">while</span> p &lt;= runs[-<span class="code-number">1</span>][<span class="code-number">2</span>]:
             merge_topmost_2(a, runs)
         runs.append((i,j-i,p))
         i = j
-    while len(runs) >= 2:
-        merge_topmost_2(a, runs)
-  </code></pre>
+    <span class="code-keyword">while</span> len(runs) >= <span class="code-number">2</span>:
+        merge_topmost_2(a, runs)</code></pre>
     </div>
   </section>
 
