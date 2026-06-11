@@ -423,7 +423,6 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
 Minimal illustrative Powersort sketch.
 For helper functions, see https://tiny.cc/timsort.
 """</span>
-
 <span class="code-keyword">import</span> math
 
 <span class="code-keyword">def</span> <span class="code-func">power</span>(run1, run2, n):
@@ -445,6 +444,7 @@ For helper functions, see https://tiny.cc/timsort.
         <span class="code-keyword">assert</span> a &lt; b &lt; n
         a &lt;&lt;= <span class="code-number">1</span>;  b &lt;&lt;= <span class="code-number">1</span>
     <span class="code-keyword">return</span> l
+
 
 <span class="code-keyword">def</span> <span class="code-func">powersort</span>(a, extend_run=extend_run):
     <span class="code-comment">"""
@@ -468,8 +468,7 @@ For helper functions, see https://tiny.cc/timsort.
         runs.append((i,j-i,p))
         i = j
     <span class="code-keyword">while</span> len(runs) >= <span class="code-number">2</span>:
-        merge_topmost_2(a, runs)
-  </code></pre>
+        merge_topmost_2(a, runs)</code></pre>
     </div>
   </section>
 
