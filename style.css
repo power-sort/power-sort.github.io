@@ -497,6 +497,11 @@ pre code {
 
 .python-banner p { font-size: .93rem; opacity: .9; }
 
+.python-banner code {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+}
+
 /* ---------- code links / implementations ---------- */
 .impl-list {
   display: grid;
