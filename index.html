@@ -67,7 +67,7 @@
       <h2 class="section-heading">What is Powersort?</h2>
       <p class="section-intro">
         Powersort is a <em>run-based</em> merge-sort algorithm with provably near-optimal merge
-        cost (<em>OPT&nbsp;+&nbsp;2n</em>). It was designed by
+        cost (<em>OPT</em>&nbsp;+&nbsp;2<em>n</em>). It was designed by
         <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
         and published at ESA&nbsp;2018. In&nbsp;Python&nbsp;3.11 it replaced Timsort's merge policy
         in CPython, and it is also used beyond CPython (including PyPy and NumPy).
@@ -79,7 +79,7 @@
           <h3>Nearly Optimal</h3>
           <p>Performs <em>n&nbsp;log₂&nbsp;n&nbsp;+&nbsp;n&nbsp;H&nbsp;+&nbsp;O(n)</em> comparisons
              (with <em>H</em> denoting run-length entropy)
-             and achieves merge cost <em>OPT&nbsp;+&nbsp;2n</em>.</p>
+             and achieves merge cost <em>OPT</em>&nbsp;+&nbsp;2<em>n</em>.</p>
         </div>
         <div class="card">
           <div class="card-icon">📈</div>
@@ -91,7 +91,7 @@
           <div class="card-icon">🔀</div>
           <h3>Optimal Merge Tree</h3>
           <p>Uses a mathematically grounded <em>node-power merge policy</em> to build merge trees
-             with provable cost at most <em>OPT&nbsp;+&nbsp;2n</em>.</p>
+             with provable cost at most <em>OPT</em>&nbsp;+&nbsp;2<em>n</em>.</p>
         </div>
         <div class="card">
           <div class="card-icon">🐍</div>
@@ -234,8 +234,8 @@
           </tr>
           <tr>
             <td>Optimality guarantee</td>
-            <td>≤ 1.5&nbsp;·&nbsp;OPT + O(<em>n</em>) merge cost</td>
-            <td><span class="badge-good">≤ OPT + 2&nbsp;<em>n</em> merge cost</span></td>
+            <td>≤ 1.5&nbsp;·&nbsp;<em>OPT</em>&nbsp;+&nbsp;O(<em>n</em>) merge cost</td>
+            <td><span class="badge-good">≤ <em>OPT</em>&nbsp;+&nbsp;2<em>n</em> merge cost</span></td>
           </tr>
           <tr>
             <td>Worst-case comparisons</td>
