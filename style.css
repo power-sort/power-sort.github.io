@@ -1,7 +1,7 @@
 /* =========================================================
    Powersort – main stylesheet
-   Fonts: IBM Plex Sans + IBM Plex Mono (matches the logo)
-   Palette inspired by the Powersort presentation
+   Fonts: IBM Plex Sans Bold + IBM Plex Mono Medium
+   Palette: dark navy (#0f2464), cyan (#00c8ff), lime (#aaeb18)
    ========================================================= */
 
 /* ---------- reset & base ---------- */
@@ -12,12 +12,12 @@
 }
 
 :root {
-  /* Presentation-inspired palette */
+  /* Logo-matched palette: dark navy, cyan, lime green */
   --clr-bg:          #f8f9fb;
   --clr-surface:     #ffffff;
-  --clr-primary:     #1b3a5c;   /* deep navy blue  */
-  --clr-accent:      #0f6cbd;   /* bright blue      */
-  --clr-highlight:   #e8a317;   /* amber / gold     */
+  --clr-primary:     #0f2464;   /* dark navy (logo background) */
+  --clr-accent:      #00c8ff;   /* cyan (logo "POWER" text)    */
+  --clr-highlight:   #aaeb18;   /* lime green (logo "sort:=↑") */
   --clr-text:        #1c2333;
   --clr-muted:       #5a6a7e;
   --clr-border:      #d0d7e3;
@@ -35,6 +35,7 @@ html { scroll-behavior: smooth; }
 
 body {
   font-family: var(--font-sans);
+  font-weight: 700;
   background: var(--clr-bg);
   color: var(--clr-text);
   line-height: 1.7;
@@ -87,11 +88,7 @@ section:nth-child(even) { background: var(--clr-surface); }
 .logo {
   width: 96px;
   height: 96px;
-  border-radius: 50%;
-  border: 4px solid var(--clr-highlight);
   flex-shrink: 0;
-  background: var(--clr-accent);   /* placeholder tint while image loads */
-  object-fit: cover;
 }
 
 .header-text h1 {
@@ -254,6 +251,7 @@ section:nth-child(even) { background: var(--clr-surface); }
 /* ---------- inline code / code blocks ---------- */
 code {
   font-family: var(--font-mono);
+  font-weight: 500;
   font-size: .88em;
   background: var(--clr-code-bg);
   padding: .1em .35em;
@@ -267,6 +265,7 @@ pre {
   padding: 1.25rem 1.5rem;
   overflow-x: auto;
   font-size: .875rem;
+  font-weight: 500;
   line-height: 1.6;
   margin-top: 1rem;
 }
@@ -322,7 +321,7 @@ pre code {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: linear-gradient(135deg, #1a3c5e 0%, #2e86c1 100%);
+  background: linear-gradient(135deg, #0f2464 0%, #1a5fa8 100%);
   color: #fff;
   border-radius: var(--radius);
   padding: 1.5rem 2rem;
