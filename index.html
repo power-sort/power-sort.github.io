@@ -567,7 +567,7 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
     splash.setAttribute('aria-hidden', 'false');
     const SPLASH_MIN_VISIBLE_MS = 2200;
     const SPLASH_FALLBACK_TIMEOUT_MS = 3200;
-    const SPLASH_POST_LOAD_DELAY_MS = 900;
+    const SPLASH_POST_LOAD_DELAY_MS = 250;
     const splashShownAt = performance.now();
     const hideSplash = () => {
       if (splash.classList.contains('is-hidden')) return;
@@ -590,7 +590,7 @@ For the full reference implementation see wild-inter.net/publications/munro-wild
       clearTimeout(fallbackTimer);
       const elapsedMs = performance.now() - splashShownAt;
       const remainingVisibleMs = Math.max(0, SPLASH_MIN_VISIBLE_MS - elapsedMs);
-      const hideDelayMs = Math.max(SPLASH_POST_LOAD_DELAY_MS, remainingVisibleMs);
+      const hideDelayMs = remainingVisibleMs + SPLASH_POST_LOAD_DELAY_MS;
       setTimeout(hideSplash, hideDelayMs);
     }, { once: true });
   })();
