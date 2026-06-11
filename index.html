@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description"
         content="Powersort – a nearly-optimal, run-adaptive sorting algorithm by J. Ian Munro and Sebastian Wild, adopted as Python's default sort since version 3.11." />
-  <title>Powersort – Nearly-Optimal Adaptive Sorting</title>
+  <title>Powersort – Nearly-Optimal Adaptive Stable Sorting</title>
   <!-- IBM Plex fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,7 +46,7 @@
          width="160px" />
     <div class="header-text">
       <h1>Powersort</h1>
-      <p class="tagline">A nearly-optimal, run-adaptive merge sort &mdash; now powering Python&nbsp;3.11+</p>
+      <p class="tagline">Nearly-optimal run-adaptive stable sorting &mdash; now powering Python&nbsp;3.11+</p>
     </div>
   </div>
 </header>
@@ -59,7 +59,7 @@
       <li><a href="#algorithm">Algorithm</a></li>
       <li><a href="#python">Python 3.11</a></li>
       <li><a href="#code">Code</a></li>
-      <li><a href="#publications">Publications</a></li>
+      <li><a href="#publications">Links & Publications</a></li>
     </ul>
   </div>
 </nav>
@@ -72,24 +72,30 @@
     <div class="container">
       <h2 class="section-heading">What is Powersort?</h2>
       <p class="section-intro">
-        Powersort is a <em>run-based</em> merge-sort algorithm with provably near-optimal merge
+        Powersort is a <em>natural run-based</em> mergesort algorithm with provably near-optimal merge
         cost (≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>)). It was designed by
         <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
-        and published at ESA&nbsp;2018. In&nbsp;Python&nbsp;3.11 it replaced Timsort's merge policy
+        and published at ESA&nbsp;2018. In&nbsp;Python&nbsp;3.11, it replaced Timsort's merge policy
         in CPython, and it is also used beyond CPython (including PyPy and NumPy).
+      </p>
+
+      <p><em>On this page, I collect basic information and links about Powersort. 
+        I've been doing this on my <a href="https://www.wild-inter.net/posts/powersort-in-python-3.11">personal website</a>,
+        but felt it's time to move it to a dedicated site to make it easier to find and explore, and let other contribute to it.</em>
       </p>
 
       <div class="card-grid">
         <div class="card">
-          <div class="card-icon">⚡</div>
-          <h3>Nearly Optimal</h3>
-          <p>Adapts nearly optimally to existing runs in the input, thereby using <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;3<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>) comparisons.</p>
-        </div>
-        <div class="card">
           <div class="card-icon">📈</div>
           <h3>Adaptive to Existing Order</h3>
-          <p>Exploits natural ascending and descending <em>runs</em> already present in the data,
+          <p>Exploits existing order present in the data,
              requiring far fewer comparisons on partially-sorted inputs.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <h3>Nearly Optimal</h3>
+          <p>Adapts nearly optimally to existing runs in the input, using <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;3<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>) 
+            comparisons, where <em>H</em> is the <em><a href="https://speakerdeck.com/sebawild/nearly-optimal-mergesort?slide=39" >run-length entropy</a></em> of the input.</p>
         </div>
         <div class="card">
           <div class="card-icon">🔀</div>
@@ -108,11 +114,11 @@
       <div class="asset-gallery" aria-label="Powersort visuals">
         <figure class="asset-panel">
           <img src="assets/Powersort_AdaptiveSorting_01_.jpg" alt="Adaptive stable sorting visualization" loading="lazy" />
-          <figcaption>Adaptive stable sorting visualisation</figcaption>
+          <figcaption>Different notions of presortedness</figcaption>
         </figure>
         <figure class="asset-panel">
           <img src="assets/Powersort_MergeTree_01_.jpg" alt="Merge tree structure diagram showing node relationships" loading="lazy" />
-          <figcaption>Merge tree structure for node-power decisions</figcaption>
+          <figcaption>The order of merges is governed by the merge policy</figcaption>
         </figure>
       </div>
     </div>
@@ -124,9 +130,9 @@
       <h2 class="section-heading">How the Algorithm Works</h2>
       <p class="section-intro">
         Like Timsort, Powersort scans the input for <em>natural runs</em> — maximal ascending
-        (or reversed-descending) sequences. The innovation is in <em>how</em> those runs are
+        (or reversed-descending) ranges. The innovation is in <em>how</em> those runs are
         merged: instead of Timsort's stack-based heuristic, Powersort uses a carefully computed
-        <strong>node power</strong> to schedule merges in a near-optimal order.
+        <strong>run-boundary power</strong> to schedule merges in a near-optimal order.
       </p>
 
       <div class="algo-steps">
@@ -193,9 +199,8 @@
           <code>i</code> and <code>j = i + |A|</code> (where <code>|A|</code> is the length
           of run&nbsp;A), the node power <em>k</em> is the number of leading identical bits in
           the binary representations of the fractions
-          <code>(i − 1) / n</code> and <code>(j + |B| − 1) / n</code>
-          <em>before</em> the bit representing the boundary between them.
-          The floating-point definition:
+          <code>(i + |A|/2) / n</code> and <code>(j + |B|/2) / n</code>.
+          It can be computed as follows (for a more efficient solution, see below):
         </p>
         <pre><code><span class="code-keyword">import</span> math
 
@@ -211,7 +216,7 @@
         l += <span class="code-number">1</span>
     <span class="code-keyword">return</span> l</code></pre>
         <p style="margin-top:.75rem; font-size:.9rem; color:var(--clr-muted);">
-          A higher node power means the two runs should be merged <em>later</em> (at a higher
+          A higher node power means the two runs should be merged <em>sooner</em> (at a deeper
           level of the merge tree). The stack invariant ensures that merges always happen in the
           right order.
         </p>
@@ -250,7 +255,8 @@
           </tr>
           <tr>
             <td>Algorithm complexity</td>
-            <td>Complex stack invariants, hard to prove correct</td>
+            <td>Complex stack invariants, 
+              <a href="https://doi.org/10.4230/LIPIcs.ESA.2018.4">hard to prove correct</a></td>
             <td><span class="badge-good">Simple, clean invariant</span></td>
           </tr>
           <tr>
@@ -265,6 +271,17 @@
           </tr>
         </tbody>
       </table>
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary);">🪲 Timsort's troubled merge policy</h3>
+      <p>Part of the reason why Powersort was so welcomed is the troublesome history
+        of Timsort's original merge policy, which has been a source of bugs and confusion 
+        in both <a href="https://github.com/python/cpython/issues/67703">Python</a> and <a href="https://bugs.openjdk.org/browse/JDK-8072909">Java implementations</a>.
+        For many years, the standard library sorting methods were susceptible to 
+        a stack overflow from adversarial inputs!
+      </p>
+      <p>While eventually patched, Powersort's mathematically grounded merge policy 
+        elegantly resolves this issue, making the formal proof for correctness and 
+        needed stack size robust and intuitive.
+      </p>
     </div>
   </section>
 
@@ -493,9 +510,8 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
     <div class="container">
       <h2 class="section-heading">Publications &amp; Further Reading</h2>
       <p class="section-intro">
-        The Powersort algorithm and its theoretical analysis are described in the following work.
-        All supporting code, slides, and extended versions are available via Sebastian Wild's
-        publications page.
+        The following is a curated list of papers, articles, and resources related to Powersort, and
+        its implementations in various frameworks.
       </p>
 
       <div class="pub-list">
@@ -580,7 +596,7 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
             bugs.python.org — the original CPython issue tracking the integration of Powersort.
           </div>
           <div class="pub-links">
-            <a class="btn btn-outline"
+            <a class="btn btn-primary"
                href="https://bugs.python.org/issue34561"
                target="_blank" rel="noopener">
               Python Issue Tracker ↗

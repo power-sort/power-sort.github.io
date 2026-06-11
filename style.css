@@ -123,7 +123,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   text-transform: lowercase;
   font-family: var(--font-mono);
   font-size: clamp(2.9rem, 11.5vw, 5.2rem);
-  line-height: .95;
+  line-height: 1;
   letter-spacing: 0;
   color: var(--clr-accent);
   width: fit-content;
@@ -133,7 +133,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   /* Longest splash word is "adaptive" (8 chars); keep cursor column aligned. */
   /* --word-column-width: 8ch; */
   animation: splashWordsHide .45s ease forwards;
-  animation-delay: 1.55s;
+  animation-delay: 2.5s; /*1.55s*/
 }
 
 .splash-words .word-line {
@@ -155,23 +155,23 @@ section:nth-child(even) { background: var(--clr-surface); }
   color: var(--clr-highlight);
   transform: translate3d(0,0,0);
   animation:
-    splashCursorBlink .55s steps(1, end) infinite,
-    splashCursorMove 2s cubic-bezier(.22,.61,.36,1) forwards;
+    splashCursorBlink .45s steps(1, end) 0s infinite,
+    splashCursorMove 2s cubic-bezier(.22,.61,.36,1) .8s forwards;
 }
 
 .word-line-1 .word-cursor {
-  --cursor-x: -1.35em;
-  --cursor-y: 1.55em;
+  --cursor-x: -1.25em;
+  --cursor-y: 0.95em;
 }
 
 .word-line-2 .word-cursor {
-  --cursor-x: -1.35em;
-  --cursor-y: .5em;
+  --cursor-x: -.05em;
+  --cursor-y: .18em;
 }
 
 .word-line-3 .word-cursor {
-  --cursor-x: -1.35em;
-  --cursor-y: -.55em;
+  --cursor-x: -.65em;
+  --cursor-y: -.63em;
 }
 
 .splash-logo {
@@ -181,7 +181,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   opacity: 0;
   transform: translate(-50%, -50%) scale(.9);
   animation: splashLogoReveal .45s ease forwards;
-  animation-delay: 2s;
+  animation-delay: 2.3s;
 }
 
 @keyframes splashWordsHide {
@@ -195,8 +195,9 @@ section:nth-child(even) { background: var(--clr-surface); }
 }
 
 @keyframes splashCursorBlink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
+  0%, 15% { opacity: 1; }
+  26%, 75% { opacity: 0; }
+  86%, 100% { opacity: 1; }
 }
 
 @keyframes splashCursorMove {
