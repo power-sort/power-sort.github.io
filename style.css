@@ -113,7 +113,7 @@ section:nth-child(even) { background: var(--clr-surface); }
   width: min(760px, 92vw);
   position: relative;
   display: grid;
-  justify-items: start;
+  justify-items: center;
 }
 
 .splash-words {
@@ -126,9 +126,14 @@ section:nth-child(even) { background: var(--clr-surface); }
   line-height: .95;
   letter-spacing: 0;
   color: var(--clr-accent);
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   justify-items: start;
   text-align: left;
+  /* Longest splash word is "adaptive" (8 chars); keep cursor column aligned. */
+  --word-column-width: 8ch;
+  animation: splashWordsHide .45s ease forwards;
+  animation-delay: 1.55s;
 }
 
 .splash-words .word-line {
@@ -139,6 +144,8 @@ section:nth-child(even) { background: var(--clr-surface); }
 }
 
 .splash-words .word-text {
+  display: inline-block;
+  width: var(--word-column-width);
   animation: splashWordFade 2s ease forwards;
 }
 
@@ -153,7 +160,7 @@ section:nth-child(even) { background: var(--clr-surface); }
 }
 
 .word-line-1 .word-cursor {
-  --cursor-x: -1.75em;
+  --cursor-x: -1.35em;
   --cursor-y: 1.55em;
 }
 
@@ -174,7 +181,12 @@ section:nth-child(even) { background: var(--clr-surface); }
   opacity: 0;
   transform: translate(-50%, -50%) scale(.9);
   animation: splashLogoReveal .45s ease forwards;
-  animation-delay: 1.35s;
+  animation-delay: 2s;
+}
+
+@keyframes splashWordsHide {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes splashWordFade {
