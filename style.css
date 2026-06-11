@@ -86,8 +86,8 @@ section:nth-child(even) { background: var(--clr-surface); }
 }
 
 .logo {
-  width: 128px;
-  height: 128px;
+  width: 160px;
+  /* height: 128px; */
   flex-shrink: 0;
 }
 
