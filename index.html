@@ -195,24 +195,21 @@
           the binary representations of the fractions
           <code>(i − 1) / n</code> and <code>(j + |B| − 1) / n</code>
           <em>before</em> the bit representing the boundary between them.
-          Equivalently, using integer arithmetic:
+          The floating-point definition:
         </p>
-        <pre><code><span class="code-comment"># integer bit-trick (no floating-point required)</span>
-<span class="code-keyword">def</span> <span class="code-func">node_power</span>(left, left_len, right_len, n):
-    <span class="code-comment">"""
-    left      : start index of the left run
-    left_len  : length of the left run
-    right_len : length of the right run
-    n         : total array length
-    """</span>
-    a = <span class="code-number">2</span> * left + left_len      <span class="code-comment"># = 2 * midpoint numerator (left side)</span>
-    b = <span class="code-number">2</span> * left + left_len + right_len  <span class="code-comment"># right side</span>
-    power = <span class="code-number">0</span>
-    <span class="code-keyword">while</span> a // n == b // n:
-        power += <span class="code-number">1</span>
-        a = <span class="code-number">2</span> * a - n * (a // n)
-        b = <span class="code-number">2</span> * b - n * (b // n)
-    <span class="code-keyword">return</span> power</code></pre>
+        <pre><code><span class="code-keyword">import</span> math
+
+<span class="code-keyword">def</span> <span class="code-func">power</span>(run1, run2, n):
+    i1 = run1[<span class="code-number">0</span>]; n1 = run1[<span class="code-number">1</span>]
+    i2 = run2[<span class="code-number">0</span>]; n2 = run2[<span class="code-number">1</span>]
+    <span class="code-keyword">assert</span> n1 &gt;= <span class="code-number">1</span> <span class="code-keyword">and</span> n2 &gt;= <span class="code-number">1</span>
+    <span class="code-keyword">assert</span> i1 &gt;= <span class="code-number">0</span> <span class="code-keyword">and</span> i2 == i1 + n1 <span class="code-keyword">and</span> i2 + n2 &lt;= n
+    a = (i1 + n1/<span class="code-number">2</span>) / n
+    b = (i2 + n2/<span class="code-number">2</span>) / n
+    l = <span class="code-number">0</span>
+    <span class="code-keyword">while</span> math.floor(a * <span class="code-number">2</span>**l) == math.floor(b * <span class="code-number">2</span>**l):
+        l += <span class="code-number">1</span>
+    <span class="code-keyword">return</span> l</code></pre>
         <p style="margin-top:.75rem; font-size:.9rem; color:var(--clr-muted);">
           A higher node power means the two runs should be merged <em>later</em> (at a higher
           level of the merge tree). The stack invariant ensures that merges always happen in the
@@ -421,7 +418,7 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
       </h3>
       <pre><code><span class="code-comment">"""
 Minimal illustrative Powersort sketch.
-For helper functions, see https://tiny.cc/timsort.
+For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel="noopener">https://tiny.cc/timsort</a>.
 """</span>
 <span class="code-keyword">import</span> math
 
