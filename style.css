@@ -48,6 +48,10 @@ a {
 }
 a:hover { text-decoration: underline; }
 
+h2, h3, h4 {
+  font-family: var(--font-mono);
+}
+
 /* ---------- layout helpers ---------- */
 .container {
   max-width: var(--max-width);
@@ -221,9 +225,11 @@ section:nth-child(even) { background: var(--clr-surface); }
   font-weight: 700;
   letter-spacing: -0.5px;
   line-height: 1.1;
+/*  font-family: var(--font-mono); */
 }
 
 .header-text .tagline {
+  /*font-family: var(--font-mono);*/
   margin-top: .5rem;
   font-size: 1.125rem;
   opacity: .85;
@@ -503,6 +509,7 @@ pre a:hover { color: #ffffff; }
 }
 
 .python-banner h3 {
+  font-family: var(--font-mono);
   font-size: 1.2rem;
   margin-bottom: .3rem;
 }
