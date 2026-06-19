@@ -75,7 +75,7 @@
         Powersort is a <em>natural run-based</em> mergesort algorithm with provably near-optimal merge
         cost (≤ <em>n</em>&nbsp;·&nbsp;<em>H</em>&nbsp;+&nbsp;2<em>n</em> ≤ <em>n</em> log₂ <em>n</em> + O(<em>n</em>)). It was designed by
         <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
-        and published at ESA&nbsp;2018. In&nbsp;Python&nbsp;3.11, it replaced Timsort's merge policy
+        and published at <a href="https://www.wild-inter.net/publications/munro-wild-2018">ESA&nbsp;2018</a>. In&nbsp;Python&nbsp;3.11, it <a href="#python">replaced</a> Timsort's merge policy
         in CPython, and it is also used beyond CPython (including PyPy and NumPy).
       </p>
 
@@ -180,7 +180,7 @@
 
       <figure class="asset-panel animation-panel">
         <img src="assets/Powersort_in_Action_.gif" alt="Animated Powersort process from the project assets" loading="lazy" />
-        <figcaption>Powersort in action (animated)</figcaption>
+        <figcaption>Animation showing the computation of powers</figcaption>
       </figure>
 
       <!-- <figure class="asset-panel animation-panel" aria-labelledby="adaptive-video-caption">
@@ -193,11 +193,11 @@
 
       <!-- Node power formula -->
       <div class="formula-box">
-        <div class="label">Node Power — Key Formula</div>
+        <div class="label">Run-Boundary Powers</div>
         <p>
           Given an array of length <code>n</code>, two adjacent runs starting at position
           <code>i</code> and <code>j = i + |A|</code> (where <code>|A|</code> is the length
-          of run&nbsp;A), the node power <em>k</em> is the number of leading identical bits in
+          of run&nbsp;A), the run-boundary power <em>k</em> is the number of leading identical bits in
           the binary representations of the fractions
           <code>(i + |A|/2) / n</code> and <code>(j + |B|/2) / n</code>.
           It can be computed as follows (for a more efficient solution, see below):
@@ -278,8 +278,8 @@
         For many years, the standard library sorting methods were susceptible to 
         a stack overflow from adversarial inputs!
       </p>
-      <p>While eventually patched, Powersort's mathematically grounded merge policy 
-        elegantly resolves this issue, making the formal proof for correctness and 
+      <p>While Timsort was eventually patched, Powersort's mathematically grounded merge policy 
+        elegantly resolves this issue from first principles, making the formal proof for correctness and 
         needed stack size robust and intuitive.
       </p>
     </div>
@@ -717,9 +717,7 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
 <footer class="site-footer">
   <div class="container footer-inner">
     <span>
-      &copy; 2026 Sebastian&nbsp;Wild.
-      Algorithm described in <a href="https://www.wild-inter.net/publications/munro-wild-2018"
-        target="_blank" rel="noopener">Munro &amp; Wild 2018</a>.
+      Sebastian&nbsp;Wild
     </span>
     <span>
       <a href="https://github.com/powersort" target="_blank" rel="noopener">GitHub</a> &nbsp;|&nbsp;
