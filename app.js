@@ -336,7 +336,7 @@ const HERO = (() => {
       const gInt = makeInterval(xa, xb);
       S.gBand.appendChild(gInt);
       const yStart = TREE_TOP - 22;
-      const yLand = levelY(p) - 10;
+      const yLand = levelY(p) - 2; // the line itself rests on the pole (the (—] end markers wrap around it)
       gInt.setAttribute("transform", `translate(0 ${yStart})`);
       await tween(220, (u) => gInt.setAttribute("opacity", u), easeOutCubic, tk);
       await sleep(160, tk);
@@ -709,7 +709,7 @@ const PLAY = (() => {
         el("circle", { cx: xa, cy: RULER_Y, r: 6, fill: C.lime }, g);
         el("circle", { cx: xb, cy: RULER_Y, r: 6, fill: C.lime }, g);
         // the half-open interval (a, b] resting on the winning ghost pole
-        const yInt = levelY(ev.p) - 9;
+        const yInt = levelY(ev.p) - 2; // line rests on the pole, matching the hero
         el("line", { x1: xa + 9, y1: yInt, x2: xb - 2, y2: yInt, stroke: C.lime, "stroke-width": 3.5, "stroke-linecap": "round" }, g);
         el("path", { d: `M ${xa + 10} ${yInt - 8} Q ${xa} ${yInt} ${xa + 10} ${yInt + 8}`, stroke: C.lime, "stroke-width": 3, fill: "none", "stroke-linecap": "round" }, g);
         el("path", { d: `M ${xb - 8} ${yInt - 8} L ${xb} ${yInt - 8} L ${xb} ${yInt + 8} L ${xb - 8} ${yInt + 8}`, stroke: C.lime, "stroke-width": 3, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
