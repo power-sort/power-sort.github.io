@@ -149,6 +149,7 @@ const HERO = (() => {
     const gTree = el("g", { id: "hTree" }, svg);
     const gRuler = el("g", { id: "hRuler" }, svg);
     const gChips = el("g", { id: "hChips" }, svg);
+    const gFront = el("g", { id: "hFront" }, svg); // top overlay: the dropping (a,b] interval
 
     // --- run boxes with values ---
     const runEls = runs.map((r, ri) => {
@@ -207,7 +208,7 @@ const HERO = (() => {
       edges.push({ line, childLevel: nd.level, len: Math.hypot(nd.x - parent.x, nd.top - parent.top) });
     }
 
-    return { gRuns, gBand, gTree, gRuler, gChips, runEls, nodes, edges };
+    return { gRuns, gBand, gTree, gRuler, gChips, gFront, runEls, nodes, edges };
   }
 
   async function playIntro(S, tk) {
@@ -253,11 +254,11 @@ const HERO = (() => {
   function makeInterval(xa, xb) {
     const g = el("g", { opacity: 0 });
     el("line", {
-      x1: xa + 13, y1: 0, x2: xb - 3, y2: 0,
+      x1: xa + 4, y1: 0, x2: xb - 3, y2: 0, // cap reaches xa+1.5, into the "(" stroke at xa
       stroke: C.lime, "stroke-width": 5, "stroke-linecap": "round",
     }, g);
     el("path", {
-      d: `M ${xa + 14} -12 Q ${xa - 1} 0 ${xa + 14} 12`,
+      d: `M ${xa + 7.5} -12 Q ${xa - 7.5} 0 ${xa + 7.5} 12`, // apex of "(" sits on the dashed guide at xa
       stroke: C.lime, "stroke-width": 4, fill: "none", "stroke-linecap": "round",
     }, g);
     el("path", {
@@ -334,7 +335,7 @@ const HERO = (() => {
 
       // the half-open interval (a, b] drops until it lands on the tallest pole inside it
       const gInt = makeInterval(xa, xb);
-      S.gBand.appendChild(gInt);
+      S.gFront.appendChild(gInt);
       const yStart = TREE_TOP - 22;
       const yLand = levelY(p) - 2; // the line itself rests on the pole (the (—] end markers wrap around it)
       gInt.setAttribute("transform", `translate(0 ${yStart})`);
@@ -602,7 +603,8 @@ const PLAY = (() => {
 
     layers.band = el("g", {}, svg);
     layers.ghost = el("g", { id: "pGhost" }, svg);
-    layers.tree = el("g", {}, svg);
+    layers.treeEdges = el("g", {}, svg); // edges below …
+    layers.treeNodes = el("g", {}, svg); // … nodes above, so circles cover line ends
     layers.digits = el("g", {}, svg);
     layers.boxes = el("g", {}, svg);
     layers.bars = el("g", {}, svg);
@@ -710,8 +712,8 @@ const PLAY = (() => {
         el("circle", { cx: xb, cy: RULER_Y, r: 6, fill: C.lime }, g);
         // the half-open interval (a, b] resting on the winning ghost pole
         const yInt = levelY(ev.p) - 2; // line rests on the pole, matching the hero
-        el("line", { x1: xa + 9, y1: yInt, x2: xb - 2, y2: yInt, stroke: C.lime, "stroke-width": 3.5, "stroke-linecap": "round" }, g);
-        el("path", { d: `M ${xa + 10} ${yInt - 8} Q ${xa} ${yInt} ${xa + 10} ${yInt + 8}`, stroke: C.lime, "stroke-width": 3, fill: "none", "stroke-linecap": "round" }, g);
+        el("line", { x1: xa + 3, y1: yInt, x2: xb - 2, y2: yInt, stroke: C.lime, "stroke-width": 3.5, "stroke-linecap": "round" }, g);
+        el("path", { d: `M ${xa + 5} ${yInt - 8} Q ${xa - 5} ${yInt} ${xa + 5} ${yInt + 8}`, stroke: C.lime, "stroke-width": 3, fill: "none", "stroke-linecap": "round" }, g);
         el("path", { d: `M ${xb - 8} ${yInt - 8} L ${xb} ${yInt - 8} L ${xb} ${yInt + 8} L ${xb - 8} ${yInt + 8}`, stroke: C.lime, "stroke-width": 3, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
 
         // highlight the ghost bar of the shallowest node in the interval
@@ -763,7 +765,7 @@ const PLAY = (() => {
         // 2 · grow the merge tree: node at the merged boundary
         const x = xAt(ev.boundary), y = levelY(ev.boundaryPower);
         const a1 = childAnchor(ev.A), a2 = childAnchor(ev.B);
-        const g = el("g", {}, layers.tree);
+        const g = el("g", {}, layers.treeEdges);
         for (const a of [a1, a2]) {
           const line = el("line", { x1: x, y1: y, x2: a.x, y2: a.y, class: "svg-edge", "stroke-width": 3 }, g);
           const len = Math.hypot(a.x - x, a.y - y);
@@ -771,7 +773,7 @@ const PLAY = (() => {
           line.setAttribute("stroke-dashoffset", len);
           tween(D(360), (u) => line.setAttribute("stroke-dashoffset", len * (1 - u)), easeOutCubic, tk);
         }
-        const dot = el("g", { opacity: 0 }, g);
+        const dot = el("g", { opacity: 0 }, layers.treeNodes);
         el("circle", { cx: x, cy: y, r: 12, fill: C.lightblue }, dot);
         el("text", {
           x, y: y + 5, "text-anchor": "middle", "font-size": 15, "font-weight": 700,
