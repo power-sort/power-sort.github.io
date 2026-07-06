@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pingpong Powersort — runs ping-pong between input and buffer</title>
+<style>
+  :root {
+    --run-a: #2e6bb8;        /* RoyalBlue-ish, as in the paper figures */
+    --run-b: #ffcb05;        /* lipicsYellow-ish */
+    --buffer: #e9e9e9;       /* black!10 */
+    --ink: #1c2333;
+    --accent: #2e6bb8;
+    --border: #2a2a2a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem 4rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink); background: #fff;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  main { width: min(60rem, 100%); }
+  h1 { font-size: 1.6rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  h1 .pp { color: var(--accent); }
+  p.lead { margin: .25rem 0 1.25rem; color: #444; max-width: 52rem; line-height: 1.5; }
+  p.lead code { background: #f3f4f6; padding: .05em .3em; border-radius: 4px; font-size: .92em; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: .5rem .6rem; align-items: center;
+    padding: .7rem .8rem; border: 1px solid #ddd; border-radius: .6rem; background: #fafafa;
+    font-size: .9rem;
+  }
+  .controls label { color: #555; }
+  select, input[type=text] {
+    font: inherit; padding: .35rem .5rem; border: 1px solid #ccc; border-radius: .4rem; background: #fff;
+  }
+  input[type=text] { width: 15rem; }
+  button {
+    font: inherit; padding: .35rem .8rem; border: 1px solid #bbb; border-radius: .4rem;
+    background: #fff; cursor: pointer; transition: background .12s, border-color .12s;
+  }
+  button:hover { background: #eef3fa; border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { background: #245693; }
+  button:disabled { opacity: .45; cursor: default; }
+  .speed { display: flex; align-items: center; gap: .35rem; margin-left: auto; }
+  .speed input { accent-color: var(--accent); }
+
+  #stage { width: 100%; margin-top: 1rem; }
+  svg { width: 100%; height: auto; display: block; }
+
+  #status {
+    margin-top: .4rem; min-height: 2.4em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .88rem; color: #333; background: #f7f8fa; border-left: 3px solid var(--accent);
+    padding: .5rem .7rem; border-radius: 0 .4rem .4rem 0; white-space: pre-wrap;
+  }
+  #status .k { color: #888; }
+
+  #pseudo { margin-top: 1.1rem; border: 1px solid #ddd; border-radius: .6rem; overflow: hidden; }
+  #pseudo .ph {
+    font-size: .82rem; font-weight: 600; color: #555;
+    padding: .45rem .8rem; background: #fafafa; border-bottom: 1px solid #eee;
+  }
+  #pseudo pre {
+    margin: 0; padding: .65rem .6rem; overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .84rem; line-height: 1.6; color: #24292f;
+  }
+  #pseudo .ln { display: block; padding: 0 .45rem; border-radius: .3rem; border-left: 3px solid transparent; }
+  #pseudo .ln b { font-weight: 700; color: #14315c; }
+  #pseudo .ln .c { color: #949aa3; }
+  #pseudo .ln.hl { background: #e3edfa; border-left-color: var(--accent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .8rem; font-size: .82rem; color: #444; align-items: center; }
+  .legend .chip { display: inline-block; width: 1.5em; height: 1em; border: 1px solid var(--border); vertical-align: -0.15em; margin-right: .35em; }
+  footer { margin-top: 2rem; font-size: .8rem; color: #888; max-width: 52rem; line-height: 1.5; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="pp">Pingpong</span> Powersort</h1>
+  <p class="lead">
+    Powersort with <em>pingpong merging</em>: runs on the merge stack live in the buffer <code>B</code>,
+    while the current run lives in the input array <code>A</code>. Merges combine the top run of the stack
+    (in <code>B</code>) with the current run (in <code>A</code>) and write the output to <code>A</code> if more
+    merges follow, or to <code>B</code> (right-to-left) if the merged run is pushed. Runs that are pushed
+    without merging are copied to <code>B</code>. The final merges write to <code>A</code>, so the sorted
+    result always ends up in the input array — with no separate clean-up copying.
+  </p>
+
+  <div class="controls">
+    <label>preset</label>
+    <select id="preset">
+      <option value="4,4,6,10" selected>paper example (4 runs)</option>
+      <option value="8,4,2,2,8,8">cascade example (6 runs)</option>
+      <option value="6,3,5,2,8,4,7,5">showcase example (8 runs)</option>
+      <option value="rand:12">random (12 runs)</option>
+      <option value="rand:5">random (5 runs)</option>
+    </select>
+    <label for="runlens">run lengths</label>
+    <input type="text" id="runlens" value="4,4,6,10" spellcheck="false">
+    <button id="load">load ↴</button>
+    <span style="width:.5rem"></span>
+    <button id="play" class="primary">▶ play</button>
+    <button id="stepb">‹ step</button>
+    <button id="stepf">step ›</button>
+    <button id="reset">reset</button>
+    <div class="speed"><label for="speed">speed</label>
+      <input type="range" id="speed" min="0.3" max="3" step="0.1" value="1"></div>
+  </div>
+
+  <div id="stage"></div>
+  <div id="status"><span class="k">press play to run pingpong Powersort.</span></div>
+
+  <div class="legend">
+    <span><span class="chip" style="background:var(--run-a)"></span><span class="chip" style="background:var(--run-b)"></span>detected runs</span>
+    <span><span class="chip" id="stripechip"></span>merged run (output of a merge)</span>
+    <span><span class="chip" style="background:var(--buffer)"></span>free / stale (contents irrelevant)</span>
+    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#fff,#fff 4px,#eee 4px,#eee 6px)"></span>not yet scanned</span>
+    <span><span style="font-family:ui-monospace,Menlo,Consolas,monospace;color:#6b7280;font-size:1.05em">2&thinsp;3&thinsp;1</span>&nbsp;&mdash; run-boundary powers (shown once computed, removed once merged away)</span>
+  </div>
+
+  <div id="pseudo">
+    <div class="ph">Pseudocode &mdash; the highlighted line is the step currently being animated</div>
+    <pre><span class="ln" data-pc="proc"><b>procedure</b> PingpongPowersort(A[0, n)):</span>
+<span class="ln" data-pc="detect1">    curr := <b>next run in</b> A                              <span class="c">&#9657; runs are always detected in A</span></span>
+<span class="ln" data-pc="whileouter">    <b>while</b> curr is not the last run:</span>
+<span class="ln" data-pc="detect">        next := <b>next run in</b> A</span>
+<span class="ln" data-pc="power">        p := power of the boundary between curr and next</span>
+<span class="ln" data-pc="whilecasc">        <b>while</b> stack.secondTop.power &gt; p:              <span class="c">&#9657; &ge; 2 merges pending</span></span>
+<span class="ln" data-pc="mergeA">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A   <span class="c">&#9657; stack run is in B, curr in A</span></span>
+<span class="ln" data-pc="ifline">        <b>if</b> stack.top.power &gt; p:                       <span class="c">&#9657; exactly 1 merge pending</span></span>
+<span class="ln" data-pc="mergeB">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> B   <span class="c">&#9657; right-to-left (in&#8209;place in B)</span></span>
+<span class="ln" data-pc="elseline">        <b>else</b>:</span>
+<span class="ln" data-pc="copy">            <b>copy</b> curr from A to B                      <span class="c">&#9657; push without merging</span></span>
+<span class="ln" data-pc="push">        stack.push(curr with power p)                  <span class="c">&#9657; curr now lives in B</span></span>
+<span class="ln" data-pc="currnext">        curr := next</span>
+<span class="ln" data-pc="whilefinal">    <b>while</b> stack is not empty:                          <span class="c">&#9657; final cascade</span></span>
+<span class="ln" data-pc="final">        curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A       <span class="c">&#9657; result ends up in A</span></span>
+<span class="ln" data-pc="done">    <span class="c">&#9657; done: A[0, n) is sorted, B is free again</span></span></pre>
+  </div>
+
+  <footer>
+    Companion animation for the pingpong merging strategy; the run-detection and node-power merge
+    <em>policy</em> itself is unchanged from Powersort — see the interactive explanation at
+    <a href="https://www.wild-inter.net/powersort/">wild-inter.net/powersort</a>.
+    Here the focus is on <em>where</em> each run lives (input array <code>A</code> vs. buffer <code>B</code>) over time.
+  </footer>
+</main>
+
+<script>
+"use strict";
+
+/* ============================================================
+ * 1. Simulation of pingpong powersort (locations only).
+ *    Mirrors the C++ code: stack runs live in buf (B),
+ *    the current run lives in v (A).
+ * ============================================================ */
+
+function nodePower(n, b1, e1, b2, e2) {
+  // power of the boundary between run [b1,e1) and [b2,e2), standard Powersort
+  let a = (b1 + e1) / (2 * n), b = (b2 + e2) / (2 * n), k = 0;
+  while (Math.floor(a) === Math.floor(b)) { a *= 2; b *= 2; k += 1; }
+  return k;
+}
+
+/* Simulate; returns { snapshots, events } where
+ *   snapshots[i] = { scan, runs: [{id,arr:'A'|'B',l,r,striped}] }  (state AFTER event i-1)
+ *   events[i]    = description of the transition snapshots[i] -> snapshots[i+1]
+ */
+function simulate(runLens) {
+  const n = runLens.reduce((x, y) => x + y, 0);
+  const bounds = [0];
+  for (const L of runLens) bounds.push(bounds[bounds.length - 1] + L);
+  const runsIn = runLens.map((_, i) => ({ l: bounds[i], r: bounds[i + 1] }));
+
+  let nextId = 1, detectCount = 0;
+  const state = { scan: 0, runs: [], powers: [] };   // mutable working copy
+  const snapshots = [];
+  const events = [];
+  const snap = () => snapshots.push({
+    scan: state.scan,
+    runs: state.runs.map(x => ({ ...x })),
+    powers: state.powers.map(x => ({ ...x }))
+  });
+  const findRun = id => state.runs.find(x => x.id === id);
+  const span = x => `[${x.l},${x.r})`;
+
+  snap(); // initial: nothing scanned
+
+  const emit = (desc, mutate, extra) => {
+    mutate();
+    events.push(Object.assign({ desc }, extra || {}));
+    snap();
+  };
+
+  const detect = (interval, name) => {
+    const id = "r" + (nextId++);
+    emit(`scan: detected run ${name} = A${`[${interval.l},${interval.r})`}`,
+      () => {
+        state.scan = interval.r;
+        state.runs.push({ id, arr: "A", l: interval.l, r: interval.r, striped: false, ci: detectCount++ });
+      },
+      { pc: [interval.l === 0 ? "detect1" : "detect"] });
+    return { id, l: interval.l, r: interval.r, name };
+  };
+
+  const doMerge = (top, cur, toArr, why, pc) => {
+    const outL = top.l, outR = cur.r;
+    const id = "m" + (nextId++);
+    emit(
+      `merge: B[${top.l},${top.r}) \u22C8 A[${cur.l},${cur.r}) \u2192 ${toArr}[${outL},${outR})` + why,
+      () => {
+        state.runs = state.runs.filter(x => x.id !== top.id && x.id !== cur.id);
+        state.runs.push({ id, arr: toArr, l: outL, r: outR, striped: true });
+        // the boundary between the two merged runs no longer exists
+        state.powers = state.powers.filter(q => !(q.pos > outL && q.pos < outR));
+      },
+      { merge: { srcIds: [top.id, cur.id], to: { arr: toArr, l: outL, r: outR } }, pc });
+    return { id, l: outL, r: outR };
+  };
+
+  // ---- main loop, mirroring the C++ ----
+  const stk = [ { right: 0, power: -1 }, { right: 0, power: -1 } ]; // two sentinels
+  const stkRun = [ null, null ];                                    // run handle per stack slot
+  let idx = 0;
+  let curr = detect(runsIn[idx++], "1");
+  let currRight = curr.r;
+
+  while (currRight < n) {
+    const nxt = detect(runsIn[idx], String(idx + 1)); idx += 1;
+    const stkRight = stk[stk.length - 1].right;
+    const p = nodePower(n, stkRight, currRight, currRight, nxt.r);
+    emit(`power: boundary between A[${stkRight},${currRight}) and A[${currRight},${nxt.r}) gets power p = ${p}`,
+      () => { state.powers.push({ pos: currRight, p }); },
+      { pc: ["power"] });
+
+    while (stk[stk.length - 2].power > p) {
+      const top = stkRun.pop(); stk.pop();
+      curr = doMerge(top, curr, "A",
+        "   (more merges follow \u2192 output to A)", ["whilecasc", "mergeA"]);
+    }
+    if (stk[stk.length - 1].power > p) {
+      const top = stkRun.pop(); stk.pop();
+      curr = doMerge(top, curr, "B",
+        "   (last merge before push \u2192 output to B, merged right-to-left)", ["ifline", "mergeB", "push"]);
+    } else {
+      const c = curr;
+      emit(`push: no merge needed \u2014 copy A[${c.l},${c.r}) \u2192 B[${c.l},${c.r})`,
+        () => { findRun(c.id).arr = "B"; },
+        { pc: ["elseline", "copy", "push"] });
+    }
+    stk.push({ right: currRight, power: p });
+    stkRun.push(curr);
+    curr = nxt; currRight = nxt.r;
+  }
+
+  while (stk.length > 2) {
+    const top = stkRun.pop(); stk.pop();
+    curr = doMerge(top, curr, "A", "   (final merge \u2192 output to A)", ["whilefinal", "final"]);
+  }
+
+  events.push({ desc: `done: array is sorted, result lives in A[0,${n}) \u2014 B is free again.`, pc: ["done"] });
+  snapshots.push(snapshots[snapshots.length - 1]); // terminal state (unchanged)
+
+  return { n, snapshots, events };
+}
+
+/* ============================================================
+ * 2. Rendering + tweened animation between snapshots
+ * ============================================================ */
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const W = 1000, H = 330;
+const X0 = 46, X1 = 985;            // horizontal extent of the arrays
+const TRACK = { A: { y: 42, h: 78 }, B: { y: 208, h: 78 } };
+
+const stage = document.getElementById("stage");
+const statusEl = document.getElementById("status");
+
+let model = null;        // { n, snapshots, events }
+let cursor = 0;          // index of the snapshot currently (or last) shown
+let playing = false;
+let animation = null;    // active tween or null
+let runNodes = new Map();  // id  -> {poly, geo:{l,r,arrY,opacity}}
+let powerNodes = new Map();// pos -> <g> (tick + number below the A track)
+let svg, scanRectA, defs;
+
+const xOf = pos => X0 + (pos / model.n) * (X1 - X0);
+const easing = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
+const runFill = i => (i % 2 === 0) ? "var(--run-a)" : "var(--run-b)";
+
+function buildStage() {
+  stage.innerHTML = "";
+  svg = document.createElementNS(SVGNS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  defs = document.createElementNS(SVGNS, "defs");
+  defs.innerHTML = `
+    <pattern id="stripes" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="7" height="14" fill="var(--run-a)"/>
+      <rect x="7" width="7" height="14" fill="var(--run-b)"/>
+    </pattern>
+    <pattern id="unscanned" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="9" height="9" fill="#ffffff"/>
+      <rect width="3" height="9" fill="#ececec"/>
+    </pattern>`;
+  svg.appendChild(defs);
+
+  for (const [name, t] of Object.entries(TRACK)) {
+    // background
+    const bg = document.createElementNS(SVGNS, "rect");
+    bg.setAttribute("x", X0); bg.setAttribute("y", t.y);
+    bg.setAttribute("width", X1 - X0); bg.setAttribute("height", t.h);
+    bg.setAttribute("fill", name === "A" ? "url(#unscanned)" : "var(--buffer)");
+    svg.appendChild(bg);
+    if (name === "A") {
+      scanRectA = document.createElementNS(SVGNS, "rect"); // scanned/stale part of A
+      scanRectA.setAttribute("x", X0); scanRectA.setAttribute("y", t.y);
+      scanRectA.setAttribute("width", 0); scanRectA.setAttribute("height", t.h);
+      scanRectA.setAttribute("fill", "var(--buffer)");
+      svg.appendChild(scanRectA);
+    }
+    // label
+    const lb = document.createElementNS(SVGNS, "text");
+    lb.setAttribute("x", X0 - 14); lb.setAttribute("y", t.y + t.h / 2);
+    lb.setAttribute("text-anchor", "middle"); lb.setAttribute("dominant-baseline", "central");
+    lb.setAttribute("font-size", "26"); lb.setAttribute("font-style", "italic");
+    lb.setAttribute("font-family", "Georgia, 'Times New Roman', serif");
+    lb.textContent = name;
+    svg.appendChild(lb);
+    const sub = document.createElementNS(SVGNS, "text");
+    sub.setAttribute("x", X0); sub.setAttribute("y", t.y - 8);
+    sub.setAttribute("font-size", "13"); sub.setAttribute("fill", "#777");
+    sub.textContent = name === "A" ? "input array (holds the current run)" : "buffer (holds the runs on the merge stack)";
+    svg.appendChild(sub);
+  }
+
+  // group for runs (and boundary powers), then track borders on top
+  svg.appendChild(document.createElementNS(SVGNS, "g")).setAttribute("id", "runsg");
+  svg.appendChild(document.createElementNS(SVGNS, "g")).setAttribute("id", "powersg");
+  for (const t of Object.values(TRACK)) {
+    const fr = document.createElementNS(SVGNS, "rect");
+    fr.setAttribute("x", X0); fr.setAttribute("y", t.y);
+    fr.setAttribute("width", X1 - X0); fr.setAttribute("height", t.h);
+    fr.setAttribute("fill", "none"); fr.setAttribute("stroke", "var(--border)");
+    fr.setAttribute("stroke-width", "1.6");
+    svg.appendChild(fr);
+  }
+  stage.appendChild(svg);
+}
+
+function polyPoints(geo) {
+  const x0 = xOf(geo.l), x1 = xOf(geo.r);
+  const t = TRACK[geo.arr] || TRACK.A;
+  const yB = (geo.y != null ? geo.y : t.y) + t.h - 1, yT = (geo.y != null ? geo.y : t.y) + 1;
+  return `${x0},${yB} ${x1},${yB} ${x1},${yT}`;
+}
+
+function makeRunNode(run) {
+  const poly = document.createElementNS(SVGNS, "polygon");
+  poly.setAttribute("fill", run.striped ? "url(#stripes)" : runFill(run.ci || 0));
+  poly.setAttribute("stroke", "var(--border)");
+  poly.setAttribute("stroke-width", "1.4");
+  poly.setAttribute("stroke-linejoin", "round");
+  svg.querySelector("#runsg").appendChild(poly);
+  return poly;
+}
+
+/* small tick + number just below the A track, at boundary position pos */
+function makePowerNode(pw) {
+  const g = document.createElementNS(SVGNS, "g");
+  const x = xOf(pw.pos), yB = TRACK.A.y + TRACK.A.h;
+  const tk = document.createElementNS(SVGNS, "line");
+  tk.setAttribute("x1", x); tk.setAttribute("x2", x);
+  tk.setAttribute("y1", yB + 2); tk.setAttribute("y2", yB + 9);
+  tk.setAttribute("stroke", "#9aa3af"); tk.setAttribute("stroke-width", "1.3");
+  const tx = document.createElementNS(SVGNS, "text");
+  tx.setAttribute("x", x); tx.setAttribute("y", yB + 25);
+  tx.setAttribute("text-anchor", "middle");
+  tx.setAttribute("font-size", "16");
+  tx.setAttribute("font-family", "ui-monospace, Menlo, Consolas, monospace");
+  tx.setAttribute("fill", "#6b7280");
+  tx.textContent = pw.p;
+  g.appendChild(tk); g.appendChild(tx);
+  svg.querySelector("#powersg").appendChild(g);
+  return g;
+}
+
+/* place the display at snapshot k instantly */
+function showSnapshot(k) {
+  cancelTween();
+  const s = model.snapshots[k];
+  const keep = new Set(s.runs.map(r => r.id));
+  for (const [id, node] of runNodes) if (!keep.has(id)) { node.poly.remove(); runNodes.delete(id); }
+  for (const r of s.runs) {
+    let node = runNodes.get(r.id);
+    if (!node) { node = { poly: makeRunNode(r) }; runNodes.set(r.id, node); }
+    node.geo = { l: r.l, r: r.r, arr: r.arr, opacity: 1 };
+    node.poly.setAttribute("points", polyPoints(node.geo));
+    node.poly.setAttribute("opacity", 1);
+  }
+  const keepP = new Set(s.powers.map(q => q.pos));
+  for (const [pos, g] of powerNodes) if (!keepP.has(pos)) { g.remove(); powerNodes.delete(pos); }
+  for (const q of s.powers) {
+    if (!powerNodes.has(q.pos)) powerNodes.set(q.pos, makePowerNode(q));
+    powerNodes.get(q.pos).setAttribute("opacity", 1);
+  }
+  scanRectA.setAttribute("width", Math.max(0, xOf(s.scan) - X0));
+  cursor = k;
+  updateButtons();
+}
+
+function cancelTween() {
+  if (animation) { cancelAnimationFrame(animation.raf); animation = null; }
+}
+
+/* animate transition snapshot[k] -> snapshot[k+1]; cb on completion */
+function playStep(k, cb) {
+  cancelTween();
+  const s0 = model.snapshots[k], s1 = model.snapshots[k + 1];
+  const ev = model.events[k];
+  setStatus(k);
+
+  const speed = parseFloat(document.getElementById("speed").value);
+  const dur = 750 / speed;
+
+  const m0 = new Map(s0.runs.map(r => [r.id, r]));
+  const m1 = new Map(s1.runs.map(r => [r.id, r]));
+  const items = [];
+
+  // runs present before: either persist (move) or vanish (merge sources -> move into output & fade)
+  for (const r of s0.runs) {
+    const to = m1.get(r.id);
+    let node = runNodes.get(r.id);
+    if (!node) { node = { poly: makeRunNode(r) }; runNodes.set(r.id, node); }
+    if (to) {
+      items.push({ node, from: { ...r, opacity: 1 }, to: { ...to, opacity: 1 }, removeAfter: false });
+    } else {
+      const tgt = ev && ev.merge ? ev.merge.to : r;
+      items.push({ node, from: { ...r, opacity: 1 },
+                   to: { l: tgt.l, r: tgt.r, arr: tgt.arr, opacity: 0.25 }, removeAfter: true });
+    }
+  }
+  // new runs (detected run, or merged output): fade in at final position
+  for (const r of s1.runs) if (!m0.has(r.id)) {
+    const node = { poly: makeRunNode(r) };
+    runNodes.set(r.id, node);
+    items.push({ node, from: { ...r, opacity: 0 }, to: { ...r, opacity: 1 }, removeAfter: false, fadeLate: true });
+  }
+
+  // boundary powers: fade in newly computed ones, fade out merged-away ones
+  const p0 = new Set(s0.powers.map(q => q.pos)), p1 = new Set(s1.powers.map(q => q.pos));
+  const pItems = [];
+  for (const q of s0.powers) if (!p1.has(q.pos)) {
+    const g = powerNodes.get(q.pos);
+    if (g) pItems.push({ g, mode: "out" });
+  }
+  for (const q of s1.powers) if (!p0.has(q.pos)) {
+    let g = powerNodes.get(q.pos);
+    if (!g) { g = makePowerNode(q); powerNodes.set(q.pos, g); }
+    g.setAttribute("opacity", 0);
+    pItems.push({ g, mode: "in" });
+  }
+
+  const scanFrom = xOf(s0.scan) - X0, scanTo = xOf(s1.scan) - X0;
+  const t0 = performance.now();
+  const yOf = arr => TRACK[arr].y;
+
+  function frame(now) {
+    let t = Math.min(1, (now - t0) / dur);
+    const e = easing(t);
+    for (const pi of pItems)
+      pi.g.setAttribute("opacity", pi.mode === "in" ? Math.max(0, (t - 0.45) / 0.55) : 1 - e);
+    for (const it of items) {
+      const l = it.from.l + (it.to.l - it.from.l) * e;
+      const r = it.from.r + (it.to.r - it.from.r) * e;
+      const y = yOf(it.from.arr) + (yOf(it.to.arr) - yOf(it.from.arr)) * e;
+      let op = it.from.opacity + (it.to.opacity - it.from.opacity) * e;
+      if (it.fadeLate) op = Math.max(0, (t - 0.45) / 0.55); // merged run appears late
+      it.node.poly.setAttribute("points", polyPoints({ l, r, arr: it.from.arr, y }));
+      it.node.poly.setAttribute("opacity", op);
+    }
+    scanRectA.setAttribute("width", Math.max(0, scanFrom + (scanTo - scanFrom) * e));
+    if (t < 1) { animation.raf = requestAnimationFrame(frame); }
+    else {
+      animation = null;
+      for (const it of items) if (it.removeAfter) { it.node.poly.remove(); runNodes.delete(itId(it)); }
+      showSnapshot(k + 1);
+      setStatus(k);
+      if (cb) cb();
+    }
+  }
+  const itId = it => { for (const [id, n] of runNodes) if (n === it.node) return id; };
+  animation = { raf: requestAnimationFrame(frame) };
+}
+
+function setStatus(k) {
+  const total = model.events.length;
+  const ev = model.events[k];
+  statusEl.innerHTML = `<span class="k">step ${k + 1}/${total}:</span> ${escapeHtml(ev.desc)}`;
+  highlightPC(ev.pc);
+}
+
+function highlightPC(keys) {
+  document.querySelectorAll("#pseudo .ln.hl").forEach(el => el.classList.remove("hl"));
+  if (!keys) return;
+  for (const key of keys) {
+    const el = document.querySelector(`#pseudo .ln[data-pc="${key}"]`);
+    if (el) el.classList.add("hl");
+  }
+}
+const escapeHtml = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+/* ============================================================
+ * 3. Controls
+ * ============================================================ */
+
+const btnPlay = document.getElementById("play");
+const btnStepF = document.getElementById("stepf");
+const btnStepB = document.getElementById("stepb");
+const btnReset = document.getElementById("reset");
+
+function updateButtons() {
+  const last = cursor >= model.events.length;
+  btnStepF.disabled = last;
+  btnStepB.disabled = cursor === 0;
+  btnPlay.textContent = playing ? "❚❚ pause" : (last ? "↺ replay" : "▶ play");
+}
+
+function advance() {
+  if (cursor >= model.events.length) { stopPlaying(); return; }
+  if (cursor === model.events.length - 1) { // terminal "done" event: no geometry change
+    setStatus(cursor); cursor += 1; updateButtons(); stopPlaying(); return;
+  }
+  playStep(cursor, () => {
+    if (playing) setTimeout(() => { if (playing) advance(); }, 320 / parseFloat(document.getElementById("speed").value));
+  });
+}
+
+function stopPlaying() { playing = false; updateButtons(); }
+
+btnPlay.addEventListener("click", () => {
+  if (playing) { stopPlaying(); return; }
+  if (cursor >= model.events.length) showSnapshot(0);
+  playing = true; updateButtons(); advance();
+});
+btnStepF.addEventListener("click", () => { stopPlaying(); advance(); });
+btnStepB.addEventListener("click", () => {
+  stopPlaying();
+  const k = Math.max(0, cursor - 1);
+  showSnapshot(k);
+  if (k > 0) setStatus(k - 1);
+  else { statusEl.innerHTML = '<span class="k">press play to run pingpong Powersort.</span>'; highlightPC(null); }
+});
+btnReset.addEventListener("click", () => {
+  stopPlaying(); showSnapshot(0);
+  statusEl.innerHTML = '<span class="k">press play to run pingpong Powersort.</span>';
+  highlightPC(null);
+});
+
+function parseRunLens(text) {
+  const parts = text.split(/[,;\s]+/).filter(Boolean).map(Number);
+  if (!parts.length || parts.some(x => !Number.isInteger(x) || x <= 0)) return null;
+  return parts;
+}
+
+function load(runLens) {
+  model = simulate(runLens);
+  runNodes.forEach(n => n.poly.remove()); runNodes = new Map();
+  powerNodes = new Map(); // stage is rebuilt, old nodes go with it
+  buildStage();
+  playing = false;
+  showSnapshot(0);
+  statusEl.innerHTML = '<span class="k">press play to run pingpong Powersort.</span>';
+  highlightPC(null);
+}
+
+document.getElementById("load").addEventListener("click", () => {
+  const lens = parseRunLens(document.getElementById("runlens").value);
+  if (!lens) { statusEl.textContent = "please enter positive integer run lengths, e.g.  4, 4, 6, 10"; return; }
+  load(lens);
+});
+document.getElementById("runlens").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("load").click();
+});
+document.getElementById("preset").addEventListener("change", e => {
+  let v = e.target.value, lens;
+  if (v.startsWith("rand:")) {
+    const k = parseInt(v.slice(5), 10);
+    lens = Array.from({ length: k }, () => 1 + Math.floor(Math.random() * 12));
+  } else lens = v.split(",").map(Number);
+  document.getElementById("runlens").value = lens.join(", ");
+  load(lens);
+});
+
+// legend stripe chip
+document.getElementById("stripechip").style.background =
+  "repeating-linear-gradient(90deg, var(--run-a), var(--run-a) 5px, var(--run-b) 5px, var(--run-b) 10px)";
+
+load([4, 4, 6, 10]);
+</script>
+</body>
+</html>
