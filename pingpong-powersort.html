@@ -68,10 +68,14 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: .84rem; line-height: 1.6; color: #24292f;
   }
-  #pseudo .ln { display: block; padding: 0 .45rem; border-radius: .3rem; border-left: 3px solid transparent; }
+  #pseudo table { border-collapse: collapse; white-space: pre; }
+  #pseudo .ln { display: table-row; border-radius: .3rem; }
+  #pseudo .ln > .code, #pseudo .ln > .cmt { display: table-cell; padding: .04em 0; }
+  #pseudo .ln > .code { padding-left: .45rem; border-left: 3px solid transparent; }
+  #pseudo .ln > .cmt { color: #949aa3; padding-left: 1.6em; padding-right: .45rem; }
   #pseudo .ln b { font-weight: 700; color: #14315c; }
-  #pseudo .ln .c { color: #949aa3; }
-  #pseudo .ln.hl { background: #e3edfa; border-left-color: var(--accent); }
+  #pseudo .ln.hl > .code { background: #e3edfa; border-left-color: var(--accent); }
+  #pseudo .ln.hl > .cmt { background: #e3edfa; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .8rem; font-size: .82rem; color: #444; align-items: center; }
   .legend .chip { display: inline-block; width: 1.5em; height: 1em; border: 1px solid var(--border); vertical-align: -0.15em; margin-right: .35em; }
@@ -125,22 +129,7 @@
 
   <div id="pseudo">
     <div class="ph">Pseudocode &mdash; the highlighted line is the step currently being animated</div>
-    <pre><span class="ln" data-pc="proc"><b>procedure</b> PingpongPowersort(A[0, n)):</span>
-<span class="ln" data-pc="detect1">    curr := <b>next run in</b> A                              <span class="c">&#9657; runs are always detected in A</span></span>
-<span class="ln" data-pc="whileouter">    <b>while</b> curr is not the last run:</span>
-<span class="ln" data-pc="detect">        next := <b>next run in</b> A</span>
-<span class="ln" data-pc="power">        p := power of the boundary between curr and next</span>
-<span class="ln" data-pc="whilecasc">        <b>while</b> stack.secondTop.power &gt; p:              <span class="c">&#9657; &ge; 2 merges pending</span></span>
-<span class="ln" data-pc="mergeA">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A   <span class="c">&#9657; stack run is in B, curr in A</span></span>
-<span class="ln" data-pc="ifline">        <b>if</b> stack.top.power &gt; p:                       <span class="c">&#9657; exactly 1 merge pending</span></span>
-<span class="ln" data-pc="mergeB">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> B   <span class="c">&#9657; right-to-left (in&#8209;place in B)</span></span>
-<span class="ln" data-pc="elseline">        <b>else</b>:</span>
-<span class="ln" data-pc="copy">            <b>copy</b> curr from A to B                      <span class="c">&#9657; push without merging</span></span>
-<span class="ln" data-pc="push">        stack.push(curr with power p)                  <span class="c">&#9657; curr now lives in B</span></span>
-<span class="ln" data-pc="currnext">        curr := next</span>
-<span class="ln" data-pc="whilefinal">    <b>while</b> stack is not empty:                          <span class="c">&#9657; final cascade</span></span>
-<span class="ln" data-pc="final">        curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A       <span class="c">&#9657; result ends up in A</span></span>
-<span class="ln" data-pc="done">    <span class="c">&#9657; done: A[0, n) is sorted, B is free again</span></span></pre>
+    <pre><table><span class="ln" data-pc="proc"><span class="code"><b>procedure</b> PingpongPowersort(A[0, n)):</span></span><span class="ln" data-pc="detect1"><span class="code">    curr := <b>next run in</b> A</span><span class="cmt">&#9657; runs are always detected in A</span></span><span class="ln" data-pc="whileouter"><span class="code">    <b>while</b> curr is not the last run:</span></span><span class="ln" data-pc="detect"><span class="code">        next := <b>next run in</b> A</span></span><span class="ln" data-pc="power"><span class="code">        p := power of the boundary between curr and next</span></span><span class="ln" data-pc="whilecasc"><span class="code">        <b>while</b> stack.secondTop.power &gt; p:</span><span class="cmt">&#9657; &ge; 2 merges pending</span></span><span class="ln" data-pc="mergeA"><span class="code">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A</span><span class="cmt">&#9657; stack run is in B, curr in A</span></span><span class="ln" data-pc="ifline"><span class="code">        <b>if</b> stack.top.power &gt; p:</span><span class="cmt">&#9657; exactly 1 merge pending</span></span><span class="ln" data-pc="mergeB"><span class="code">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> B</span><span class="cmt">&#9657; right-to-left (in&#8209;place in B)</span></span><span class="ln" data-pc="elseline"><span class="code">        <b>else</b>:</span></span><span class="ln" data-pc="copy"><span class="code">            <b>copy</b> curr from A to B</span><span class="cmt">&#9657; push without merging</span></span><span class="ln" data-pc="push"><span class="code">        stack.push(curr with power p)</span><span class="cmt">&#9657; curr now lives in B</span></span><span class="ln" data-pc="currnext"><span class="code">        curr := next</span></span><span class="ln" data-pc="whilefinal"><span class="code">    <b>while</b> stack is not empty:</span><span class="cmt">&#9657; final cascade</span></span><span class="ln" data-pc="final"><span class="code">        curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A</span><span class="cmt">&#9657; result ends up in A</span></span><span class="ln" data-pc="done"><span class="code"></span><span class="cmt">&#9657; done: A[0, n) is sorted, B is free again</span></span></table></pre>
   </div>
 
   <footer>
