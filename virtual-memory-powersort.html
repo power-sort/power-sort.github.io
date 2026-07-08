@@ -267,7 +267,10 @@ function simulateRaw(runLens, P, extraPages, seed) {
       const pg = { pid, phys: f, count: c, used: 0, curLo: r.vals[i - iv.l], hi: r.vals[i - iv.l + c - 1], dead: false };
       const freed = [];
       let fu = freedUpTo;
-      while (fu < numA && aEnd(fu) <= i + c) { freed.push("A" + fu); fu++; }
+      // free physical A-page fu only once its FULL extent [fu*P,(fu+1)*P) is scanned.
+      // the last page is shorter than P, so (fu+1)*P > n and it is never freed
+      // (matching the C++ convention of leaving that partial page out of circulation).
+      while (fu < numA && (fu + 1) * P <= i + c) { freed.push("A" + fu); fu++; }
       const first = i === iv.l;
       emit(
         (first ? `scan: run ${name} = A[${iv.l},${iv.r}) \u2014 ` : "extract: ") +
@@ -424,7 +427,9 @@ function simulate(runLens, Pchoice) {
     const v = parseInt(Pchoice, 10);
     if (Number.isFinite(v) && v >= 1) P = v;
   }
-  let extra = Math.ceil(Math.log2(Math.max(4, n))) + 3;
+  // one extra page compensates for the partial last A-page, which (following the
+  // C++) is never returned to the pool so we needn't special-case a short buffer page
+  let extra = Math.ceil(Math.log2(Math.max(4, n))) + 3 + (n % P === 0 ? 0 : 1);
   const seed = runLens.join(",") + "|" + P;
   for (;;) {
     try { return simulateRaw(runLens, P, extra, seed); }
