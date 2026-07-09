@@ -5,85 +5,201 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pingpong Powersort — runs ping-pong between input and buffer</title>
 <style>
+  /* ============================================================
+     POWERSORT companion animation — brand skin (Brand Guidelines v1.0)
+     dark blue #001C6B · blue #380FFF · light blue #0DEDF7
+     green #00D600 · lime #B5FF00 · yellow #FFFF00
+     type: IBM Plex Mono (headings / data) + IBM Plex Sans (body)
+     ============================================================ */
   :root {
-    --run-a: #2e6bb8;        /* RoyalBlue-ish, as in the paper figures */
-    --run-b: #ffcb05;        /* lipicsYellow-ish */
-    --buffer: #e9e9e9;       /* black!10 */
-    --ink: #1c2333;
-    --accent: #2e6bb8;
-    --border: #2a2a2a;
+    --darkblue:#001C6B; --blue:#380FFF; --lightblue:#0DEDF7;
+    --green:#00D600; --lime:#B5FF00; --yellow:#FFFF00;
+    --ink:#EAF2FF; --muted:#A9BCE8;
+    --panel: rgba(56,15,255,0.16);
+    --panel-line: rgba(13,237,247,0.35);
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    /* semantic tokens read by the SVG through fill="var(--…)" */
+    /* run data uses its own warm/cool pair (echoing the paper's blue+gold
+       figures) so it reads as data, distinct from the cyan/lime interface;
+       maximally separated in hue AND lightness, and colour-blind robust. */
+    --run-a:#3D8CFF;                    /* detected run, colour A  → azure  */
+    --run-b:#FFB020;                    /* detected run, colour B  → amber  */
+    --buffer: rgba(234,242,255,0.14);   /* free / stale (contents irrelevant)   */
+    --border:#001C6B;                   /* crisp dark edge on the bright fills   */
+    --accent:#0DEDF7;
   }
+
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    margin: 0; padding: 2rem 1rem 4rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: var(--ink); background: #fff;
+    margin: 0; padding: 0 0 3rem;
+    font-family: var(--sans); font-size: 16px; line-height: 1.6;
+    color: var(--ink);
+    background:
+      radial-gradient(1100px 520px at 78% -12%, rgba(56,15,255,0.24), transparent 60%),
+      var(--darkblue);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
     display: flex; flex-direction: column; align-items: center;
   }
-  main { width: min(60rem, 100%); }
-  h1 { font-size: 1.6rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
-  h1 .pp { color: var(--accent); }
-  p.lead { margin: .25rem 0 1.25rem; color: #444; max-width: 52rem; line-height: 1.5; }
-  p.lead code { background: #f3f4f6; padding: .05em .3em; border-radius: 4px; font-size: .92em; }
+  a { color: var(--lightblue); }
+  :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
+  /* ---------- page chrome (mini header + brand footer) ---------- */
+  .ps-header {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: .85rem clamp(1rem, 4vw, 2.5rem);
+    border-bottom: 1px solid rgba(181,255,0,0.25);
+    background: rgba(0,28,107,0.92); backdrop-filter: blur(6px);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .ps-brand { display: flex; align-items: center; text-decoration: none; }
+  .ps-brand img { width: 118px; height: auto; display: block; }
+  .ps-nav { display: flex; gap: clamp(.9rem, 3vw, 2rem); flex-wrap: wrap; }
+  .ps-nav a {
+    font-family: var(--mono); font-size: .9rem; color: var(--lime);
+    text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px;
+  }
+  .ps-nav a:hover { border-bottom-color: var(--lime); }
+
+  .ps-foot {
+    width: 100%; display: flex; align-items: center; gap: 1rem;
+    padding: 1.4rem clamp(1rem, 4vw, 2.5rem);
+    border-top: 1px solid rgba(181,255,0,0.25); margin-top: 2rem;
+  }
+  .ps-foot img { width: 46px; height: 46px; }
+  .ps-foot p { font-family: var(--mono); font-size: .82rem; color: var(--lightblue); margin: 0; }
+  .ps-foot .tag { color: rgba(181,255,0,0.85); }
+
+  main { width: min(62rem, 100%); padding: 0 clamp(1rem, 4vw, 2rem); }
+
+  /* ---------- headings & lead ---------- */
+  h1 {
+    font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+    font-size: clamp(1.8rem, 4.6vw, 2.8rem); line-height: 1.1;
+    letter-spacing: -.015em; margin: 2.1rem 0 .45rem;
+  }
+  h1 .pp { color: var(--lime); }
+  p.lead { color: var(--muted); max-width: 60rem; line-height: 1.7; margin: .35rem 0 1.4rem; }
+  p.lead em { color: var(--ink); font-style: italic; }
+  p.lead code {
+    font-family: var(--mono); background: rgba(13,237,247,0.08);
+    color: var(--lightblue); padding: .06em .35em; border-radius: 4px; font-size: .9em;
+  }
+
+  /* ---------- controls ---------- */
   .controls {
-    display: flex; flex-wrap: wrap; gap: .5rem .6rem; align-items: center;
-    padding: .7rem .8rem; border: 1px solid #ddd; border-radius: .6rem; background: #fafafa;
-    font-size: .9rem;
+    display: flex; flex-wrap: wrap; gap: .55rem .7rem; align-items: center;
+    padding: .85rem 1rem; border: 1px solid var(--panel-line); border-radius: 14px;
+    background: var(--panel); font-family: var(--mono); font-size: .9rem;
   }
-  .controls label { color: #555; }
+  .controls label {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--lime);
+  }
   select, input[type=text] {
-    font: inherit; padding: .35rem .5rem; border: 1px solid #ccc; border-radius: .4rem; background: #fff;
+    font-family: var(--mono); font-size: .92rem; color: var(--ink);
+    background: rgba(0,0,0,0.28); border: 1.5px solid var(--panel-line);
+    border-radius: 8px; padding: .42rem .6rem;
   }
+  select option { color: #001C6B; background: #EAF2FF; }
   input[type=text] { width: 15rem; }
   button {
-    font: inherit; padding: .35rem .8rem; border: 1px solid #bbb; border-radius: .4rem;
-    background: #fff; cursor: pointer; transition: background .12s, border-color .12s;
+    font-family: var(--mono); font-size: .92rem; font-weight: 600;
+    color: var(--lightblue); background: transparent;
+    border: 2px solid var(--lightblue); border-radius: 999px;
+    padding: .4rem 1rem; cursor: pointer;
+    transition: transform .12s ease, background .12s ease, color .12s ease;
   }
-  button:hover { background: #eef3fa; border-color: var(--accent); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  button.primary:hover { background: #245693; }
-  button:disabled { opacity: .45; cursor: default; }
-  .speed { display: flex; align-items: center; gap: .35rem; margin-left: auto; }
-  .speed input { accent-color: var(--accent); }
+  button:hover { transform: translateY(-1px); background: rgba(13,237,247,0.12); }
+  button.primary { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 700; }
+  button.primary:hover { background: var(--yellow); border-color: var(--yellow); }
+  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .speed { display: flex; align-items: center; gap: .4rem; margin-left: auto; }
+  .speed input { accent-color: var(--lime); }
 
-  #stage { width: 100%; margin-top: 1rem; }
+  /* ---------- stage ---------- */
+  #stage {
+    width: 100%; margin-top: 1.2rem;
+    border: 1px solid var(--panel-line); border-radius: 14px;
+    background:
+      radial-gradient(1000px 420px at 70% -20%, rgba(56,15,255,0.26), transparent 60%),
+      var(--darkblue);
+    padding: clamp(.5rem, 2vw, 1rem); overflow: hidden;
+  }
   svg { width: 100%; height: auto; display: block; }
+  #stage svg text { font-family: var(--mono); }
 
+  /* ---------- status & pool ---------- */
   #status {
-    margin-top: .4rem; min-height: 2.4em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: .88rem; color: #333; background: #f7f8fa; border-left: 3px solid var(--accent);
-    padding: .5rem .7rem; border-radius: 0 .4rem .4rem 0; white-space: pre-wrap;
+    margin-top: .6rem; min-height: 2.4em; font-family: var(--mono); font-size: .9rem;
+    color: var(--ink); background: rgba(0,0,0,0.22); border-left: 3px solid var(--lime);
+    padding: .55rem .8rem; border-radius: 0 8px 8px 0; white-space: pre-wrap;
   }
-  #status .k { color: #888; }
+  #status .k { color: var(--lime); }
 
-  #pseudo { margin-top: 1.1rem; border: 1px solid #ddd; border-radius: .6rem; overflow: hidden; }
+  /* ---------- pseudocode ---------- */
+  #pseudo {
+    margin-top: 1.2rem; border: 1px solid var(--panel-line);
+    border-radius: 14px; overflow: hidden; background: #001050;
+  }
   #pseudo .ph {
-    font-size: .82rem; font-weight: 600; color: #555;
-    padding: .45rem .8rem; background: #fafafa; border-bottom: 1px solid #eee;
+    font-family: var(--mono); font-size: .74rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--lime);
+    padding: .55rem .9rem; background: rgba(13,237,247,0.06);
+    border-bottom: 1px solid rgba(13,237,247,0.18);
   }
   #pseudo pre {
-    margin: 0; padding: .65rem .6rem; overflow-x: auto;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: .84rem; line-height: 1.6; color: #24292f;
+    margin: 0; padding: .7rem .6rem; overflow-x: auto; font-family: var(--mono);
+    font-size: .84rem; line-height: 1.55; color: #DDEBFF;
   }
   #pseudo table { border-collapse: collapse; white-space: pre; }
-  #pseudo .ln { display: table-row; border-radius: .3rem; }
-  #pseudo .ln > .code, #pseudo .ln > .cmt { display: table-cell; padding: .04em 0; }
-  #pseudo .ln > .code { padding-left: .45rem; border-left: 3px solid transparent; }
-  #pseudo .ln > .cmt { color: #949aa3; padding-left: 1.6em; padding-right: .45rem; }
-  #pseudo .ln b { font-weight: 700; color: #14315c; }
-  #pseudo .ln.hl > .code { background: #e3edfa; border-left-color: var(--accent); }
-  #pseudo .ln.hl > .cmt { background: #e3edfa; }
+  #pseudo .ln { display: table-row; }
+  #pseudo .ln > .code, #pseudo .ln > .cmt { display: table-cell; padding: .05em 0; }
+  #pseudo .ln > .code { padding-left: .5rem; border-left: 3px solid transparent; }
+  #pseudo .ln > .cmt { color: #8FB3FF; padding-left: 1.6em; padding-right: .5rem; }
+  #pseudo .ln b { font-weight: 700; color: var(--lightblue); }
+  #pseudo .ln.hl > .code { background: var(--lime); color: var(--darkblue); border-left-color: var(--yellow); }
+  #pseudo .ln.hl > .cmt  { background: var(--lime); color: #0a2a00; }
+  #pseudo .ln.hl b { color: var(--blue); }
 
-  .legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .8rem; font-size: .82rem; color: #444; align-items: center; }
-  .legend .chip { display: inline-block; width: 1.5em; height: 1em; border: 1px solid var(--border); vertical-align: -0.15em; margin-right: .35em; }
-  footer { margin-top: 2rem; font-size: .8rem; color: #888; max-width: 52rem; line-height: 1.5; }
-  footer a { color: var(--accent); }
+  /* ---------- legend & footer ---------- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: .7rem 1.1rem; margin-top: .9rem;
+    font-family: var(--mono); font-size: .78rem; color: var(--muted); align-items: center;
+  }
+  .legend .chip {
+    display: inline-block; width: 1.5em; height: 1em; border-radius: 2px;
+    border: 1px solid rgba(234,242,255,0.2); vertical-align: -0.15em; margin-right: .35em;
+  }
+  footer {
+    margin-top: 2.4rem; font-size: .82rem; color: var(--muted); max-width: 60rem;
+    line-height: 1.65; border-top: 1px solid rgba(181,255,0,0.2); padding-top: 1.2rem;
+  }
+  footer a { color: var(--lightblue); }
+  footer em { color: var(--ink); }
+  footer code { font-family: var(--mono); color: var(--lightblue); }
+
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } button { transition: none; } }
 </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+  <link rel="icon" href="assets/powersort-logo-square.svg" type="image/svg+xml">
 </head>
 <body>
+<header class="ps-header">
+  <a class="ps-brand" href="index.html#hero">
+    <img src="assets/powersort-logo-tight.svg" alt="Powersort logo">
+  </a>
+  <nav class="ps-nav" aria-label="Powersort sections">
+    <a href="index.html#algorithm">overview</a>
+    <a href="virtual-memory-powersort.html">virtual-memory &rsaquo;</a>
+  </nav>
+</header>
+
 <main>
   <h1><span class="pp">Pingpong</span> Powersort</h1>
   <p class="lead">
@@ -123,8 +239,8 @@
     <span><span class="chip" style="background:var(--run-a)"></span><span class="chip" style="background:var(--run-b)"></span>detected runs</span>
     <span><span class="chip" id="stripechip"></span>merged run (output of a merge)</span>
     <span><span class="chip" style="background:var(--buffer)"></span>free / stale (contents irrelevant)</span>
-    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#fff,#fff 4px,#eee 4px,#eee 6px)"></span>not yet scanned</span>
-    <span><span style="font-family:ui-monospace,Menlo,Consolas,monospace;color:#6b7280;font-size:1.05em">2&thinsp;3&thinsp;1</span>&nbsp;&mdash; run-boundary powers (shown once computed, removed once merged away)</span>
+    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#04217a,#04217a 4px,rgba(234,242,255,0.12) 4px,rgba(234,242,255,0.12) 6px)"></span>not yet scanned</span>
+    <span><span style="font-family:var(--mono);color:var(--lime);font-size:1.05em">2&thinsp;3&thinsp;1</span>&nbsp;&mdash; run-boundary powers (shown once computed, removed once merged away)</span>
   </div>
 
   <div id="pseudo">
@@ -294,8 +410,8 @@ function buildStage() {
       <rect x="7" width="7" height="14" fill="var(--run-b)"/>
     </pattern>
     <pattern id="unscanned" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="9" height="9" fill="#ffffff"/>
-      <rect width="3" height="9" fill="#ececec"/>
+      <rect width="9" height="9" fill="#04217a"/>
+      <rect width="3" height="9" fill="rgba(234,242,255,0.12)"/>
     </pattern>`;
   svg.appendChild(defs);
 
@@ -319,11 +435,12 @@ function buildStage() {
     lb.setAttribute("text-anchor", "middle"); lb.setAttribute("dominant-baseline", "central");
     lb.setAttribute("font-size", "26"); lb.setAttribute("font-style", "italic");
     lb.setAttribute("font-family", "Georgia, 'Times New Roman', serif");
+    lb.setAttribute("fill", "#0DEDF7");
     lb.textContent = name;
     svg.appendChild(lb);
     const sub = document.createElementNS(SVGNS, "text");
     sub.setAttribute("x", X0); sub.setAttribute("y", t.y - 8);
-    sub.setAttribute("font-size", "13"); sub.setAttribute("fill", "#777");
+    sub.setAttribute("font-size", "13"); sub.setAttribute("fill", "#A9BCE8");
     sub.textContent = name === "A" ? "input array (holds the current run)" : "buffer (holds the runs on the merge stack)";
     svg.appendChild(sub);
   }
@@ -335,7 +452,7 @@ function buildStage() {
     const fr = document.createElementNS(SVGNS, "rect");
     fr.setAttribute("x", X0); fr.setAttribute("y", t.y);
     fr.setAttribute("width", X1 - X0); fr.setAttribute("height", t.h);
-    fr.setAttribute("fill", "none"); fr.setAttribute("stroke", "var(--border)");
+    fr.setAttribute("fill", "none"); fr.setAttribute("stroke", "rgba(13,237,247,0.4)");
     fr.setAttribute("stroke-width", "1.6");
     svg.appendChild(fr);
   }
@@ -366,13 +483,13 @@ function makePowerNode(pw) {
   const tk = document.createElementNS(SVGNS, "line");
   tk.setAttribute("x1", x); tk.setAttribute("x2", x);
   tk.setAttribute("y1", yB + 2); tk.setAttribute("y2", yB + 9);
-  tk.setAttribute("stroke", "#9aa3af"); tk.setAttribute("stroke-width", "1.3");
+  tk.setAttribute("stroke", "rgba(13,237,247,0.5)"); tk.setAttribute("stroke-width", "1.3");
   const tx = document.createElementNS(SVGNS, "text");
   tx.setAttribute("x", x); tx.setAttribute("y", yB + 25);
   tx.setAttribute("text-anchor", "middle");
   tx.setAttribute("font-size", "16");
   tx.setAttribute("font-family", "ui-monospace, Menlo, Consolas, monospace");
-  tx.setAttribute("fill", "#6b7280");
+  tx.setAttribute("fill", "#B5FF00");
   tx.textContent = pw.p;
   g.appendChild(tk); g.appendChild(tx);
   svg.querySelector("#powersg").appendChild(g);
@@ -592,5 +709,10 @@ document.getElementById("stripechip").style.background =
 
 load([4, 4, 6, 10]);
 </script>
+
+<footer class="ps-foot">
+  <img src="assets/powersort-logo-square.svg" alt="">
+  <p>Sebastian Wild&nbsp;&nbsp;<span class="tag">#PowerSort &mdash; adaptive_ stable_ sorting_</span></p>
+</footer>
 </body>
 </html>

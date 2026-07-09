@@ -5,93 +5,207 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual-Memory Powersort — runs as lists of pages</title>
 <style>
+  /* ============================================================
+     POWERSORT companion animation — brand skin (Brand Guidelines v1.0)
+     dark blue #001C6B · blue #380FFF · light blue #0DEDF7
+     green #00D600 · lime #B5FF00 · yellow #FFFF00
+     type: IBM Plex Mono (headings / data) + IBM Plex Sans (body)
+     ============================================================ */
   :root {
-    --run-a: #2e6bb8;        /* RoyalBlue-ish, as in the paper figures */
-    --run-b: #ffcb05;        /* lipicsYellow-ish */
-    --buffer: #e9e9e9;       /* black!10 */
-    --ink: #1c2333;
-    --accent: #2e6bb8;
-    --border: #2a2a2a;
+    --darkblue:#001C6B; --blue:#380FFF; --lightblue:#0DEDF7;
+    --green:#00D600; --lime:#B5FF00; --yellow:#FFFF00;
+    --ink:#EAF2FF; --muted:#A9BCE8;
+    --panel: rgba(56,15,255,0.16);
+    --panel-line: rgba(13,237,247,0.35);
+    --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    /* semantic tokens read by the SVG through fill="var(--…)" */
+    --run-a:#0DEDF7;                    /* detected run, colour A  → light blue */
+    --run-b:#B5FF00;                    /* detected run, colour B  → lime       */
+    --buffer: rgba(234,242,255,0.14);   /* free / stale (contents irrelevant)   */
+    --border:#001C6B;                   /* crisp dark edge on the bright fills   */
+    --accent:#0DEDF7;
   }
+
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    margin: 0; padding: 2rem 1rem 4rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: var(--ink); background: #fff;
+    margin: 0; padding: 0 0 3rem;
+    font-family: var(--sans); font-size: 16px; line-height: 1.6;
+    color: var(--ink);
+    background:
+      radial-gradient(1100px 520px at 78% -12%, rgba(56,15,255,0.24), transparent 60%),
+      var(--darkblue);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
     display: flex; flex-direction: column; align-items: center;
   }
-  main { width: min(64rem, 100%); }
-  h1 { font-size: 1.6rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
-  h1 .pp { color: var(--accent); }
-  p.lead { margin: .25rem 0 1.25rem; color: #444; max-width: 56rem; line-height: 1.5; }
-  p.lead code { background: #f3f4f6; padding: .05em .3em; border-radius: 4px; font-size: .92em; }
+  a { color: var(--lightblue); }
+  :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
 
+  /* ---------- page chrome (mini header + brand footer) ---------- */
+  .ps-header {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: .85rem clamp(1rem, 4vw, 2.5rem);
+    border-bottom: 1px solid rgba(181,255,0,0.25);
+    background: rgba(0,28,107,0.92); backdrop-filter: blur(6px);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .ps-brand { display: flex; align-items: center; text-decoration: none; }
+  .ps-brand img { width: 118px; height: auto; display: block; }
+  .ps-nav { display: flex; gap: clamp(.9rem, 3vw, 2rem); flex-wrap: wrap; }
+  .ps-nav a {
+    font-family: var(--mono); font-size: .9rem; color: var(--lime);
+    text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px;
+  }
+  .ps-nav a:hover { border-bottom-color: var(--lime); }
+
+  .ps-foot {
+    width: 100%; display: flex; align-items: center; gap: 1rem;
+    padding: 1.4rem clamp(1rem, 4vw, 2.5rem);
+    border-top: 1px solid rgba(181,255,0,0.25); margin-top: 2rem;
+  }
+  .ps-foot img { width: 46px; height: 46px; }
+  .ps-foot p { font-family: var(--mono); font-size: .82rem; color: var(--lightblue); margin: 0; }
+  .ps-foot .tag { color: rgba(181,255,0,0.85); }
+
+  main { width: min(66rem, 100%); padding: 0 clamp(1rem, 4vw, 2rem); }
+
+  /* ---------- headings & lead ---------- */
+  h1 {
+    font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+    font-size: clamp(1.8rem, 4.6vw, 2.8rem); line-height: 1.1;
+    letter-spacing: -.015em; margin: 2.1rem 0 .45rem;
+  }
+  h1 .pp { color: var(--lime); }
+  p.lead { color: var(--muted); max-width: 60rem; line-height: 1.7; margin: .35rem 0 1.4rem; }
+  p.lead em { color: var(--ink); font-style: italic; }
+  p.lead code {
+    font-family: var(--mono); background: rgba(13,237,247,0.08);
+    color: var(--lightblue); padding: .06em .35em; border-radius: 4px; font-size: .9em;
+  }
+
+  /* ---------- controls ---------- */
   .controls {
-    display: flex; flex-wrap: wrap; gap: .5rem .6rem; align-items: center;
-    padding: .7rem .8rem; border: 1px solid #ddd; border-radius: .6rem; background: #fafafa;
-    font-size: .9rem;
+    display: flex; flex-wrap: wrap; gap: .55rem .7rem; align-items: center;
+    padding: .85rem 1rem; border: 1px solid var(--panel-line); border-radius: 14px;
+    background: var(--panel); font-family: var(--mono); font-size: .9rem;
   }
-  .controls label { color: #555; }
+  .controls label {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--lime);
+  }
   select, input[type=text] {
-    font: inherit; padding: .35rem .5rem; border: 1px solid #ccc; border-radius: .4rem; background: #fff;
+    font-family: var(--mono); font-size: .92rem; color: var(--ink);
+    background: rgba(0,0,0,0.28); border: 1.5px solid var(--panel-line);
+    border-radius: 8px; padding: .42rem .6rem;
   }
+  select option { color: #001C6B; background: #EAF2FF; }
   input[type=text] { width: 13rem; }
   button {
-    font: inherit; padding: .35rem .8rem; border: 1px solid #bbb; border-radius: .4rem;
-    background: #fff; cursor: pointer; transition: background .12s, border-color .12s;
+    font-family: var(--mono); font-size: .92rem; font-weight: 600;
+    color: var(--lightblue); background: transparent;
+    border: 2px solid var(--lightblue); border-radius: 999px;
+    padding: .4rem 1rem; cursor: pointer;
+    transition: transform .12s ease, background .12s ease, color .12s ease;
   }
-  button:hover { background: #eef3fa; border-color: var(--accent); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  button.primary:hover { background: #245693; }
-  button:disabled { opacity: .45; cursor: default; }
-  .speed { display: flex; align-items: center; gap: .35rem; margin-left: auto; }
-  .speed input { accent-color: var(--accent); }
+  button:hover { transform: translateY(-1px); background: rgba(13,237,247,0.12); }
+  button.primary { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 700; }
+  button.primary:hover { background: var(--yellow); border-color: var(--yellow); }
+  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .speed { display: flex; align-items: center; gap: .4rem; margin-left: auto; }
+  .speed input { accent-color: var(--lime); }
 
-  #stage { width: 100%; margin-top: 1rem; }
+  /* ---------- stage ---------- */
+  #stage {
+    width: 100%; margin-top: 1.2rem;
+    border: 1px solid var(--panel-line); border-radius: 14px;
+    background:
+      radial-gradient(1000px 420px at 70% -20%, rgba(56,15,255,0.26), transparent 60%),
+      var(--darkblue);
+    padding: clamp(.5rem, 2vw, 1rem); overflow: hidden;
+  }
   svg { width: 100%; height: auto; display: block; }
+  #stage svg text { font-family: var(--mono); }
   svg .pv { cursor: pointer; }
-  svg .pv-hl { stroke: #d63333 !important; stroke-width: 2.6px !important; }
+  svg .pv-hl { stroke: var(--yellow) !important; stroke-width: 2.6px !important; }
 
-  #status {
-    margin-top: .4rem; min-height: 2.4em;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: .88rem; color: #333; background: #f7f8fa; border-left: 3px solid var(--accent);
-    padding: .5rem .7rem; border-radius: 0 .4rem .4rem 0; white-space: pre-wrap;
-  }
-  #status .k { color: #888; }
+  /* free-page pool readout */
   #pool {
-    margin-top: .3rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: .8rem; color: #667; background: #fafafa; border-left: 3px solid #cfd4dc;
-    padding: .35rem .7rem; border-radius: 0 .4rem .4rem 0; white-space: pre-wrap;
+    margin-top: .4rem; font-family: var(--mono); font-size: .8rem; color: var(--muted);
+    background: rgba(0,0,0,0.18); border-left: 3px solid var(--panel-line);
+    padding: .4rem .8rem; border-radius: 0 8px 8px 0; white-space: pre-wrap;
   }
 
-  #pseudo { margin-top: 1.1rem; border: 1px solid #ddd; border-radius: .6rem; overflow: hidden; }
+  /* ---------- status & pool ---------- */
+  #status {
+    margin-top: .6rem; min-height: 2.4em; font-family: var(--mono); font-size: .9rem;
+    color: var(--ink); background: rgba(0,0,0,0.22); border-left: 3px solid var(--lime);
+    padding: .55rem .8rem; border-radius: 0 8px 8px 0; white-space: pre-wrap;
+  }
+  #status .k { color: var(--lime); }
+
+  /* ---------- pseudocode ---------- */
+  #pseudo {
+    margin-top: 1.2rem; border: 1px solid var(--panel-line);
+    border-radius: 14px; overflow: hidden; background: #001050;
+  }
   #pseudo .ph {
-    font-size: .82rem; font-weight: 600; color: #555;
-    padding: .45rem .8rem; background: #fafafa; border-bottom: 1px solid #eee;
+    font-family: var(--mono); font-size: .74rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--lime);
+    padding: .55rem .9rem; background: rgba(13,237,247,0.06);
+    border-bottom: 1px solid rgba(13,237,247,0.18);
   }
   #pseudo pre {
-    margin: 0; padding: .65rem .6rem; overflow-x: auto;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: .84rem; line-height: 1.25; color: #24292f;
+    margin: 0; padding: .7rem .6rem; overflow-x: auto; font-family: var(--mono);
+    font-size: .84rem; line-height: 1.55; color: #DDEBFF;
   }
   #pseudo table { border-collapse: collapse; white-space: pre; }
   #pseudo .ln { display: table-row; }
-  #pseudo .ln > .code, #pseudo .ln > .cmt { display: table-cell; padding: .04em 0; }
-  #pseudo .ln > .code { padding-left: .45rem; border-left: 3px solid transparent; }
-  #pseudo .ln > .cmt { color: #949aa3; padding-left: 1.6em; padding-right: .45rem; }
-  #pseudo .ln b { font-weight: 700; color: #14315c; }
-  #pseudo .ln.hl > .code { background: #e3edfa; border-left-color: var(--accent); }
-  #pseudo .ln.hl > .cmt { background: #e3edfa; }
+  #pseudo .ln > .code, #pseudo .ln > .cmt { display: table-cell; padding: .05em 0; }
+  #pseudo .ln > .code { padding-left: .5rem; border-left: 3px solid transparent; }
+  #pseudo .ln > .cmt { color: #8FB3FF; padding-left: 1.6em; padding-right: .5rem; }
+  #pseudo .ln b { font-weight: 700; color: var(--lightblue); }
+  #pseudo .ln.hl > .code { background: var(--lime); color: var(--darkblue); border-left-color: var(--yellow); }
+  #pseudo .ln.hl > .cmt  { background: var(--lime); color: #0a2a00; }
+  #pseudo .ln.hl b { color: var(--blue); }
 
-  .legend { display: flex; flex-wrap: wrap; gap: .8rem 1.1rem; margin-top: .8rem; font-size: .82rem; color: #444; align-items: center; }
-  .legend .chip { display: inline-block; width: 1.5em; height: 1em; border: 1px solid var(--border); vertical-align: -0.15em; margin-right: .35em; }
-  footer { margin-top: 2rem; font-size: .8rem; color: #888; max-width: 56rem; line-height: 1.5; }
-  footer a { color: var(--accent); }
+  /* ---------- legend & footer ---------- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: .7rem 1.1rem; margin-top: .9rem;
+    font-family: var(--mono); font-size: .78rem; color: var(--muted); align-items: center;
+  }
+  .legend .chip {
+    display: inline-block; width: 1.5em; height: 1em; border-radius: 2px;
+    border: 1px solid rgba(234,242,255,0.2); vertical-align: -0.15em; margin-right: .35em;
+  }
+  footer {
+    margin-top: 2.4rem; font-size: .82rem; color: var(--muted); max-width: 60rem;
+    line-height: 1.65; border-top: 1px solid rgba(181,255,0,0.2); padding-top: 1.2rem;
+  }
+  footer a { color: var(--lightblue); }
+  footer em { color: var(--ink); }
+  footer code { font-family: var(--mono); color: var(--lightblue); }
+
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } button { transition: none; } }
 </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+  <link rel="icon" href="assets/powersort-logo-square.svg" type="image/svg+xml">
 </head>
 <body>
+<header class="ps-header">
+  <a class="ps-brand" href="index.html#hero">
+    <img src="assets/powersort-logo-tight.svg" alt="Powersort logo">
+  </a>
+  <nav class="ps-nav" aria-label="Powersort sections">
+    <a href="index.html#algorithm">overview</a>
+    <a href="pingpong-powersort.html">pingpong &rsaquo;</a>
+  </nav>
+</header>
+
 <main>
   <h1><span class="pp">Virtual-Memory</span> Powersort</h1>
   <p class="lead">
@@ -143,13 +257,13 @@
   <div class="legend">
     <span><span class="chip" id="pal0"></span><span class="chip" id="pal1"></span><span class="chip" id="pal2"></span><span class="chip" id="pal3"></span>each run &mdash; detected <em>or</em> merged &mdash; gets its own color</span>
     <span><span class="chip" style="background:var(--buffer)"></span>free / stale page</span>
-    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#fff,#fff 4px,#eee 4px,#eee 6px)"></span>not yet scanned (ghost ramp = original data)</span>
-    <span><span style="display:inline-block;font-family:ui-monospace,Menlo,Consolas,monospace;color:#3a4a63;background:#eef2f8;border:1px solid #c2ccdb;border-radius:4px;padding:0 .35em;font-size:.85em">p = 2</span>&nbsp;&mdash; run-boundary power (on the logical run whose right edge it marks)</span>
+    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#04217a,#04217a 4px,rgba(234,242,255,0.12) 4px,rgba(234,242,255,0.12) 6px)"></span>not yet scanned (ghost ramp = original data)</span>
+    <span><span style="display:inline-block;font-family:var(--mono);color:var(--lime);background:rgba(13,237,247,0.10);border:1px solid rgba(13,237,247,0.4);border-radius:4px;padding:0 .35em;font-size:.85em">p = 2</span>&nbsp;&mdash; run-boundary power (on the logical run whose right edge it marks)</span>
   </div>
 
   <div id="pseudo">
     <div class="ph">Pseudocode &mdash; the highlighted line is the step currently being animated</div>
-    <pre><table><span class="ln" data-pc="proc"><span class="code"><b>procedure</b> VirtualMemoryPowersort(A[0, n)):</span></span><span class="ln" data-pc="pinit"><span class="code">    P := &asymp;&radic;(n / lg n);  view A as &lceil;n/P&rceil; pages</span><span class="cmt">&#9657; a run = a list of pages</span></span><span class="ln" data-pc="poolinit"><span class="code">    pool := the lg n + O(1) extra pages B</span><span class="cmt">&#9657; LIFO pool of free pages</span></span><span class="ln" data-pc="detect1"><span class="code">    curr := <b>extract next run</b></span><span class="cmt">&#9657; copy it page-wise into pool pages; scanned A-pages join the pool</span></span><span class="ln" data-pc="whileouter"><span class="code">    <b>while</b> curr is not the last run:</span></span><span class="ln" data-pc="detect"><span class="code">        next := <b>extract next run</b></span></span><span class="ln" data-pc="power"><span class="code">        p := power of the boundary between curr and next</span></span><span class="ln" data-pc="whilemerge"><span class="code">        <b>while</b> stack.top.power &gt; p:</span></span><span class="ln" data-pc="mergeln"><span class="code">            curr := <b>merge</b>(stack.pop() &#8904; curr)</span><span class="cmt">&#9657; page by page into pool pages; drained pages return to the pool</span></span><span class="ln" data-pc="push"><span class="code">        stack.push(curr with power p)</span><span class="cmt">&#9657; records the page list only &mdash; no data moves</span></span><span class="ln" data-pc="currnext"><span class="code">        curr := next</span></span><span class="ln" data-pc="whilefinal"><span class="code">    <b>while</b> stack is not empty:</span><span class="cmt">&#9657; final cascade</span></span><span class="ln" data-pc="finalmerge"><span class="code">        curr := <b>merge</b>(stack.pop() &#8904; curr)</span></span><span class="ln" data-pc="forslot"><span class="code">    <b>for each</b> page slot s of A, left to right:</span><span class="cmt">&#9657; put the pages back in order</span></span><span class="ln" data-pc="evac"><span class="code">        <b>if</b> slot s still holds a live page: move it to a pool page</span></span><span class="ln" data-pc="placecopy"><span class="code">        copy page s of curr into slot s</span><span class="cmt">&#9657; its old page returns to the pool</span></span><span class="ln" data-pc="done"><span class="code">    <span style="color:#949aa3">&#9657; done: A[0, n) is sorted; only the extra pages remain in the pool</span></span></span></table></pre>
+    <pre><table><span class="ln" data-pc="proc"><span class="code"><b>procedure</b> VirtualMemoryPowersort(A[0, n)):</span></span><span class="ln" data-pc="pinit"><span class="code">    P := &asymp;&radic;(n / lg n);  view A as &lceil;n/P&rceil; pages</span><span class="cmt">&#9657; a run = a list of pages</span></span><span class="ln" data-pc="poolinit"><span class="code">    pool := the lg n + O(1) extra pages B</span><span class="cmt">&#9657; LIFO pool of free pages</span></span><span class="ln" data-pc="detect1"><span class="code">    curr := <b>extract next run</b></span><span class="cmt">&#9657; copy it page-wise into pool pages; scanned A-pages join the pool</span></span><span class="ln" data-pc="whileouter"><span class="code">    <b>while</b> curr is not the last run:</span></span><span class="ln" data-pc="detect"><span class="code">        next := <b>extract next run</b></span></span><span class="ln" data-pc="power"><span class="code">        p := power of the boundary between curr and next</span></span><span class="ln" data-pc="whilemerge"><span class="code">        <b>while</b> stack.top.power &gt; p:</span></span><span class="ln" data-pc="mergeln"><span class="code">            curr := <b>merge</b>(stack.pop() &#8904; curr)</span><span class="cmt">&#9657; page by page into pool pages; drained pages return to the pool</span></span><span class="ln" data-pc="push"><span class="code">        stack.push(curr with power p)</span><span class="cmt">&#9657; records the page list only &mdash; no data moves</span></span><span class="ln" data-pc="currnext"><span class="code">        curr := next</span></span><span class="ln" data-pc="whilefinal"><span class="code">    <b>while</b> stack is not empty:</span><span class="cmt">&#9657; final cascade</span></span><span class="ln" data-pc="finalmerge"><span class="code">        curr := <b>merge</b>(stack.pop() &#8904; curr)</span></span><span class="ln" data-pc="forslot"><span class="code">    <b>for each</b> page slot s of A, left to right:</span><span class="cmt">&#9657; put the pages back in order</span></span><span class="ln" data-pc="evac"><span class="code">        <b>if</b> slot s still holds a live page: move it to a pool page</span></span><span class="ln" data-pc="placecopy"><span class="code">        copy page s of curr into slot s</span><span class="cmt">&#9657; its old page returns to the pool</span></span><span class="ln" data-pc="done"><span class="code">    <span style="color:#8FB3FF">&#9657; done: A[0, n) is sorted; only the extra pages remain in the pool</span></span></span></table></pre>
   </div>
 
   <footer>
@@ -459,20 +573,24 @@ let svg, gGhost, gScan, gGridTop, gPages, gPowLog, gChips, gRowLabels;
 const easing = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 const hPix = (v, maxH) => 5 + v * (maxH - 8);
 const RUN_PALETTE = [
-  "#2e6bb8", // blue
-  "#e0a021", // amber
-  "#4a9e5c", // green
-  "#c0504d", // red
-  "#8064a2", // purple
-  "#2fa7b6", // teal
-  "#d97fb0", // pink
-  "#8a8f3b", // olive
-  "#5b6bd6", // indigo
-  "#c26a2a", // orange
-  "#3f9d8f", // seagreen
-  "#b5567e", // magenta
-  "#7d7aa8", // dusty violet
-  "#6f9b3d"  // moss
+  // Perceptually spaced for maximum distinguishability on the dark-blue stage:
+  // consecutive entries jump far across hue AND alternate lightness, since a run's
+  // colour index increments for every detected *and* merged run (so neighbours are
+  // routinely on screen together). Brand colours are kept as anchors.
+  "#0DEDF7", // cyan (brand)
+  "#E44BFF", // orchid
+  "#00D600", // green (brand)
+  "#FF4DA6", // rose
+  "#B5FF00", // lime (brand)
+  "#A66BFF", // violet
+  "#FFF033", // yellow (brand)
+  "#3D8CFF", // azure
+  "#FF5A5A", // coral
+  "#8CFFA9", // mint
+  "#FF9BD0", // pink
+  "#E8C24A", // gold
+  "#73C0FF", // sky
+  "#FFAB73"  // peach
 ];
 const runFillOf = ci => RUN_PALETTE[ci % RUN_PALETTE.length];
 
@@ -544,7 +662,7 @@ function makeNode(id, pr) {
       tx.setAttribute("text-anchor", "middle");
       tx.setAttribute("font-size", "9.5");
       tx.setAttribute("font-family", "ui-monospace, Menlo, Consolas, monospace");
-      tx.setAttribute("fill", "#6b7280");
+      tx.setAttribute("fill", "rgba(234,242,255,0.65)");
       tx.classList.add("pv");
       tx.dataset.pid = id.slice(2);
       gChips.appendChild(tx);
@@ -553,7 +671,7 @@ function makeNode(id, pr) {
   } else if (kind === "row") {
     const tx = document.createElementNS(SVGNS, "text");
     tx.setAttribute("font-size", "12.5");
-    tx.setAttribute("fill", "#555");
+    tx.setAttribute("fill", "#A9BCE8");
     gRowLabels.appendChild(tx);
     node.els.label = tx;
   } else if (kind === "pw") {
@@ -561,14 +679,14 @@ function makeNode(id, pr) {
     const rect = document.createElementNS(SVGNS, "rect");
     rect.setAttribute("rx", "4"); rect.setAttribute("ry", "4");
     rect.setAttribute("height", "18");
-    rect.setAttribute("fill", "#eef2f8");
-    rect.setAttribute("stroke", "#c2ccdb");
+    rect.setAttribute("fill", "rgba(13,237,247,0.10)");
+    rect.setAttribute("stroke", "rgba(13,237,247,0.4)");
     rect.setAttribute("stroke-width", "1");
     const tx = document.createElementNS(SVGNS, "text");
     tx.setAttribute("text-anchor", "start");
     tx.setAttribute("font-size", "12.5");
     tx.setAttribute("font-family", "ui-monospace, Menlo, Consolas, monospace");
-    tx.setAttribute("fill", "#3a4a63");
+    tx.setAttribute("fill", "#B5FF00");
     g.appendChild(rect); g.appendChild(tx);
     gPowLog.appendChild(g);
     node.els.g = g; node.els.rect = rect; node.els.text = tx;
@@ -638,8 +756,8 @@ function buildStage() {
   const defs = document.createElementNS(SVGNS, "defs");
   defs.innerHTML = `
     <pattern id="unscanned" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="9" height="9" fill="#ffffff"/>
-      <rect width="3" height="9" fill="#ececec"/>
+      <rect width="9" height="9" fill="#04217a"/>
+      <rect width="3" height="9" fill="rgba(234,242,255,0.12)"/>
     </pattern>`;
   svg.appendChild(defs);
 
@@ -653,7 +771,7 @@ function buildStage() {
   const aw = n * es, bw = extra * P * es;
 
   // --- A row ---
-  el("text", { x: X0, y: AY - 19, "font-size": 12, fill: "#777" }, svg)
+  el("text", { x: X0, y: AY - 19, "font-size": 12, fill: "#A9BCE8" }, svg)
     .textContent = `input array A \u2014 ${numA} pages of P = ${P} elements`;
   el("rect", { x: X0, y: AY, width: aw, height: CH, fill: "url(#unscanned)" }, svg);
   gGhost = el("g", {}, svg);
@@ -664,43 +782,43 @@ function buildStage() {
     pts.push([X0 + iv.r * es, AY + CH - 2 - hPix(model.valsGlobal[iv.r - 1], CH - 6)]);
     pts.push([X0 + iv.r * es, AY + CH - 2]);
     el("polygon", { points: pts.map(p => p.join(",")).join(" "),
-      fill: "#f4f4f4", stroke: "#cfcfcf", "stroke-width": 1 }, gGhost);
+      fill: "rgba(13,237,247,0.08)", stroke: "rgba(13,237,247,0.22)", "stroke-width": 1 }, gGhost);
   }
   gScan = el("rect", { x: X0, y: AY, width: 0, height: CH, fill: "var(--buffer)" }, svg);
   makeNode("scan", {});
 
   // --- B row ---
-  el("text", { x: X0, y: BY - 22, "font-size": 12, fill: "#777" }, svg)
+  el("text", { x: X0, y: BY - 22, "font-size": 12, fill: "#A9BCE8" }, svg)
     .textContent = `extra pages B \u2014 ${extra} pages (\u2248 lg n + O(1))`;
   el("rect", { x: X0, y: BY, width: bw, height: CH, fill: "var(--buffer)" }, svg);
 
   // grids + cell ids
   for (let i = 0; i < numA; i++) {
     const cr = cellRect("A" + i);
-    if (i > 0) el("line", { x1: cr.x, x2: cr.x, y1: AY, y2: AY + CH, stroke: "#c4c4c4", "stroke-width": .8 }, svg);
-    el("text", { x: cr.x + 2, y: AY - 5, "font-size": 8.5, fill: "#9aa" }, svg).textContent = "A" + i;
+    if (i > 0) el("line", { x1: cr.x, x2: cr.x, y1: AY, y2: AY + CH, stroke: "rgba(13,237,247,0.18)", "stroke-width": .8 }, svg);
+    el("text", { x: cr.x + 2, y: AY - 5, "font-size": 8.5, fill: "rgba(169,188,232,0.7)" }, svg).textContent = "A" + i;
   }
   for (let j = 0; j < extra; j++) {
     const cr = cellRect("B" + j);
-    if (j > 0) el("line", { x1: cr.x, x2: cr.x, y1: BY, y2: BY + CH, stroke: "#c4c4c4", "stroke-width": .8 }, svg);
-    el("text", { x: cr.x + 2, y: BY - 6, "font-size": 8.5, fill: "#9aa" }, svg).textContent = "B" + j;
+    if (j > 0) el("line", { x1: cr.x, x2: cr.x, y1: BY, y2: BY + CH, stroke: "rgba(13,237,247,0.18)", "stroke-width": .8 }, svg);
+    el("text", { x: cr.x + 2, y: BY - 6, "font-size": 8.5, fill: "rgba(169,188,232,0.7)" }, svg).textContent = "B" + j;
   }
 
   gPages = el("g", {}, svg);
 
   // borders + track letters
-  el("rect", { x: X0, y: AY, width: aw, height: CH, fill: "none", stroke: "var(--border)", "stroke-width": 1.6 }, svg);
-  el("rect", { x: X0, y: BY, width: bw, height: CH, fill: "none", stroke: "var(--border)", "stroke-width": 1.6 }, svg);
+  el("rect", { x: X0, y: AY, width: aw, height: CH, fill: "none", stroke: "rgba(13,237,247,0.4)", "stroke-width": 1.6 }, svg);
+  el("rect", { x: X0, y: BY, width: bw, height: CH, fill: "none", stroke: "rgba(13,237,247,0.4)", "stroke-width": 1.6 }, svg);
   const trk = (t, y) => {
     const lb = el("text", { x: X0 - 16, y: y + CH / 2, "text-anchor": "middle",
       "dominant-baseline": "central", "font-size": 24, "font-style": "italic",
-      "font-family": "Georgia, 'Times New Roman', serif" }, svg);
+      "font-family": "Georgia, 'Times New Roman', serif", fill: "#0DEDF7" }, svg);
     lb.textContent = t;
   };
   trk("A", AY); trk("B", BY);
 
   // logical panel
-  el("text", { x: X0, y: LOGY0 - 8, "font-size": 12, fill: "#777" }, svg)
+  el("text", { x: X0, y: LOGY0 - 8, "font-size": 12, fill: "#A9BCE8" }, svg)
     .textContent = "logical view \u2014 live runs as ordered lists of pages (label = physical location)";
   gRowLabels = el("g", {}, svg);
   gChips = el("g", {}, svg);
@@ -911,5 +1029,10 @@ for (let i = 0; i < 4; i++) {
 
 load([31, 25, 34, 48]);
 </script>
+
+<footer class="ps-foot">
+  <img src="assets/powersort-logo-square.svg" alt="">
+  <p>Sebastian Wild&nbsp;&nbsp;<span class="tag">#PowerSort &mdash; adaptive_ stable_ sorting_</span></p>
+</footer>
 </body>
 </html>
