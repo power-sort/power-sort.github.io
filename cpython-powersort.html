@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pingpong Powersort — runs ping-pong between input and buffer</title>
+<title>Listsort Powersort — CPython's buffer-and-gap merge strategy</title>
 <style>
   /* ============================================================
      POWERSORT companion animation — brand skin (Brand Guidelines v1.0)
@@ -196,20 +196,23 @@
   </a>
   <nav class="ps-nav" aria-label="Powersort sections">
     <a href="index.html#algorithm">overview</a>
+    <a href="pingpong-powersort.html">pingpong &rsaquo;</a>
     <a href="virtual-memory-powersort.html">virtual-memory &rsaquo;</a>
-    <a href="listsort-powersort.html">listsort &rsaquo;</a>
   </nav>
 </header>
 
 <main>
-  <h1><span class="pp">Pingpong</span> Powersort</h1>
+  <h1><span class="pp">Listsort</span> Powersort</h1>
   <p class="lead">
-    Powersort with <em>pingpong merging</em>: runs on the merge stack live in the buffer <code>B</code>,
-    while the current run lives in the input array <code>A</code>. Merges combine the top run of the stack
-    (in <code>B</code>) with the current run (in <code>A</code>) and write the output to <code>A</code> if more
-    merges follow, or to <code>B</code> (right-to-left) if the merged run is pushed. Runs that are pushed
-    without merging are copied to <code>B</code>. The final merges write to <code>A</code>, so the sorted
-    result always ends up in the input array — with no separate clean-up copying.
+    Powersort as merged by CPython's <code>listsort.c</code> (here via the RPython/PyPy port): every
+    run stays exactly where it is in the input array <code>A</code> — nothing ever moves to a second
+    full-size array. When two adjacent runs on the merge stack are combined, only the <em>shorter</em>
+    of the two is copied into a scratch buffer of at most &lceil;n/2&rceil; elements; the merge then
+    writes the combined result back into the gap the shorter run left behind (left-to-right if the
+    left run was shorter, right-to-left if the right run was). Pushing a new run costs nothing — it
+    already sits in <code>A</code>. This view shows exactly that data movement to and from the buffer;
+    it does not depict CPython's galloping mode, which only changes <em>how fast</em> comparisons find
+    the next element, not where data moves.
   </p>
 
   <div class="controls">
@@ -218,6 +221,7 @@
       <option value="4,4,6,10" selected>paper example (4 runs)</option>
       <option value="8,4,2,2,8,8">cascade example (6 runs)</option>
       <option value="6,3,5,2,8,4,7,5">showcase example (8 runs)</option>
+      <option value="11,2,3,3">balanced-cascade example (4 runs)</option>
       <option value="rand:12">random (12 runs)</option>
       <option value="rand:5">random (5 runs)</option>
     </select>
@@ -239,26 +243,30 @@
   </div>
 
   <div id="stage"></div>
-  <div id="status"><span class="k">press play to run pingpong Powersort.</span></div>
+  <div id="status"><span class="k">press play to run listsort Powersort.</span></div>
 
   <div class="legend">
-    <span><span class="chip" style="background:var(--run-a)"></span><span class="chip" style="background:var(--run-b)"></span>detected runs</span>
-    <span><span class="chip" id="stripechip"></span>merged run (output of a merge)</span>
-    <span><span class="chip" style="background:var(--buffer)"></span>free / stale (contents irrelevant)</span>
-    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#04217a,#04217a 4px,rgba(234,242,255,0.12) 4px,rgba(234,242,255,0.12) 6px)"></span>not yet scanned</span>
+    <span><span class="chip" id="pal0"></span><span class="chip" id="pal1"></span><span class="chip" id="pal2"></span><span class="chip" id="pal3"></span>each run &mdash; detected <em>or</em> merged &mdash; gets its own colour</span>
+    <span><span class="chip" style="background:var(--buffer)"></span>buffer empty (between merges)</span>
+    <span><span class="chip" style="background:repeating-linear-gradient(45deg,#04217a,#04217a 4px,rgba(234,242,255,0.12) 4px,rgba(234,242,255,0.12) 6px)"></span>not yet scanned <em>or</em> a gap left behind after its run moved to the buffer</span>
     <span><span style="font-family:var(--mono);color:var(--lime);font-size:1.05em">2&thinsp;3&thinsp;1</span>&nbsp;&mdash; run-boundary powers (shown once computed, removed once merged away)</span>
   </div>
 
   <div id="pseudo">
     <div class="ph">Pseudocode &mdash; the highlighted line is the step currently being animated</div>
-    <pre><table><span class="ln" data-pc="proc"><span class="code"><b>procedure</b> PingpongPowersort(A[0, n)):</span></span><span class="ln" data-pc="detect1"><span class="code">    curr := <b>next run in</b> A</span><span class="cmt">&#9657; runs are always detected in A</span></span><span class="ln" data-pc="whileouter"><span class="code">    <b>while</b> curr is not the last run:</span></span><span class="ln" data-pc="detect"><span class="code">        next := <b>next run in</b> A</span></span><span class="ln" data-pc="power"><span class="code">        p := power of the boundary between curr and next</span></span><span class="ln" data-pc="whilecasc"><span class="code">        <b>while</b> stack.secondTop.power &gt; p:</span><span class="cmt">&#9657; &ge; 2 merges pending</span></span><span class="ln" data-pc="mergeA"><span class="code">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A</span><span class="cmt">&#9657; stack run is in B, curr in A</span></span><span class="ln" data-pc="ifline"><span class="code">        <b>if</b> stack.top.power &gt; p:</span><span class="cmt">&#9657; exactly 1 merge pending</span></span><span class="ln" data-pc="mergeB"><span class="code">            curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> B</span><span class="cmt">&#9657; right-to-left (in&#8209;place in B)</span></span><span class="ln" data-pc="elseline"><span class="code">        <b>else</b>:</span></span><span class="ln" data-pc="copy"><span class="code">            <b>copy</b> curr from A to B</span><span class="cmt">&#9657; push without merging</span></span><span class="ln" data-pc="push"><span class="code">        stack.push(curr with power p)</span><span class="cmt">&#9657; curr now lives in B</span></span><span class="ln" data-pc="currnext"><span class="code">        curr := next</span></span><span class="ln" data-pc="whilefinal"><span class="code">    <b>while</b> stack is not empty:</span><span class="cmt">&#9657; final cascade</span></span><span class="ln" data-pc="final"><span class="code">        curr := <b>merge</b>(stack.pop() &#8904; curr) <b>into</b> A</span><span class="cmt">&#9657; result ends up in A</span></span><span class="ln" data-pc="done"><span class="code"></span><span class="cmt">&#9657; done: A[0, n) is sorted, B is free again</span></span></table></pre>
+    <pre><table><span class="ln" data-pc="proc"><span class="code"><b>procedure</b> ListsortPowersort(A[0, n)):</span></span><span class="ln" data-pc="detect1"><span class="code">    run := <b>next run in</b> A</span><span class="cmt">&#9657; runs never move — they always stay in A</span></span><span class="ln" data-pc="initpush"><span class="code">    pending.push(run)</span></span><span class="ln" data-pc="whileouter"><span class="code">    <b>while</b> more runs remain:</span></span><span class="ln" data-pc="detect"><span class="code">        run := <b>next run in</b> A</span></span><span class="ln" data-pc="power"><span class="code">        p := power of the boundary between pending.top and run</span></span><span class="ln" data-pc="whilecasc"><span class="code">        <b>while</b> pending.size &ge; 2 <b>and</b> pending.second.power &gt; p:</span></span><span class="ln" data-pc="mergecasc"><span class="code">            <b>merge_at</b>(pending.second, pending.top)</span><span class="cmt">&#9657; shorter side &#8594; scratch buffer; result fills the gap</span></span><span class="ln" data-pc="settop"><span class="code">        pending.top.power := p</span></span><span class="ln" data-pc="push"><span class="code">        pending.push(run)</span><span class="cmt">&#9657; free — run already sits in A</span></span><span class="ln" data-pc="whilefinal"><span class="code">    <b>while</b> pending.size &ge; 2:</span><span class="cmt">&#9657; final cascade</span></span><span class="ln" data-pc="finalcond"><span class="code">        <b>if</b> pending.size &ge; 3 <b>and</b> pending.third.len &lt; pending.top.len:</span></span><span class="ln" data-pc="finalmerge3"><span class="code">            <b>merge_at</b>(pending.third, pending.second)</span><span class="cmt">&#9657; keeps the final cascade balanced</span></span><span class="ln" data-pc="finalelse"><span class="code">        <b>else</b>:</span></span><span class="ln" data-pc="finalmerge2"><span class="code">            <b>merge_at</b>(pending.second, pending.top)</span></span><span class="ln" data-pc="done"><span class="code"></span><span class="cmt">&#9657; done: A[0, n) is sorted; the scratch buffer is free again</span></span></table></pre>
   </div>
 
   <footer>
-    Companion animation for the pingpong merging strategy; the run-detection and node-power merge
-    <em>policy</em> itself is unchanged from Powersort — see the interactive explanation at
-    <a href="https://www.wild-inter.net/powersort/">wild-inter.net/powersort</a>.
-    Here the focus is on <em>where</em> each run lives (input array <code>A</code> vs. buffer <code>B</code>) over time.
+    Companion animation for CPython's <code>listsort.c</code> merge strategy (via the RPython/PyPy port);
+    the run-detection and node-power merge <em>policy</em> itself is unchanged from Powersort — see the
+    interactive explanation at <a href="https://www.wild-inter.net/powersort/">wild-inter.net/powersort</a>.
+    Here the focus is on the <em>scratch buffer</em>: only the shorter of two merging runs is ever copied
+    out of <code>A</code>, and only for the duration of that one merge. Galloping (the exponential search
+    CPython uses to skip ahead when one run is winning heavily) changes how fast elements are located, not
+    where data moves, so it is not depicted here. The final cascade also shown here is CPython's own
+    balancing rule: it merges the two <em>second</em>-from-top runs instead of the top two whenever that
+    keeps the merge sizes more even.
   </footer>
 </main>
 
@@ -266,9 +274,14 @@
 "use strict";
 
 /* ============================================================
- * 1. Simulation of pingpong powersort (locations only).
- *    Mirrors the C++ code: stack runs live in buf (B),
- *    the current run lives in v (A).
+ * 1. Simulation of CPython's listsort.c merge strategy.
+ *    Every run stays put in A. Merging two adjacent runs copies
+ *    only the SHORTER one into a scratch buffer (capacity
+ *    ceil(n/2), CPython also caps it at 256) and writes the
+ *    combined result back into the gap it left behind.
+ *    The run-detection and node-power merge *policy* (when to
+ *    merge) is identical to pingpong Powersort; only what a
+ *    merge physically does to memory differs.
  * ============================================================ */
 
 function nodePower(n, b1, e1, b2, e2) {
@@ -278,27 +291,50 @@ function nodePower(n, b1, e1, b2, e2) {
   return k;
 }
 
-/* Simulate; returns { snapshots, events } where
- *   snapshots[i] = { scan, runs: [{id,arr:'A'|'B',l,r,striped}] }  (state AFTER event i-1)
- *   events[i]    = description of the transition snapshots[i] -> snapshots[i+1]
+const RUN_PALETTE = [
+  // Same perceptually-spaced palette as virtual-memory Powersort: consecutive
+  // entries jump far across hue AND alternate lightness, since a run's colour
+  // index increments for every detected *and* merged run (so neighbours are
+  // routinely on screen together). Brand colours are kept as anchors.
+  "#0DEDF7", // cyan (brand)
+  "#E44BFF", // orchid
+  "#00D600", // green (brand)
+  "#FF4DA6", // rose
+  "#B5FF00", // lime (brand)
+  "#A66BFF", // violet
+  "#FFF033", // yellow (brand)
+  "#3D8CFF", // azure
+  "#FF5A5A", // coral
+  "#8CFFA9", // mint
+  "#FF9BD0", // pink
+  "#E8C24A", // gold
+  "#73C0FF", // sky
+  "#FFAB73"  // peach
+];
+
+/* Simulate; returns { n, bufCap, snapshots, events } where
+ *   snapshots[i] = { scan, runs: [{id,l,r,ci}], buf: null|{ci,len}, powers: [{pos,p}] }
+ *   events[i]    = { desc, pc:[...], merge?: {to:{l,r}} }  (transition snapshots[i] -> snapshots[i+1])
  */
 function simulate(runLens) {
   const n = runLens.reduce((x, y) => x + y, 0);
+  const bufCap = Math.min(Math.floor((n + 1) / 2), 256); // CPython: min((len+1)//2, 256)
   const bounds = [0];
   for (const L of runLens) bounds.push(bounds[bounds.length - 1] + L);
   const runsIn = runLens.map((_, i) => ({ l: bounds[i], r: bounds[i + 1] }));
 
-  let nextId = 1, detectCount = 0;
-  const state = { scan: 0, runs: [], powers: [] };   // mutable working copy
+  let nextId = 1, colorIdx = 0;
+  const state = { scan: 0, runs: [], buf: null, powers: [] }; // mutable working copy
+  const U = state.runs; // alias: the unified pending/rendering stack
   const snapshots = [];
   const events = [];
+
   const snap = () => snapshots.push({
     scan: state.scan,
-    runs: state.runs.map(x => ({ ...x })),
+    runs: state.runs.filter(x => !x.gap).map(x => ({ ...x })),
+    buf: state.buf ? { ...state.buf } : null,
     powers: state.powers.map(x => ({ ...x }))
   });
-  const findRun = id => state.runs.find(x => x.id === id);
-  const span = x => `[${x.l},${x.r})`;
 
   snap(); // initial: nothing scanned
 
@@ -306,78 +342,81 @@ function simulate(runLens) {
     mutate();
     events.push(Object.assign({ desc }, extra || {}));
     snap();
+    return events.length - 1;
   };
 
-  const detect = (interval, name) => {
+  const detect = (interval, label, pc) => {
     const id = "r" + (nextId++);
-    emit(`scan: detected run ${name} = A${`[${interval.l},${interval.r})`}`,
-      () => {
-        state.scan = interval.r;
-        state.runs.push({ id, arr: "A", l: interval.l, r: interval.r, striped: false, ci: detectCount++ });
-      },
-      { pc: [interval.l === 0 ? "detect1" : "detect"] });
-    return { id, l: interval.l, r: interval.r, name };
+    const ci = colorIdx++;
+    emit(`scan: detected run ${label} = A[${interval.l},${interval.r})`,
+      () => { state.scan = interval.r; state.runs.push({ id, l: interval.l, r: interval.r, ci }); },
+      { pc });
+    return state.runs[state.runs.length - 1];
   };
 
-  const doMerge = (top, cur, toArr, why, pc) => {
-    const outL = top.l, outR = cur.r;
-    const id = "m" + (nextId++);
-    emit(
-      `merge: B[${top.l},${top.r}) \u22C8 A[${cur.l},${cur.r}) \u2192 ${toArr}[${outL},${outR})` + why,
-      () => {
-        state.runs = state.runs.filter(x => x.id !== top.id && x.id !== cur.id);
-        state.runs.push({ id, arr: toArr, l: outL, r: outR, striped: true });
-        // the boundary between the two merged runs no longer exists
-        state.powers = state.powers.filter(q => !(q.pos > outL && q.pos < outR));
-      },
-      { merge: { srcIds: [top.id, cur.id], to: { arr: toArr, l: outL, r: outR } }, pc });
-    return { id, l: outL, r: outR };
+  /* Merge U[i] and U[i+1] (contiguous). Copies the shorter of the two into
+   * the buffer (2 animated steps: copy, then merge-into-gap), and returns
+   * the index of the second (commit) event so callers can add pc tags. */
+  const mergeAt = (i, pc, notePrefix) => {
+    const L = U[i], R = U[i + 1];
+    const Llen = L.r - L.l, Rlen = R.r - R.l;
+    const shorterIsLeft = Llen <= Rlen;
+    const shorter = shorterIsLeft ? L : R;
+    const other = shorterIsLeft ? R : L;
+    const mergedCi = colorIdx++;
+    const mergedId = "m" + (nextId++);
+    const prefix = notePrefix ? notePrefix + " " : "";
+
+    const copyDesc = shorterIsLeft
+      ? `${prefix}merge: A[${L.l},${L.r}) is the shorter run (len ${Llen} \u2264 ${Rlen}) \u2192 copied to the scratch buffer; will merge left-to-right, filling the gap it leaves`
+      : `${prefix}merge: A[${R.l},${R.r}) is the shorter run (len ${Rlen} < ${Llen}) \u2192 copied to the scratch buffer; will merge right-to-left, filling the gap it leaves`;
+    emit(copyDesc, () => {
+      state.buf = { ci: shorter.ci, len: shorter.r - shorter.l };
+      const idx = U.indexOf(shorter);
+      U[idx] = { id: shorter.id, l: shorter.l, r: shorter.r, gap: true };
+    }, { pc });
+
+    const commitDesc = `merge: buffer \u22C8 A[${other.l},${other.r}) \u2192 A[${L.l},${R.r}); scratch buffer is free again`;
+    const commitIdx = emit(commitDesc, () => {
+      state.buf = null;
+      U.splice(i, 2, { id: mergedId, l: L.l, r: R.r, ci: mergedCi, power: null });
+      state.powers = state.powers.filter(q => !(q.pos > L.l && q.pos < R.r));
+    }, { pc, merge: { to: { l: L.l, r: R.r, ci: mergedCi } } });
+
+    return commitIdx;
   };
 
-  // ---- main loop, mirroring the C++ ----
-  const stk = [ { right: 0, power: -1 }, { right: 0, power: -1 } ]; // two sentinels
-  const stkRun = [ null, null ];                                    // run handle per stack slot
-  let idx = 0;
-  let curr = detect(runsIn[idx++], "1");
-  let currRight = curr.r;
-
-  while (currRight < n) {
-    const nxt = detect(runsIn[idx], String(idx + 1)); idx += 1;
-    const stkRight = stk[stk.length - 1].right;
-    const p = nodePower(n, stkRight, currRight, currRight, nxt.r);
-    emit(`power: boundary between A[${stkRight},${currRight}) and A[${currRight},${nxt.r}) gets power p = ${p}`,
-      () => { state.powers.push({ pos: currRight, p }); },
+  // ---- main loop, mirroring found_new_run() + sort() ----
+  detect(runsIn[0], "1", ["detect1", "initpush"]);
+  for (let idx = 1; idx < runsIn.length; idx++) {
+    const run = detect(runsIn[idx], String(idx + 1), ["whileouter", "detect"]);
+    const prevTop = U[U.length - 2];
+    const p = nodePower(n, prevTop.l, prevTop.r, run.l, run.r);
+    let lastIdx = emit(`power: boundary between A[${prevTop.l},${prevTop.r}) and A[${run.l},${run.r}) gets power p = ${p}`,
+      () => { state.powers.push({ pos: run.l, p }); },
       { pc: ["power"] });
-
-    while (stk[stk.length - 2].power > p) {
-      const top = stkRun.pop(); stk.pop();
-      curr = doMerge(top, curr, "A",
-        "   (more merges follow \u2192 output to A)", ["whilecasc", "mergeA"]);
+    while (U.length > 2 && U[U.length - 3].power > p) {
+      lastIdx = mergeAt(U.length - 3, ["whilecasc", "mergecasc"]);
     }
-    if (stk[stk.length - 1].power > p) {
-      const top = stkRun.pop(); stk.pop();
-      curr = doMerge(top, curr, "B",
-        "   (last merge before push \u2192 output to B, merged right-to-left)", ["ifline", "mergeB", "push"]);
+    U[U.length - 2].power = p; // silent bookkeeping — no visual change
+    events[lastIdx].pc = events[lastIdx].pc.concat(["settop", "push"]);
+  }
+
+  // ---- final cascade: CPython's own balancing rule ----
+  while (U.length > 1) {
+    const topLen = U[U.length - 1].r - U[U.length - 1].l;
+    if (U.length >= 3 && (U[U.length - 3].r - U[U.length - 3].l) < topLen) {
+      mergeAt(U.length - 3, ["whilefinal", "finalcond", "finalmerge3"],
+        "final cascade (balancing rule: the second-from-top runs are merged first) \u2014");
     } else {
-      const c = curr;
-      emit(`push: no merge needed \u2014 copy A[${c.l},${c.r}) \u2192 B[${c.l},${c.r})`,
-        () => { findRun(c.id).arr = "B"; },
-        { pc: ["elseline", "copy", "push"] });
+      mergeAt(U.length - 2, ["whilefinal", "finalcond", "finalelse", "finalmerge2"]);
     }
-    stk.push({ right: currRight, power: p });
-    stkRun.push(curr);
-    curr = nxt; currRight = nxt.r;
   }
 
-  while (stk.length > 2) {
-    const top = stkRun.pop(); stk.pop();
-    curr = doMerge(top, curr, "A", "   (final merge \u2192 output to A)", ["whilefinal", "final"]);
-  }
-
-  events.push({ desc: `done: array is sorted, result lives in A[0,${n}) \u2014 B is free again.`, pc: ["done"] });
+  events.push({ desc: `done: array is sorted, result lives in A[0,${n}) \u2014 scratch buffer is free again.`, pc: ["done"] });
   snapshots.push(snapshots[snapshots.length - 1]); // terminal state (unchanged)
 
-  return { n, snapshots, events };
+  return { n, bufCap, snapshots, events };
 }
 
 /* ============================================================
@@ -386,23 +425,23 @@ function simulate(runLens) {
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const W = 1000, H = 330;
-const X0 = 46, X1 = 985;            // horizontal extent of the arrays
-const TRACK = { A: { y: 42, h: 78 }, B: { y: 208, h: 78 } };
+const X0 = 46, X1 = 985;            // horizontal extent of track A
+const TRACK = { A: { y: 42, h: 78 }, S: { y: 208, h: 78 } };
 
 const stage = document.getElementById("stage");
 const statusEl = document.getElementById("status");
 
-let model = null;        // { n, snapshots, events }
+let model = null;        // { n, bufCap, snapshots, events }
 let cursor = 0;          // index of the snapshot currently (or last) shown
 let playing = false;
 let animation = null;    // active tween or null
-let runNodes = new Map();  // id  -> {poly, geo:{l,r,arrY,opacity}}
+let runNodes = new Map();  // id  -> {poly}
 let powerNodes = new Map();// pos -> <g> (tick + number below the A track)
-let svg, scanRectA, defs;
+let svg, defs, bufPoly;
 
 const xOf = pos => X0 + (pos / model.n) * (X1 - X0);
 const easing = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
-const runFill = i => (i % 2 === 0) ? "var(--run-a)" : "var(--run-b)";
+const fillOf = ci => RUN_PALETTE[((ci % RUN_PALETTE.length) + RUN_PALETTE.length) % RUN_PALETTE.length];
 
 function buildStage() {
   stage.innerHTML = "";
@@ -411,53 +450,56 @@ function buildStage() {
 
   defs = document.createElementNS(SVGNS, "defs");
   defs.innerHTML = `
-    <pattern id="stripes" width="14" height="14" patternUnits="userSpaceOnUse">
-      <rect width="7" height="14" fill="var(--run-a)"/>
-      <rect x="7" width="7" height="14" fill="var(--run-b)"/>
-    </pattern>
     <pattern id="unscanned" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="9" height="9" fill="#04217a"/>
       <rect width="3" height="9" fill="rgba(234,242,255,0.12)"/>
     </pattern>`;
   svg.appendChild(defs);
 
-  for (const [name, t] of Object.entries(TRACK)) {
-    // background
+  const bufW = xOf(model.bufCap) - X0;
+  const tracks = [
+    { name: "A", y: TRACK.A.y, h: TRACK.A.h, w: X1 - X0, fill: "url(#unscanned)",
+      caption: "input array \u2014 every run stays here permanently" },
+    { name: "S", y: TRACK.S.y, h: TRACK.S.h, w: bufW, fill: "var(--buffer)",
+      caption: `scratch buffer \u2014 capacity \u2308n/2\u2309 = ${model.bufCap} (holds a copy of the shorter run during a merge)` },
+  ];
+
+  for (const t of tracks) {
     const bg = document.createElementNS(SVGNS, "rect");
     bg.setAttribute("x", X0); bg.setAttribute("y", t.y);
-    bg.setAttribute("width", X1 - X0); bg.setAttribute("height", t.h);
-    bg.setAttribute("fill", name === "A" ? "url(#unscanned)" : "var(--buffer)");
+    bg.setAttribute("width", t.w); bg.setAttribute("height", t.h);
+    bg.setAttribute("fill", t.fill);
     svg.appendChild(bg);
-    if (name === "A") {
-      scanRectA = document.createElementNS(SVGNS, "rect"); // scanned/stale part of A
-      scanRectA.setAttribute("x", X0); scanRectA.setAttribute("y", t.y);
-      scanRectA.setAttribute("width", 0); scanRectA.setAttribute("height", t.h);
-      scanRectA.setAttribute("fill", "var(--buffer)");
-      svg.appendChild(scanRectA);
-    }
-    // label
+
     const lb = document.createElementNS(SVGNS, "text");
     lb.setAttribute("x", X0 - 14); lb.setAttribute("y", t.y + t.h / 2);
     lb.setAttribute("text-anchor", "middle"); lb.setAttribute("dominant-baseline", "central");
     lb.setAttribute("font-size", "26"); lb.setAttribute("font-style", "italic");
     lb.setAttribute("font-family", "Georgia, 'Times New Roman', serif");
     lb.setAttribute("fill", "#0DEDF7");
-    lb.textContent = name;
+    lb.textContent = t.name;
     svg.appendChild(lb);
+
     const sub = document.createElementNS(SVGNS, "text");
     sub.setAttribute("x", X0); sub.setAttribute("y", t.y - 8);
     sub.setAttribute("font-size", "13"); sub.setAttribute("fill", "#A9BCE8");
-    sub.textContent = name === "A" ? "input array (holds the current run)" : "buffer (holds the runs on the merge stack)";
+    sub.textContent = t.caption;
     svg.appendChild(sub);
   }
 
-  // group for runs (and boundary powers), then track borders on top
   svg.appendChild(document.createElementNS(SVGNS, "g")).setAttribute("id", "runsg");
+  bufPoly = document.createElementNS(SVGNS, "polygon");
+  bufPoly.setAttribute("stroke", "var(--border)");
+  bufPoly.setAttribute("stroke-width", "1.4");
+  bufPoly.setAttribute("stroke-linejoin", "round");
+  bufPoly.setAttribute("opacity", 0);
+  svg.appendChild(bufPoly);
   svg.appendChild(document.createElementNS(SVGNS, "g")).setAttribute("id", "powersg");
-  for (const t of Object.values(TRACK)) {
+
+  for (const t of tracks) {
     const fr = document.createElementNS(SVGNS, "rect");
     fr.setAttribute("x", X0); fr.setAttribute("y", t.y);
-    fr.setAttribute("width", X1 - X0); fr.setAttribute("height", t.h);
+    fr.setAttribute("width", t.w); fr.setAttribute("height", t.h);
     fr.setAttribute("fill", "none"); fr.setAttribute("stroke", "rgba(13,237,247,0.4)");
     fr.setAttribute("stroke-width", "1.6");
     svg.appendChild(fr);
@@ -467,14 +509,13 @@ function buildStage() {
 
 function polyPoints(geo) {
   const x0 = xOf(geo.l), x1 = xOf(geo.r);
-  const t = TRACK[geo.arr] || TRACK.A;
-  const yB = (geo.y != null ? geo.y : t.y) + t.h - 1, yT = (geo.y != null ? geo.y : t.y) + 1;
+  const t = TRACK[geo.track || "A"];
+  const yB = t.y + t.h - 1, yT = t.y + 1;
   return `${x0},${yB} ${x1},${yB} ${x1},${yT}`;
 }
 
-function makeRunNode(run) {
+function makeRunNode() {
   const poly = document.createElementNS(SVGNS, "polygon");
-  poly.setAttribute("fill", run.striped ? "url(#stripes)" : runFill(run.ci || 0));
   poly.setAttribute("stroke", "var(--border)");
   poly.setAttribute("stroke-width", "1.4");
   poly.setAttribute("stroke-linejoin", "round");
@@ -510,10 +551,17 @@ function showSnapshot(k) {
   for (const [id, node] of runNodes) if (!keep.has(id)) { node.poly.remove(); runNodes.delete(id); }
   for (const r of s.runs) {
     let node = runNodes.get(r.id);
-    if (!node) { node = { poly: makeRunNode(r) }; runNodes.set(r.id, node); }
-    node.geo = { l: r.l, r: r.r, arr: r.arr, opacity: 1 };
-    node.poly.setAttribute("points", polyPoints(node.geo));
+    if (!node) { node = { poly: makeRunNode() }; runNodes.set(r.id, node); }
+    node.poly.setAttribute("points", polyPoints({ l: r.l, r: r.r, track: "A" }));
+    node.poly.setAttribute("fill", fillOf(r.ci));
     node.poly.setAttribute("opacity", 1);
+  }
+  if (s.buf) {
+    bufPoly.setAttribute("points", polyPoints({ l: 0, r: s.buf.len, track: "S" }));
+    bufPoly.setAttribute("fill", fillOf(s.buf.ci));
+    bufPoly.setAttribute("opacity", 1);
+  } else {
+    bufPoly.setAttribute("opacity", 0);
   }
   const keepP = new Set(s.powers.map(q => q.pos));
   for (const [pos, g] of powerNodes) if (!keepP.has(pos)) { g.remove(); powerNodes.delete(pos); }
@@ -521,7 +569,6 @@ function showSnapshot(k) {
     if (!powerNodes.has(q.pos)) powerNodes.set(q.pos, makePowerNode(q));
     powerNodes.get(q.pos).setAttribute("opacity", 1);
   }
-  scanRectA.setAttribute("width", Math.max(0, xOf(s.scan) - X0));
   cursor = k;
   updateButtons();
 }
@@ -544,27 +591,26 @@ function playStep(k, cb) {
   const m1 = new Map(s1.runs.map(r => [r.id, r]));
   const items = [];
 
-  // runs present before: either persist (move) or vanish (merge sources -> move into output & fade)
   for (const r of s0.runs) {
     const to = m1.get(r.id);
     let node = runNodes.get(r.id);
-    if (!node) { node = { poly: makeRunNode(r) }; runNodes.set(r.id, node); }
+    if (!node) { node = { poly: makeRunNode() }; runNodes.set(r.id, node); }
     if (to) {
-      items.push({ node, from: { ...r, opacity: 1 }, to: { ...to, opacity: 1 }, removeAfter: false });
+      items.push({ node, from: { l: r.l, r: r.r, ci: r.ci, opacity: 1 },
+                   to: { l: to.l, r: to.r, ci: to.ci, opacity: 1 }, removeAfter: false });
     } else {
       const tgt = ev && ev.merge ? ev.merge.to : r;
-      items.push({ node, from: { ...r, opacity: 1 },
-                   to: { l: tgt.l, r: tgt.r, arr: tgt.arr, opacity: 0.25 }, removeAfter: true });
+      items.push({ node, from: { l: r.l, r: r.r, ci: r.ci, opacity: 1 },
+                   to: { l: tgt.l, r: tgt.r, ci: tgt.ci != null ? tgt.ci : r.ci, opacity: 0.25 }, removeAfter: true });
     }
   }
-  // new runs (detected run, or merged output): fade in at final position
   for (const r of s1.runs) if (!m0.has(r.id)) {
-    const node = { poly: makeRunNode(r) };
+    const node = { poly: makeRunNode() };
     runNodes.set(r.id, node);
-    items.push({ node, from: { ...r, opacity: 0 }, to: { ...r, opacity: 1 }, removeAfter: false, fadeLate: true });
+    items.push({ node, from: { l: r.l, r: r.r, ci: r.ci, opacity: 0 },
+                 to: { l: r.l, r: r.r, ci: r.ci, opacity: 1 }, removeAfter: false, fadeLate: true });
   }
 
-  // boundary powers: fade in newly computed ones, fade out merged-away ones
   const p0 = new Set(s0.powers.map(q => q.pos)), p1 = new Set(s1.powers.map(q => q.pos));
   const pItems = [];
   for (const q of s0.powers) if (!p1.has(q.pos)) {
@@ -578,9 +624,8 @@ function playStep(k, cb) {
     pItems.push({ g, mode: "in" });
   }
 
-  const scanFrom = xOf(s0.scan) - X0, scanTo = xOf(s1.scan) - X0;
+  const bufFrom = s0.buf, bufTo = s1.buf;
   const t0 = performance.now();
-  const yOf = arr => TRACK[arr].y;
 
   function frame(now) {
     let t = Math.min(1, (now - t0) / dur);
@@ -590,13 +635,27 @@ function playStep(k, cb) {
     for (const it of items) {
       const l = it.from.l + (it.to.l - it.from.l) * e;
       const r = it.from.r + (it.to.r - it.from.r) * e;
-      const y = yOf(it.from.arr) + (yOf(it.to.arr) - yOf(it.from.arr)) * e;
       let op = it.from.opacity + (it.to.opacity - it.from.opacity) * e;
-      if (it.fadeLate) op = Math.max(0, (t - 0.45) / 0.55); // merged run appears late
-      it.node.poly.setAttribute("points", polyPoints({ l, r, arr: it.from.arr, y }));
+      if (it.fadeLate) op = Math.max(0, (t - 0.45) / 0.55);
+      it.node.poly.setAttribute("points", polyPoints({ l, r, track: "A" }));
+      it.node.poly.setAttribute("fill", fillOf(it.to.ci != null ? it.to.ci : it.from.ci));
       it.node.poly.setAttribute("opacity", op);
     }
-    scanRectA.setAttribute("width", Math.max(0, scanFrom + (scanTo - scanFrom) * e));
+    if (bufTo && !bufFrom) {
+      bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufTo.len, track: "S" }));
+      bufPoly.setAttribute("fill", fillOf(bufTo.ci));
+      bufPoly.setAttribute("opacity", e);
+    } else if (bufFrom && !bufTo) {
+      bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufFrom.len, track: "S" }));
+      bufPoly.setAttribute("fill", fillOf(bufFrom.ci));
+      bufPoly.setAttribute("opacity", 1 - e);
+    } else if (bufFrom && bufTo) {
+      bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufTo.len, track: "S" }));
+      bufPoly.setAttribute("fill", fillOf(bufTo.ci));
+      bufPoly.setAttribute("opacity", 1);
+    } else {
+      bufPoly.setAttribute("opacity", 0);
+    }
     if (t < 1) { animation.raf = requestAnimationFrame(frame); }
     else {
       animation = null;
@@ -666,11 +725,11 @@ btnStepB.addEventListener("click", () => {
   const k = Math.max(0, cursor - 1);
   showSnapshot(k);
   if (k > 0) setStatus(k - 1);
-  else { statusEl.innerHTML = '<span class="k">press play to run pingpong Powersort.</span>'; highlightPC(null); }
+  else { statusEl.innerHTML = '<span class="k">press play to run listsort Powersort.</span>'; highlightPC(null); }
 });
 btnReset.addEventListener("click", () => {
   stopPlaying(); showSnapshot(0);
-  statusEl.innerHTML = '<span class="k">press play to run pingpong Powersort.</span>';
+  statusEl.innerHTML = '<span class="k">press play to run listsort Powersort.</span>';
   highlightPC(null);
 });
 
@@ -712,8 +771,12 @@ function load(runLens) {
   buildStage();
   playing = false;
   showSnapshot(0);
-  statusEl.innerHTML = '<span class="k">press play to run pingpong Powersort.</span>';
+  statusEl.innerHTML = '<span class="k">press play to run listsort Powersort.</span>';
   highlightPC(null);
+  for (let i = 0; i < 4; i++) {
+    const c = document.getElementById("pal" + i);
+    if (c) c.style.background = RUN_PALETTE[i];
+  }
 }
 
 document.getElementById("load").addEventListener("click", () => {
@@ -741,10 +804,6 @@ document.getElementById("preset").addEventListener("change", e => {
   document.getElementById("runlens").value = lens.join(", ");
   load(lens);
 });
-
-// legend stripe chip
-document.getElementById("stripechip").style.background =
-  "repeating-linear-gradient(90deg, var(--run-a), var(--run-a) 5px, var(--run-b) 5px, var(--run-b) 10px)";
 
 load([4, 4, 6, 10]);
 </script>
