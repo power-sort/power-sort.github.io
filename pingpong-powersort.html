@@ -220,7 +220,12 @@
       <option value="rand:12">random (12 runs)</option>
       <option value="rand:5">random (5 runs)</option>
     </select>
-    <label for="runlens">run lengths</label>
+    <label for="mode">mode</label>
+    <select id="mode">
+      <option value="runs" selected>run lengths</option>
+      <option value="values">array values</option>
+    </select>
+    <label for="runlens" id="runlensLabel">run lengths</label>
     <input type="text" id="runlens" value="4,4,6,10" spellcheck="false">
     <button id="load">load ↴</button>
     <span style="width:.5rem"></span>
@@ -674,6 +679,31 @@ function parseRunLens(text) {
   return parts;
 }
 
+/* ----- input mode: run lengths vs. actual array values -----
+   "array values" mode detects maximal non-decreasing runs from the raw
+   values — the same run-detection rule used on the main Powersort page —
+   then hands the resulting run lengths to the unchanged simulation below. */
+function parseNums(text) {
+  return text.split(/[,;\s]+/).filter(Boolean).map(Number).filter(x => Number.isFinite(x));
+}
+function runLengthsFromValues(vals) {
+  const lens = [];
+  let i = 0;
+  while (i < vals.length) {
+    let j = i + 1;
+    while (j < vals.length && vals[j] >= vals[j - 1]) j++;
+    lens.push(j - i);
+    i = j;
+  }
+  return lens;
+}
+const modeEl = document.getElementById("mode");
+const runlensLabelEl = document.getElementById("runlensLabel");
+function syncModeLabel() {
+  runlensLabelEl.textContent = modeEl.value === "runs" ? "run lengths" : "array values";
+}
+modeEl.addEventListener("change", syncModeLabel);
+
 function load(runLens) {
   model = simulate(runLens);
   runNodes.forEach(n => n.poly.remove()); runNodes = new Map();
@@ -686,14 +716,22 @@ function load(runLens) {
 }
 
 document.getElementById("load").addEventListener("click", () => {
-  const lens = parseRunLens(document.getElementById("runlens").value);
-  if (!lens) { statusEl.textContent = "please enter positive integer run lengths, e.g.  4, 4, 6, 10"; return; }
+  let lens;
+  if (modeEl.value === "values") {
+    const nums = parseNums(document.getElementById("runlens").value).slice(0, 500);
+    if (nums.length < 2) { statusEl.textContent = "please enter at least two array values, e.g.  5, 3, 8, 2, 9, 12, 1, 4"; return; }
+    lens = runLengthsFromValues(nums);
+  } else {
+    lens = parseRunLens(document.getElementById("runlens").value);
+    if (!lens) { statusEl.textContent = "please enter positive integer run lengths, e.g.  4, 4, 6, 10"; return; }
+  }
   load(lens);
 });
 document.getElementById("runlens").addEventListener("keydown", e => {
   if (e.key === "Enter") document.getElementById("load").click();
 });
 document.getElementById("preset").addEventListener("change", e => {
+  modeEl.value = "runs"; syncModeLabel();
   let v = e.target.value, lens;
   if (v.startsWith("rand:")) {
     const k = parseInt(v.slice(5), 10);
