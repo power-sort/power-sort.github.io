@@ -244,21 +244,8 @@
 
   <div class="playground-grid">
     <aside class="panel panel-code" aria-label="Powersort pseudocode">
-      <div class="panel-title">powersort.py</div>
-      <pre id="codeBox"><code><span class="cl" id="cl1"> 1  <b>def</b> powersort(a):</span>
-<span class="cl" id="cl2"> 2    n = len(a); i = 0</span>
-<span class="cl" id="cl3"> 3    runs = []</span>
-<span class="cl" id="cl4"> 4    j = extend_run(a, i)</span>
-<span class="cl" id="cl5"> 5    runs.append((i, j-i, 0)); i = j</span>
-<span class="cl" id="cl6"> 6    <b>while</b> i &lt; n:</span>
-<span class="cl" id="cl7"> 7      j = extend_run(a, i)</span>
-<span class="cl" id="cl8"> 8      p = power(runs[-1], (i, j-i), n)</span>
-<span class="cl" id="cl9"> 9      <b>while</b> p &lt;= runs[-1][2]:</span>
-<span class="cl" id="cl10">10        merge_topmost_2(a, runs)</span>
-<span class="cl" id="cl11">11      runs.append((i, j-i, p)); i = j</span>
-<span class="cl" id="cl12">12    <b>while</b> len(runs) &gt;= 2:</span>
-<span class="cl" id="cl13">13      merge_topmost_2(a, runs)</span></code></pre>
-      <p class="panel-note">complete code: <a href="https://tiny.cc/timsort" target="_blank" rel="noopener">tiny.cc/timsort</a></p>
+      <div class="panel-title">powersort</div>
+      <pre id="codeBox"><code><span class="cl" id="cl1"> 1  <b>def</b> powersort(a):</span><span class="cl" id="cl2"> 2    n = len(a); i = 0</span><span class="cl" id="cl3"> 3    runs = []</span><span class="cl" id="cl4"> 4    j = extend_run(a, i)</span><span class="cl" id="cl5"> 5    runs.append((i, j-i, 0)); i = j</span><span class="cl" id="cl6"> 6    <b>while</b> i &lt; n:</span><span class="cl" id="cl7"> 7      j = extend_run(a, i)</span><span class="cl" id="cl8"> 8      p = power(runs[-1], (i, j-i), n)</span><span class="cl" id="cl9"> 9      <b>while</b> p &lt;= runs[-1][2]:</span><span class="cl" id="cl10">10        merge_topmost_2(a, runs)</span><span class="cl" id="cl11">11      runs.append((i, j-i, p)); i = j</span><span class="cl" id="cl12">12    <b>while</b> len(runs) &gt;= 2:</span><span class="cl" id="cl13">13      merge_topmost_2(a, runs)</span></code></pre>      <p class="panel-note">complete code: <a href="https://tiny.cc/timsort" target="_blank" rel="noopener">tiny.cc/timsort</a></p>
     </aside>
 
     <div class="panel panel-stage">
@@ -269,11 +256,11 @@
     <aside class="panel panel-stack" aria-label="Run stack">
       <div class="panel-title">run stack</div>
       <div id="stackBox" class="stack-box"></div>
-      <div class="stack-hint">grows upward — newest run on top; merges fuse the two topmost entries</div>
+      <div class="stack-hint">newest run on top; merges fuse the two topmost entries</div>
     </aside>
   </div>
 
-  <p class="demo-note">note: for clarity this demo uses ascending runs only &mdash; real
+  <p class="demo-note">Note: for clarity this demo uses ascending runs only &mdash; real
   implementations also reverse descending runs (and enforce a minimum run length, see step&nbsp;1 above).</p>
 
   <div class="explain-grid">
@@ -613,8 +600,51 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
     <span class="code-keyword">while</span> len(runs) >= <span class="code-number">2</span>:
         merge_topmost_2(a, runs)</code></pre>
     </div>
-  </section>
 
+    <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
+        Algorithm Variants
+    </h3>
+    <p class="section-intro">
+        The details of Powersort's inner workings make further novel implementation
+        variants possible.
+        A key question is where to put your data; fast stable merging requires
+        a buffer to hold data.
+    </p>
+    <div class="pub-list">
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Buffer management and data movement
+          </div>
+          <div class="pub-authors">How to arrange for merging to always have empty space to merge into?
+          Any stable Mergesort has to find a buffer management strategy that balanced
+          extra memory usage, redundant copying, and faster innermost loops.
+          </div>
+          <div class="pub-venue">
+            The interactive animations below let you explore the difference
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="cpython-powersort.html"
+               target="_blank" rel="noopener">
+              CPython (copy smaller run)
+            </a>
+            <a class="btn btn-primary"
+               href="pingpong-powersort.html"
+               target="_blank" rel="noopener">
+              Pingpong (few copies)
+            </a>
+            <a class="btn btn-primary"
+               href="virtual-memory-powersort.html"
+               target="_blank" rel="noopener">
+              Virtual-Memory (little space)
+            </a>
+          </div>
+        </div>
+    
+  </section>
+  
+  
   <!-- ---- PUBLICATIONS ---- -->
   <section id="publications">
     <div class="container">

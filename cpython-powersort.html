@@ -204,7 +204,7 @@
 <main>
   <h1><span class="pp">Listsort</span> Powersort</h1>
   <p class="lead">
-    Powersort as merged by CPython's <code>listsort.c</code> (here via the RPython/PyPy port): every
+    Powersort as implemented in CPython's <code>listsort.c</code>: every
     run stays exactly where it is in the input array <code>A</code> — nothing ever moves to a second
     full-size array. When two adjacent runs on the merge stack are combined, only the <em>shorter</em>
     of the two is copied into a scratch buffer of at most &lceil;n/2&rceil; elements; the merge then
@@ -253,14 +253,14 @@
   </div>
 
   <div id="pseudo">
-    <div class="ph">Pseudocode &mdash; the highlighted line is the step currently being animated</div>
+    <div class="ph">CPython Powersort</div>
     <pre><table><span class="ln" data-pc="proc"><span class="code"><b>procedure</b> ListsortPowersort(A[0, n)):</span></span><span class="ln" data-pc="detect1"><span class="code">    run := <b>next run in</b> A</span><span class="cmt">&#9657; runs never move — they always stay in A</span></span><span class="ln" data-pc="initpush"><span class="code">    pending.push(run)</span></span><span class="ln" data-pc="whileouter"><span class="code">    <b>while</b> more runs remain:</span></span><span class="ln" data-pc="detect"><span class="code">        run := <b>next run in</b> A</span></span><span class="ln" data-pc="power"><span class="code">        p := power of the boundary between pending.top and run</span></span><span class="ln" data-pc="whilecasc"><span class="code">        <b>while</b> pending.size &ge; 2 <b>and</b> pending.second.power &gt; p:</span></span><span class="ln" data-pc="mergecasc"><span class="code">            <b>merge_at</b>(pending.second, pending.top)</span><span class="cmt">&#9657; shorter side &#8594; scratch buffer; result fills the gap</span></span><span class="ln" data-pc="settop"><span class="code">        pending.top.power := p</span></span><span class="ln" data-pc="push"><span class="code">        pending.push(run)</span><span class="cmt">&#9657; free — run already sits in A</span></span><span class="ln" data-pc="whilefinal"><span class="code">    <b>while</b> pending.size &ge; 2:</span><span class="cmt">&#9657; final cascade</span></span><span class="ln" data-pc="finalcond"><span class="code">        <b>if</b> pending.size &ge; 3 <b>and</b> pending.third.len &lt; pending.top.len:</span></span><span class="ln" data-pc="finalmerge3"><span class="code">            <b>merge_at</b>(pending.third, pending.second)</span><span class="cmt">&#9657; keeps the final cascade balanced</span></span><span class="ln" data-pc="finalelse"><span class="code">        <b>else</b>:</span></span><span class="ln" data-pc="finalmerge2"><span class="code">            <b>merge_at</b>(pending.second, pending.top)</span></span><span class="ln" data-pc="done"><span class="code"></span><span class="cmt">&#9657; done: A[0, n) is sorted; the scratch buffer is free again</span></span></table></pre>
   </div>
 
   <footer>
-    Companion animation for CPython's <code>listsort.c</code> merge strategy (via the RPython/PyPy port);
+    Companion animation for CPython's <code>listsort.c</code> merge strategy (see also the RPython/PyPy port);
     the run-detection and node-power merge <em>policy</em> itself is unchanged from Powersort — see the
-    interactive explanation at <a href="https://www.wild-inter.net/powersort/">wild-inter.net/powersort</a>.
+    interactive explanation at <a href="index.html#hero">power-sort.github.io</a>.
     Here the focus is on the <em>scratch buffer</em>: only the shorter of two merging runs is ever copied
     out of <code>A</code>, and only for the duration of that one merge. Galloping (the exponential search
     CPython uses to skip ahead when one run is winning heavily) changes how fast elements are located, not
