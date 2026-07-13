@@ -246,7 +246,8 @@
   <div id="status"><span class="k">press play to run listsort Powersort.</span></div>
 
   <div class="legend">
-    <span><span class="chip" id="pal0"></span><span class="chip" id="pal1"></span><span class="chip" id="pal2"></span><span class="chip" id="pal3"></span>each run &mdash; detected <em>or</em> merged &mdash; gets its own colour</span>
+    <span><span class="chip" style="background:var(--run-a)"></span><span class="chip" style="background:var(--run-b)"></span>detected runs</span>
+    <span><span class="chip" id="stripechip"></span>merged run (output of a merge)</span>
     <span><span class="chip" style="background:var(--buffer)"></span>buffer empty (between merges)</span>
     <span><span class="chip" style="background:repeating-linear-gradient(45deg,#04217a,#04217a 4px,rgba(234,242,255,0.12) 4px,rgba(234,242,255,0.12) 6px)"></span>not yet scanned <em>or</em> a gap left behind after its run moved to the buffer</span>
     <span><span style="font-family:var(--mono);color:var(--lime);font-size:1.05em">2&thinsp;3&thinsp;1</span>&nbsp;&mdash; run-boundary powers (shown once computed, removed once merged away)</span>
@@ -258,7 +259,7 @@
   </div>
 
   <footer>
-    Companion animation for CPython's <code>listsort.c</code> merge strategy (see also the RPython/PyPy port);
+    Companion animation for the CPython Powersort implementation's merge strategy (<code>listsort.c</code>);
     the run-detection and node-power merge <em>policy</em> itself is unchanged from Powersort — see the
     interactive explanation at <a href="index.html#hero">power-sort.github.io</a>.
     Here the focus is on the <em>scratch buffer</em>: only the shorter of two merging runs is ever copied
@@ -291,26 +292,6 @@ function nodePower(n, b1, e1, b2, e2) {
   return k;
 }
 
-const RUN_PALETTE = [
-  // Same perceptually-spaced palette as virtual-memory Powersort: consecutive
-  // entries jump far across hue AND alternate lightness, since a run's colour
-  // index increments for every detected *and* merged run (so neighbours are
-  // routinely on screen together). Brand colours are kept as anchors.
-  "#0DEDF7", // cyan (brand)
-  "#E44BFF", // orchid
-  "#00D600", // green (brand)
-  "#FF4DA6", // rose
-  "#B5FF00", // lime (brand)
-  "#A66BFF", // violet
-  "#FFF033", // yellow (brand)
-  "#3D8CFF", // azure
-  "#FF5A5A", // coral
-  "#8CFFA9", // mint
-  "#FF9BD0", // pink
-  "#E8C24A", // gold
-  "#73C0FF", // sky
-  "#FFAB73"  // peach
-];
 
 /* Simulate; returns { n, bufCap, snapshots, events } where
  *   snapshots[i] = { scan, runs: [{id,l,r,ci}], buf: null|{ci,len}, powers: [{pos,p}] }
@@ -323,7 +304,7 @@ function simulate(runLens) {
   for (const L of runLens) bounds.push(bounds[bounds.length - 1] + L);
   const runsIn = runLens.map((_, i) => ({ l: bounds[i], r: bounds[i + 1] }));
 
-  let nextId = 1, colorIdx = 0;
+  let nextId = 1, detectCount = 0;
   const state = { scan: 0, runs: [], buf: null, powers: [] }; // mutable working copy
   const U = state.runs; // alias: the unified pending/rendering stack
   const snapshots = [];
@@ -347,9 +328,9 @@ function simulate(runLens) {
 
   const detect = (interval, label, pc) => {
     const id = "r" + (nextId++);
-    const ci = colorIdx++;
+    const ci = detectCount++;   // alternates colour A / colour B, as in pingpong
     emit(`scan: detected run ${label} = A[${interval.l},${interval.r})`,
-      () => { state.scan = interval.r; state.runs.push({ id, l: interval.l, r: interval.r, ci }); },
+      () => { state.scan = interval.r; state.runs.push({ id, l: interval.l, r: interval.r, ci, striped: false }); },
       { pc });
     return state.runs[state.runs.length - 1];
   };
@@ -363,7 +344,6 @@ function simulate(runLens) {
     const shorterIsLeft = Llen <= Rlen;
     const shorter = shorterIsLeft ? L : R;
     const other = shorterIsLeft ? R : L;
-    const mergedCi = colorIdx++;
     const mergedId = "m" + (nextId++);
     const prefix = notePrefix ? notePrefix + " " : "";
 
@@ -371,17 +351,20 @@ function simulate(runLens) {
       ? `${prefix}merge: A[${L.l},${L.r}) is the shorter run (len ${Llen} \u2264 ${Rlen}) \u2192 copied to the scratch buffer; will merge left-to-right, filling the gap it leaves`
       : `${prefix}merge: A[${R.l},${R.r}) is the shorter run (len ${Rlen} < ${Llen}) \u2192 copied to the scratch buffer; will merge right-to-left, filling the gap it leaves`;
     emit(copyDesc, () => {
-      state.buf = { ci: shorter.ci, len: shorter.r - shorter.l };
+      state.buf = { ci: shorter.ci, striped: !!shorter.striped, len: shorter.r - shorter.l };
       const idx = U.indexOf(shorter);
       U[idx] = { id: shorter.id, l: shorter.l, r: shorter.r, gap: true };
     }, { pc });
 
-    const commitDesc = `merge: buffer \u22C8 A[${other.l},${other.r}) \u2192 A[${L.l},${R.r}); scratch buffer is free again`;
+    const commitDesc = shorterIsLeft
+      ? `merge: buffer \u22C8 A[${other.l},${other.r}) \u2192 A[${L.l},${R.r}), filling left-to-right; scratch buffer is free again`
+      : `merge: A[${other.l},${other.r}) \u22C8 buffer \u2192 A[${L.l},${R.r}), filling right-to-left; scratch buffer is free again`;
     const commitIdx = emit(commitDesc, () => {
       state.buf = null;
-      U.splice(i, 2, { id: mergedId, l: L.l, r: R.r, ci: mergedCi, power: null });
+      U.splice(i, 2, { id: mergedId, l: L.l, r: R.r, striped: true, power: null });
       state.powers = state.powers.filter(q => !(q.pos > L.l && q.pos < R.r));
-    }, { pc, merge: { to: { l: L.l, r: R.r, ci: mergedCi } } });
+    }, { pc, merge: { to: { l: L.l, r: R.r, striped: true }, dir: shorterIsLeft ? "ltr" : "rtl",
+                      otherId: other.id, shorterLen: shorter.r - shorter.l, otherLen: other.r - other.l } });
 
     return commitIdx;
   };
@@ -437,11 +420,18 @@ let playing = false;
 let animation = null;    // active tween or null
 let runNodes = new Map();  // id  -> {poly}
 let powerNodes = new Map();// pos -> <g> (tick + number below the A track)
+let activeWipePolys = []; // transient reveal polygon from an in-flight merge-commit wipe
+let activeWipeDefs = [];  // transient <clipPath> defs for that wipe
+let activeWipeClipped = []; // existing run polys temporarily carrying a clip-path
+let wipeSeq = 0;          // unique-id counter for clip paths
 let svg, defs, bufPoly;
 
 const xOf = pos => X0 + (pos / model.n) * (X1 - X0);
 const easing = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
-const fillOf = ci => RUN_PALETTE[((ci % RUN_PALETTE.length) + RUN_PALETTE.length) % RUN_PALETTE.length];
+/* Colours, exactly as in pingpong Powersort: detected runs alternate between
+   the two run colours; any merged run is drawn with the two-colour stripe. */
+const runFill = i => (i % 2 === 0) ? "var(--run-a)" : "var(--run-b)";
+const fillOf = o => (o && o.striped) ? "url(#stripes)" : runFill((o && o.ci) || 0);
 
 function buildStage() {
   stage.innerHTML = "";
@@ -450,6 +440,10 @@ function buildStage() {
 
   defs = document.createElementNS(SVGNS, "defs");
   defs.innerHTML = `
+    <pattern id="stripes" width="14" height="14" patternUnits="userSpaceOnUse">
+      <rect width="7" height="14" fill="var(--run-a)"/>
+      <rect x="7" width="7" height="14" fill="var(--run-b)"/>
+    </pattern>
     <pattern id="unscanned" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="9" height="9" fill="#04217a"/>
       <rect width="3" height="9" fill="rgba(234,242,255,0.12)"/>
@@ -546,6 +540,7 @@ function makePowerNode(pw) {
 /* place the display at snapshot k instantly */
 function showSnapshot(k) {
   cancelTween();
+  bufPoly.removeAttribute("clip-path");
   const s = model.snapshots[k];
   const keep = new Set(s.runs.map(r => r.id));
   for (const [id, node] of runNodes) if (!keep.has(id)) { node.poly.remove(); runNodes.delete(id); }
@@ -553,12 +548,12 @@ function showSnapshot(k) {
     let node = runNodes.get(r.id);
     if (!node) { node = { poly: makeRunNode() }; runNodes.set(r.id, node); }
     node.poly.setAttribute("points", polyPoints({ l: r.l, r: r.r, track: "A" }));
-    node.poly.setAttribute("fill", fillOf(r.ci));
+    node.poly.setAttribute("fill", fillOf(r));
     node.poly.setAttribute("opacity", 1);
   }
   if (s.buf) {
     bufPoly.setAttribute("points", polyPoints({ l: 0, r: s.buf.len, track: "S" }));
-    bufPoly.setAttribute("fill", fillOf(s.buf.ci));
+    bufPoly.setAttribute("fill", fillOf(s.buf));
     bufPoly.setAttribute("opacity", 1);
   } else {
     bufPoly.setAttribute("opacity", 0);
@@ -575,6 +570,18 @@ function showSnapshot(k) {
 
 function cancelTween() {
   if (animation) { cancelAnimationFrame(animation.raf); animation = null; }
+  clearWipeArtifacts();
+}
+
+/* remove every transient artifact of a merge-commit wipe (reveal polygon,
+   clipPath defs, and any clip-path attribute left on a surviving run poly) */
+function clearWipeArtifacts() {
+  if (activeWipePolys.length) { activeWipePolys.forEach(p => p.remove()); activeWipePolys = []; }
+  if (activeWipeDefs.length) { activeWipeDefs.forEach(d => d.remove()); activeWipeDefs = []; }
+  if (activeWipeClipped.length) {
+    activeWipeClipped.forEach(p => p.removeAttribute("clip-path"));
+    activeWipeClipped = [];
+  }
 }
 
 /* animate transition snapshot[k] -> snapshot[k+1]; cb on completion */
@@ -591,24 +598,110 @@ function playStep(k, cb) {
   const m1 = new Map(s1.runs.map(r => [r.id, r]));
   const items = [];
 
+  // A merge-commit step is special: this is where data actually moves, so it
+  // gets its own synchronized wipe instead of the generic cross-fade. A single
+  // sweep coordinate x(t) moves from the emptied end (where the shorter run
+  // used to be) to the far end. Everything already swept past shows the new
+  // merged colour (growing, one clean triangle); everything not yet swept
+  // still shows the "other" run's original colour (shrinking away from that
+  // same edge, at the same rate) — matching which end the real merge writes
+  // into first.
+  const isCommit = !!(ev && ev.merge && ev.merge.dir);
+  const otherId = isCommit ? ev.merge.otherId : null;
+  const otherRun0 = isCommit ? s0.runs.find(r => r.id === otherId) : null;
+  const mergedRun = isCommit ? s1.runs.find(r => !m0.has(r.id)) : null;
+
   for (const r of s0.runs) {
+    if (isCommit && r.id === otherId) continue; // shrinks away via the wipe; handled below
     const to = m1.get(r.id);
     let node = runNodes.get(r.id);
     if (!node) { node = { poly: makeRunNode() }; runNodes.set(r.id, node); }
     if (to) {
-      items.push({ node, from: { l: r.l, r: r.r, ci: r.ci, opacity: 1 },
-                   to: { l: to.l, r: to.r, ci: to.ci, opacity: 1 }, removeAfter: false });
+      items.push({ node, from: { l: r.l, r: r.r, style: r, opacity: 1 },
+                   to: { l: to.l, r: to.r, style: to, opacity: 1 }, removeAfter: false });
     } else {
       const tgt = ev && ev.merge ? ev.merge.to : r;
-      items.push({ node, from: { l: r.l, r: r.r, ci: r.ci, opacity: 1 },
-                   to: { l: tgt.l, r: tgt.r, ci: tgt.ci != null ? tgt.ci : r.ci, opacity: 0.25 }, removeAfter: true });
+      items.push({ node, from: { l: r.l, r: r.r, style: r, opacity: 1 },
+                   to: { l: tgt.l, r: tgt.r, style: tgt, opacity: 0.25 }, removeAfter: true });
     }
   }
   for (const r of s1.runs) if (!m0.has(r.id)) {
+    if (isCommit && r.id === mergedRun.id) continue; // grows in via the wipe instead
     const node = { poly: makeRunNode() };
     runNodes.set(r.id, node);
-    items.push({ node, from: { l: r.l, r: r.r, ci: r.ci, opacity: 0 },
-                 to: { l: r.l, r: r.r, ci: r.ci, opacity: 1 }, removeAfter: false, fadeLate: true });
+    items.push({ node, from: { l: r.l, r: r.r, style: r, opacity: 0 },
+                 to: { l: r.l, r: r.r, style: r, opacity: 1 }, removeAfter: false, fadeLate: true });
+  }
+
+  const bufFrom = s0.buf, bufTo = s1.buf;
+  const bufFrom0 = bufFrom;
+
+  // A merge-commit is where data actually moves, so all three triangles keep
+  // their FULL geometry (shape and hypotenuse slope never change) and are only
+  // revealed/hidden up to a sweeping x-coordinate, via clip rectangles.
+  // Under uniform interleaving, after a fraction t of the merge (merge_lo, i.e.
+  // left run shorter and sitting in the buffer):
+  //     output written  = [wipeL, wipeL + t*span)      grows left-to-right
+  //     right run left  = [other.l + t*otherLen, other.r]   eaten left-to-right
+  //     buffer left     = [t*bufLen, bufLen]                eaten left-to-right
+  // The untouched slot between the output edge and the remaining right run is
+  // then exactly bufLen*(1-t) wide -- precisely the elements still in the
+  // buffer, so the three clips stay perfectly consistent. merge_hi mirrors this.
+  let revealPoly = null, otherClipRect = null, revealClipRect = null, bufClipRect = null;
+  let wipeDir = "ltr", wipeL = 0, wipeR = 0, wipeOtherLen = 0, wipeBufLen = 0;
+  if (isCommit) {
+    wipeDir = ev.merge.dir;
+    wipeL = ev.merge.to.l; wipeR = ev.merge.to.r;
+    wipeOtherLen = ev.merge.otherLen;
+    wipeBufLen = ev.merge.shorterLen;
+
+    const uid = "wipe" + (wipeSeq++);
+    const yA = TRACK.A.y - 4, hA = TRACK.A.h + 8;
+    const yS = TRACK.S.y - 4, hS = TRACK.S.h + 8;
+
+    const mkClip = (suffix, y, h) => {
+      const cp = document.createElementNS(SVGNS, "clipPath");
+      cp.setAttribute("id", uid + suffix);
+      const rect = document.createElementNS(SVGNS, "rect");
+      rect.setAttribute("y", y);
+      rect.setAttribute("height", h);
+      cp.appendChild(rect);
+      defs.appendChild(cp);
+      return { cp, rect };
+    };
+
+    const cReveal = mkClip("-reveal", yA, hA);  revealClipRect = cReveal.rect;
+    const cOther  = mkClip("-other",  yA, hA);  otherClipRect  = cOther.rect;
+    const cBuf    = mkClip("-buf",    yS, hS);  bufClipRect    = cBuf.rect;
+
+    // merged run: drawn at its FINAL full size, revealed only through the clip
+    revealPoly = makeRunNode();
+    revealPoly.setAttribute("points", polyPoints({ l: wipeL, r: wipeR, track: "A" }));
+    revealPoly.setAttribute("fill", fillOf(ev.merge.to));
+    revealPoly.setAttribute("opacity", 1);
+    revealPoly.setAttribute("clip-path", `url(#${uid}-reveal)`);
+
+    // other run: keeps its ORIGINAL full triangle, eaten only through the clip
+    const otherNode = runNodes.get(otherId);
+    if (otherNode) {
+      otherNode.poly.setAttribute("points", polyPoints({ l: otherRun0.l, r: otherRun0.r, track: "A" }));
+      otherNode.poly.setAttribute("fill", fillOf(otherRun0));
+      otherNode.poly.setAttribute("opacity", 1);
+      otherNode.poly.setAttribute("clip-path", `url(#${uid}-other)`);
+    }
+
+    // buffer copy: keeps its full triangle too, and is eaten through its clip
+    // (no more opacity fade -- it is consumed, not faded)
+    if (bufFrom0) {
+      bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufFrom0.len, track: "S" }));
+      bufPoly.setAttribute("fill", fillOf(bufFrom0));
+      bufPoly.setAttribute("opacity", 1);
+      bufPoly.setAttribute("clip-path", `url(#${uid}-buf)`);
+    }
+
+    activeWipePolys = [revealPoly];
+    activeWipeDefs = [cReveal.cp, cOther.cp, cBuf.cp];
+    activeWipeClipped = otherNode ? [otherNode.poly, bufPoly] : [bufPoly];
   }
 
   const p0 = new Set(s0.powers.map(q => q.pos)), p1 = new Set(s1.powers.map(q => q.pos));
@@ -624,7 +717,6 @@ function playStep(k, cb) {
     pItems.push({ g, mode: "in" });
   }
 
-  const bufFrom = s0.buf, bufTo = s1.buf;
   const t0 = performance.now();
 
   function frame(now) {
@@ -638,20 +730,66 @@ function playStep(k, cb) {
       let op = it.from.opacity + (it.to.opacity - it.from.opacity) * e;
       if (it.fadeLate) op = Math.max(0, (t - 0.45) / 0.55);
       it.node.poly.setAttribute("points", polyPoints({ l, r, track: "A" }));
-      it.node.poly.setAttribute("fill", fillOf(it.to.ci != null ? it.to.ci : it.from.ci));
+      it.node.poly.setAttribute("fill", fillOf(it.to.style || it.from.style));
       it.node.poly.setAttribute("opacity", op);
     }
-    if (bufTo && !bufFrom) {
+    if (isCommit) {
+      // Linear progress, not eased — a mechanical wipe reads better here.
+      // Only the clip rectangles move; no triangle ever changes shape.
+      // Output write pointer:
+      const xOut = wipeDir === "ltr"
+        ? xOf(wipeL + (wipeR - wipeL) * t)
+        : xOf(wipeR - (wipeR - wipeL) * t);
+      // Read pointer into the "other" run (it is eaten from the same end):
+      const xOther = wipeDir === "ltr"
+        ? xOf(otherRun0.l + wipeOtherLen * t)
+        : xOf(otherRun0.r - wipeOtherLen * t);
+      const xOL = xOf(otherRun0.l), xOR = xOf(otherRun0.r);
+
+      if (wipeDir === "ltr") {
+        // merged output revealed from the left, up to the write pointer
+        revealClipRect.setAttribute("x", xOf(wipeL));
+        revealClipRect.setAttribute("width", Math.max(0, xOut - xOf(wipeL)));
+        // other run survives only to the RIGHT of its read pointer
+        otherClipRect.setAttribute("x", xOther);
+        otherClipRect.setAttribute("width", Math.max(0, xOR - xOther));
+      } else {
+        // merged output revealed from the right, down to the write pointer
+        revealClipRect.setAttribute("x", xOut);
+        revealClipRect.setAttribute("width", Math.max(0, xOf(wipeR) - xOut));
+        // other run survives only to the LEFT of its read pointer
+        otherClipRect.setAttribute("x", xOL);
+        otherClipRect.setAttribute("width", Math.max(0, xOther - xOL));
+      }
+
+      // buffer copy is consumed (clipped away), not faded, from the same end
+      if (bufClipRect && bufFrom0) {
+        const xB0 = xOf(0), xB1 = xOf(bufFrom0.len);
+        if (wipeDir === "ltr") {
+          const xb = xOf(wipeBufLen * t);          // eaten from its left
+          bufClipRect.setAttribute("x", xb);
+          bufClipRect.setAttribute("width", Math.max(0, xB1 - xb));
+        } else {
+          const xb = xOf(wipeBufLen * (1 - t));    // eaten from its right
+          bufClipRect.setAttribute("x", xB0);
+          bufClipRect.setAttribute("width", Math.max(0, xb - xB0));
+        }
+        bufPoly.setAttribute("opacity", 1);
+      }
+    }
+    if (isCommit) {
+      // handled above: the buffer is clipped away, not faded
+    } else if (bufTo && !bufFrom) {
       bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufTo.len, track: "S" }));
-      bufPoly.setAttribute("fill", fillOf(bufTo.ci));
+      bufPoly.setAttribute("fill", fillOf(bufTo));
       bufPoly.setAttribute("opacity", e);
     } else if (bufFrom && !bufTo) {
       bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufFrom.len, track: "S" }));
-      bufPoly.setAttribute("fill", fillOf(bufFrom.ci));
+      bufPoly.setAttribute("fill", fillOf(bufFrom));
       bufPoly.setAttribute("opacity", 1 - e);
     } else if (bufFrom && bufTo) {
       bufPoly.setAttribute("points", polyPoints({ l: 0, r: bufTo.len, track: "S" }));
-      bufPoly.setAttribute("fill", fillOf(bufTo.ci));
+      bufPoly.setAttribute("fill", fillOf(bufTo));
       bufPoly.setAttribute("opacity", 1);
     } else {
       bufPoly.setAttribute("opacity", 0);
@@ -660,6 +798,11 @@ function playStep(k, cb) {
     else {
       animation = null;
       for (const it of items) if (it.removeAfter) { it.node.poly.remove(); runNodes.delete(itId(it)); }
+      if (isCommit) {
+        const otherNode = runNodes.get(otherId);
+        if (otherNode) { otherNode.poly.remove(); runNodes.delete(otherId); }
+        clearWipeArtifacts();
+      }
       showSnapshot(k + 1);
       setStatus(k);
       if (cb) cb();
@@ -773,10 +916,6 @@ function load(runLens) {
   showSnapshot(0);
   statusEl.innerHTML = '<span class="k">press play to run listsort Powersort.</span>';
   highlightPC(null);
-  for (let i = 0; i < 4; i++) {
-    const c = document.getElementById("pal" + i);
-    if (c) c.style.background = RUN_PALETTE[i];
-  }
 }
 
 document.getElementById("load").addEventListener("click", () => {
@@ -804,6 +943,10 @@ document.getElementById("preset").addEventListener("change", e => {
   document.getElementById("runlens").value = lens.join(", ");
   load(lens);
 });
+
+// legend stripe chip
+document.getElementById("stripechip").style.background =
+  "repeating-linear-gradient(90deg, var(--run-a), var(--run-a) 5px, var(--run-b) 5px, var(--run-b) 10px)";
 
 load([4, 4, 6, 10]);
 </script>
