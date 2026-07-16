@@ -34,11 +34,12 @@
     <img class="brand-logo-tight" src="assets/powersort-logo-tight.svg" alt="Powersort logo" />
   </a>
   <nav class="site-nav" aria-label="Page sections">
-    <a href="#overview">overview</a>
+    <a href="#overview">about</a>
     <a href="#algorithm">algorithm</a>
-    <a href="#playground">try it</a>
+    <a href="#playground">try it!</a>
     <a href="#python">python 3.11</a>
     <a href="#code">code</a>
+    <a href="#variants">variants</a>
     <a href="#publications">publications</a>
   </nav>
 </header>
@@ -99,8 +100,8 @@
         Powersort is a <em>natural run-based</em> mergesort algorithm with provably near-optimal merge
         cost. It was designed by
         <strong>J.&nbsp;Ian&nbsp;Munro</strong> and <strong>Sebastian&nbsp;Wild</strong>
-        and published at <a href="https://www.wild-inter.net/publications/munro-wild-2018">ESA&nbsp;2018</a>. In&nbsp;Python&nbsp;3.11, it <a href="#python">replaced</a> Timsort's merge policy
-        in CPython, and it is also used beyond CPython (including PyPy and NumPy).
+        and presented at <a href="https://www.wild-inter.net/publications/munro-wild-2018">ESA&nbsp;2018</a>. In&nbsp;Python&nbsp;3.11, it <a href="#python">replaced</a> Timsort's merge policy
+        in CPython, and it is also widely used beyond CPython (including Apple's WebKit, PyPy and NumPy).
       </p>
 
       <div class="card-grid">
@@ -600,10 +601,11 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
     <span class="code-keyword">while</span> len(runs) >= <span class="code-number">2</span>:
         merge_topmost_2(a, runs)</code></pre>
     </div>
+  </section>
 
-    <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
-        Algorithm Variants
-    </h3>
+
+  <section id="variants">
+    <h2 class="section-heading">Algorithm Variants</h2>
     <p class="section-intro">
         The details of Powersort's inner workings make further novel implementation
         variants possible.
@@ -641,6 +643,29 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
             </a>
           </div>
         </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Multiway Merging
+          </div>
+          <div class="pub-authors">How to combine run-adaptive merging 
+            with multiway merging? With Timsort or similar ad-hoc policies,
+            this is rather unclear. 
+            Powersort's run-boundary powers easily generalize to multiway merging
+            by using powers of <em>k</em> instead of <em>2</em>,
+            and the resulting merge tree is still near-optimal.
+          </div>
+          <div class="pub-venue">
+            The interactive animations below let you explore the difference
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/publications/cawley-gelling-nebel-smith-wild-2023"
+               target="_blank" rel="noopener">
+              Multiway Powersort Paper ↗
+            </a>
+          </div>
+        </div>
     
   </section>
   
@@ -653,7 +678,7 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
         The following is a curated list of papers, articles, and resources related to Powersort, and
         its implementations in various frameworks.
       </p>
-
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">Generic Info and Background on Powersort</h3>
       <div class="pub-list">
 
         <div class="pub-entry">
@@ -663,13 +688,19 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
           </div>
           <div class="pub-authors">J.&nbsp;Ian&nbsp;Munro &amp; Sebastian&nbsp;Wild</div>
           <div class="pub-venue">
-            26th Annual European Symposium on Algorithms (ESA 2018)
+            European Symposium on Algorithms (ESA) 2018<br/>
+            Original publication first introducing Powersort.
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
                href="https://www.wild-inter.net/publications/munro-wild-2018"
                target="_blank" rel="noopener">
-              Paper ↗
+              Original Paper ↗
+            </a>
+            <a class="btn btn-outline"
+               href="https://speakerdeck.com/sebawild/nearly-optimal-mergesort"
+               target="_blank" rel="noopener">
+              Slides ↗
             </a>
           </div>
         </div>
@@ -686,7 +717,7 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
             <a class="btn btn-primary"
                href="https://en.wikipedia.org/wiki/Powersort"
                target="_blank" rel="noopener">
-              Wikipedia ↗
+              Wikipedia Article ↗
             </a>
           </div>
         </div>
@@ -697,8 +728,9 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
           </div>
           <div class="pub-authors">Tim&nbsp;Peters</div>
           <div class="pub-venue">
-            CPython source tree — the original detailed description of the Timsort algorithm,
-            including the merge strategy that Powersort later replaced.
+            CPython source tree — the official description of CPython's list.sort algorithm as
+            part of the developer documentation.
+            It describes the full Timsort algorithm, including the Powersort merge strategy.
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
@@ -706,70 +738,21 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
                target="_blank" rel="noopener">
               View on GitHub ↗
             </a>
-          </div>
-        </div>
-
-        <div class="pub-entry">
-          <div class="pub-title">
-            Powersort in Python 3.11 (Blog Post)
-          </div>
-          <div class="pub-authors">Sebastian&nbsp;Wild</div>
-          <div class="pub-venue">
-            wild-inter.net — detailed walk-through of the algorithm, its adoption into CPython,
-            and an analysis of the performance improvements.
-          </div>
-          <div class="pub-links">
-            <a class="btn btn-primary"
-               href="https://www.wild-inter.net/posts/powersort-in-python-3.11"
+            <a class="btn btn-outline"
+               href="cpython-powersort.html"
                target="_blank" rel="noopener">
-              Read Blog Post ↗
+              Merge buffer management animation ↗
             </a>
           </div>
         </div>
-
-        <div class="pub-entry">
-          <div class="pub-title">
-            CPython Issue: Replace Timsort merge strategy with Powersort (bpo-34561)
-          </div>
-          <div class="pub-authors">Sebastian&nbsp;Wild &amp; CPython contributors</div>
-          <div class="pub-venue">
-            bugs.python.org — the original CPython issue tracking the integration of Powersort.
-          </div>
-          <div class="pub-links">
-            <a class="btn btn-primary"
-               href="https://bugs.python.org/issue34561"
-               target="_blank" rel="noopener">
-              Python Issue Tracker ↗
-            </a>
-          </div>
-        </div>
-
-        <div class="pub-entry">
-          <div class="pub-title">
-            Multiway Powersort
-          </div>
-          <div class="pub-authors">
-            William&nbsp;Cawley&nbsp;Gelling, Markus&nbsp;E.&nbsp;Nebel, Benjamin&nbsp;Smith &amp; Sebastian&nbsp;Wild
-          </div>
-          <div class="pub-venue">
-            Formal description and analysis of a multiway generalisation of Powersort.
-          </div>
-          <div class="pub-links">
-            <a class="btn btn-primary"
-               href="https://www.wild-inter.net/publications/cawley-gelling-nebel-smith-wild-2023"
-               target="_blank" rel="noopener">
-              Paper ↗
-            </a>
-          </div>
-        </div>
-
+        
         <div class="pub-entry">
           <div class="pub-title">
             PyCon US 2023 Talk: Powersort
           </div>
           <div class="pub-authors">Sebastian&nbsp;Wild</div>
           <div class="pub-venue">
-            PyCon US 2023 — talk introducing Powersort and its adoption into CPython.
+            PyCon US 2023 — talk telling the story behind Powersort and its adoption into CPython.
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
@@ -785,23 +768,97 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
           </div>
         </div>
 
+        
+
         <div class="pub-entry">
           <div class="pub-title">
-            The Powersort Game
+            CPython Issue: Replace Timsort merge strategy with Powersort (bpo-34561)
           </div>
-          <div class="pub-authors">Tony&nbsp;McCabe</div>
+          <div class="pub-authors">CPython contributors</div>
           <div class="pub-venue">
-            Interactive game to test how well you can find good merge policies.
+            bugs.python.org — the original CPython issue tracking the integration of Powersort.
+            The discussion also contains benchmark results and performance comparisons between Timsort and Powersort.
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
-               href="https://www.wild-inter.net/posts/powersort-game"
+               href="https://bugs.python.org/issue34561"
                target="_blank" rel="noopener">
-              Play the Game ↗
+              Python Issue Tracker ↗
+            </a>
+          </div>
+        </div>
+        <div class="pub-entry">
+          <div class="pub-title">
+            Powersort in Python 3.11 (Blog Post)
+          </div>
+          <div class="pub-authors">Sebastian&nbsp;Wild</div>
+          <div class="pub-venue">
+            wild-inter.net — blog post about Powersort's integration into CPython 3.11;
+            further links
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/posts/powersort-in-python-3.11"
+               target="_blank" rel="noopener">
+              Read Blog Post ↗
             </a>
           </div>
         </div>
 
+      </div>
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">Algorithmic Variants of Powersort</h3>
+      <div class="pub-list">
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Multiway Powersort
+          </div>
+          <div class="pub-authors">
+            William&nbsp;Cawley&nbsp;Gelling, Markus&nbsp;E.&nbsp;Nebel, Benjamin&nbsp;Smith &amp; Sebastian&nbsp;Wild
+          </div>
+          <div class="pub-venue">
+            Workshop on Algorithm Engineering and Experiments (ALENEX) 2023 <br/>
+            Multiway-merging variant of Powersort, effective in reducing memory traffic.
+            Use for heavy objects.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/publications/cawley-gelling-nebel-smith-wild-2023"
+               target="_blank" rel="noopener">
+              Original Paper ↗
+            </a>
+          </div>
+        </div>
+
+        <div class="pub-entry">
+          <div class="pub-title">
+            Virtual-Memory Powersort
+          </div>
+          <div class="pub-authors">
+            Finn&nbsp;Moltmann &amp; Tamio-Vesa Nakajima &amp; Sebastian&nbsp;Wild
+          </div>
+          <div class="pub-venue">
+            European Symposium on Algorithms (ESA) 2026 <br/>
+            Low-memory variant of Powersort that uses a simulated virtual memory to 
+            reduce merge buffer size to roughly O(√n), at very modest overhead.
+            Use if memory is tight.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/publications/moltmann-nakajima-wild-2026"
+               target="_blank" rel="noopener">
+              Original Paper ↗
+            </a>
+             <a class="btn btn-outline"
+               href="virtual-memory-powersort.html"
+               target="_blank" rel="noopener">
+              Merge buffer management animation ↗
+            </a>
+          </div>
+        </div>
+      </div>
+      <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">Enrichment &amp; Fun</h3>
+      <div class="pub-list">
         <div class="pub-entry">
           <div class="pub-title">
             Powersort Competition
@@ -837,6 +894,22 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
           </div>
         </div>
 
+        <div class="pub-entry">
+          <div class="pub-title">
+            The Powersort Game
+          </div>
+          <div class="pub-authors">Tony&nbsp;McCabe</div>
+          <div class="pub-venue">
+            Interactive game to test how well you can find good merge policies.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="https://www.wild-inter.net/posts/powersort-game"
+               target="_blank" rel="noopener">
+              Play the Game ↗
+            </a>
+          </div>
+        </div>
       </div>
 
       <p class="page-note"><em>On this page, I collect basic information and links about Powersort. 
