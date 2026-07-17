@@ -46,6 +46,51 @@
     /* the k selector chip stands out a little */
     .ctl-k select { border-color: var(--lime); color: var(--lime); font-weight: 700; }
 
+    /* ---- boundary-based run stack: powers label the gaps BETWEEN runs ---- */
+    #stackBox { gap: 0; }
+    .mw-run {
+      display: block; text-align: center;
+      font-family: var(--mono); font-size: 1rem; font-weight: 700;
+      border: 1.5px solid var(--lightblue); border-radius: 8px; color: var(--lightblue);
+      background: rgba(13,237,247,0.05); padding: 0.4rem 0.7rem; margin: 0.12rem 0;
+      transition: transform 250ms ease, opacity 250ms ease,
+                  background 250ms ease, border-color 250ms ease, color 250ms ease;
+    }
+    .mw-run.enter { transform: translateY(-10px); opacity: 0; }
+    .mw-run.hot { background: var(--yellow); border-color: var(--yellow); color: var(--darkblue); }
+    /* a boundary is drawn as a dashed rule spanning the panel, with its power centred on it */
+    .mw-bound {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-family: var(--mono); font-size: 0.74rem; color: var(--lightblue);
+      padding: 0 0.15rem; margin: 0.06rem 0;
+      transition: color 200ms ease, opacity 200ms ease;
+    }
+    .mw-bound::before, .mw-bound::after {
+      content: ""; flex: 1 1 auto; border-top: 1.5px dashed rgba(13,237,247,0.55);
+    }
+    .mw-bound .pw {
+      white-space: nowrap; color: var(--lime);
+      background: rgba(181,255,0,0.10); border: 1.5px solid rgba(181,255,0,0.55);
+      border-radius: 999px; padding: 0.12rem 0.65rem; font-weight: 700;
+      transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+    }
+    .mw-bound.enter { opacity: 0; }
+    .mw-bound.hot .pw { background: var(--yellow); border-color: var(--yellow); color: var(--darkblue); }
+    .mw-bound.hot::before, .mw-bound.hot::after { border-top-color: var(--yellow); border-top-style: solid; }
+    /* the pending boundary — power of (top-of-stack, not-yet-pushed run) — shown before it's decided
+       whether a merge happens; it hovers above the current top run until it either triggers merges
+       (staying put while runs below it are fused away) or is promoted into a permanent boundary on push */
+    .mw-bound-pending .pw {
+      background: transparent; border-style: dashed; border-color: var(--lightblue); color: var(--lightblue);
+    }
+    .mw-bound-pending::before, .mw-bound-pending::after { border-top-style: dashed; border-top-color: rgba(13,237,247,0.6); }
+    .mw-bound-pending.hot .pw { background: var(--yellow); border-color: var(--yellow); border-style: solid; color: var(--darkblue); }
+    .mw-bound-pending.hot::before, .mw-bound-pending.hot::after { border-top-color: var(--yellow); border-top-style: solid; }
+    /* the left-edge sentinel below the bottom run */
+    .mw-bound-base { opacity: 0.55; }
+    .mw-bound-base .pw { color: var(--clr-muted); }
+    .mw-bound-base::before, .mw-bound-base::after { border-top-style: dotted; border-top-color: rgba(169,188,232,0.5); }
+
     .ps-foot {
       width: 100%; display: flex; align-items: center; gap: 1rem; max-width: 72rem;
       margin: 2.4rem auto 0; padding: 1.4rem clamp(1rem, 4vw, 2rem);
@@ -158,7 +203,9 @@
       <aside class="panel panel-stack" aria-label="Run stack">
         <div class="panel-title">run stack</div>
         <div id="stackBox" class="stack-box"></div>
-        <div class="stack-hint">weakly increasing &mdash; equal powers stack up; a merge fuses the whole top block</div>
+        <div class="stack-hint">each power labels the <em>boundary</em> below its run (its left edge). A k-way merge
+        closes a contiguous stretch of equal-power boundaries; the lower power just beneath the block is a
+        different boundary and stays &mdash; it becomes the merged run&rsquo;s power.</div>
       </aside>
     </div>
 
@@ -437,6 +484,7 @@ const PLAY = (() => {
   let layers = {};
   let maxLevel = 4;
   let liveBand = null;
+  let pendingChip = null, pendingP = null;
 
   function clearBand() {
     if (!liveBand) return;
@@ -462,6 +510,7 @@ const PLAY = (() => {
 
   function buildScene() {
     svg.innerHTML = ""; stackBox.innerHTML = ""; setLine(null); liveBand = null;
+    pendingChip = null; pendingP = null;
     bars = []; runBoxes = new Map(); treeNodes = new Map(); digitEls = new Map();
 
     n = values.length;
@@ -525,21 +574,45 @@ const PLAY = (() => {
     return leafAnchor(seg);
   }
 
-  /* stack panel */
-  function stackAdd(label, p) {
+  /* stack panel — powers label the BOUNDARY below each run, not the run itself.
+     Container is flex column-reverse: appending (bound, run) puts the run on top,
+     its boundary chip just beneath it (its left boundary). */
+  function makeRunEl(label) {
     const div = document.createElement("div");
-    div.className = "stack-entry enter";
-    div.innerHTML = `<span class="lbl">${displayLabel(label)}</span><span class="pw">p = ${p}</span>`;
+    div.className = "mw-run enter";
+    div.textContent = displayLabel(label);
     div.dataset.label = label;
-    stackBox.appendChild(div);
-    requestAnimationFrame(() => div.classList.remove("enter"));
     return div;
   }
-  function stackTopN(m) {
-    const kids = stackBox.children;
-    const out = [];
-    for (let t = 0; t < m; t++) out.push(kids[kids.length - m + t]);
-    return out;
+  function stackAdd(label, p, isBase) {
+    const bound = document.createElement("div");
+    bound.className = "mw-bound enter" + (isBase ? " mw-bound-base" : "");
+    bound.innerHTML = isBase
+      ? `<span class="pw">start &middot; p ${p}</span>`
+      : `<span class="pw">p = ${p}</span>`;
+    const run = makeRunEl(label);
+    stackBox.appendChild(bound); // below the run (column-reverse ⇒ appended-later sits higher)
+    stackBox.appendChild(run);
+    requestAnimationFrame(() => { run.classList.remove("enter"); bound.classList.remove("enter"); });
+    return { run, bound };
+  }
+  function addPendingChip(p) {
+    const bound = document.createElement("div");
+    bound.className = "mw-bound mw-bound-pending enter";
+    bound.innerHTML = `<span class="pw">p = ${p}</span>`;
+    stackBox.appendChild(bound); // topmost — sits above the current top run
+    requestAnimationFrame(() => bound.classList.remove("enter"));
+    pendingChip = bound; pendingP = p;
+    return bound;
+  }
+  // the top `arity` runs and the equal-power boundaries strictly between them.
+  // the boundary *below* the block (lower power) is returned separately and is kept.
+  function stackTopGroup(arity) {
+    const runsTopDown = [...stackBox.querySelectorAll(".mw-run")].reverse();
+    const runs = runsTopDown.slice(0, arity);
+    const internalBounds = runs.slice(0, arity - 1).map((r) => r.previousElementSibling);
+    const keptBound = runs[arity - 1].previousElementSibling; // block's left boundary — stays
+    return { runs, internalBounds, keptBound };
   }
 
   /* ----- event execution ----- */
@@ -557,7 +630,7 @@ const PLAY = (() => {
       }
       case "power": {
         setLine(8);
-        say(`power_k(${displayLabel(ev.leftLabel)}, ${ev.rightLabel}) = ${ev.p}  (base ${k})`);
+        say(`power_k(${displayLabel(ev.leftLabel)}, ${ev.rightLabel}) = ${ev.p} (base ${k}) — watch it join the stack above the top run`);
         const xa = padX + ev.aFrac * plotW, xb = padX + ev.bFrac * plotW;
         const g = el("g", { opacity: 0 }, layers.band);
         el("rect", { x: xa, y: TREE_TOP, width: xb - xa, height: RULER_Y - TREE_TOP, fill: C.blue, opacity: 0.30 }, g);
@@ -588,13 +661,24 @@ const PLAY = (() => {
         liveBand = { g, ghost, digit };
         tween(D(220), (u) => g.setAttribute("opacity", u), easeOutCubic, tk);
         await tween(D(220), (u) => digit.setAttribute("opacity", u), easeOutCubic, tk);
+        addPendingChip(ev.p);
         await sleep(D(480), tk);
         break;
       }
       case "push": {
         setLine(ev.first ? 5 : 11);
-        say(`push ${ev.label} with power ${ev.p}`);
-        stackAdd(ev.label, ev.p);
+        say(ev.first ? `push ${ev.label} (first run)` : `push ${ev.label} — the pending power becomes its boundary`);
+        if (ev.first || !pendingChip) {
+          stackAdd(ev.label, ev.p, ev.first);
+        } else {
+          // the pending chip survived every merge above it (nothing more to close) —
+          // promote it in place into the permanent boundary for the incoming run.
+          pendingChip.classList.remove("mw-bound-pending", "hot");
+          pendingChip = null; pendingP = null;
+          const run = makeRunEl(ev.label);
+          stackBox.appendChild(run); // new topmost run, directly above the promoted boundary
+          requestAnimationFrame(() => run.classList.remove("enter"));
+        }
         await sleep(D(300), tk);
         break;
       }
@@ -607,14 +691,19 @@ const PLAY = (() => {
       case "merge": {
         setLine(ev.finale ? 13 : 10);
         const names = ev.parts.map((p) => displayLabel(p.label)).join(" ⊕ ");
-        if (!ev.finale) say(`power ${ev.power} > top → ${ev.arity}-way merge: ${names}  (cost +${ev.cost})`);
+        if (!ev.finale) say(`boundary power ${ev.power} > pending ${pendingP} → ${ev.arity}-way merge: ${names}  (cost +${ev.cost})`);
         else say(`${ev.arity}-way merge: ${names}  (cost +${ev.cost})`);
 
-        // 1 · heat the whole top block, then fuse it in the stack
-        const hot = stackTopN(ev.arity);
-        for (const d of hot) if (d) d.classList.add("hot");
+        // 1 · heat the whole top block AND the equal-power boundaries between its runs —
+        //     plus the pending chip they're being compared against, to show the conflict.
+        //     the boundary *below* the block has a lower power and stays untouched.
+        const grp = stackTopGroup(ev.arity);
+        for (const r of grp.runs) r.classList.add("hot");
+        for (const b of grp.internalBounds) if (b) b.classList.add("hot");
+        if (pendingChip) pendingChip.classList.add("hot");
         await sleep(D(340), tk);
         if (tk.cancelled) return;
+        if (pendingChip) pendingChip.classList.remove("hot");
 
         // 2 · grow the k-ary merge tree: one parent node with up to k edges
         const parentX = xAt(ev.seg.start + ev.seg.len / 2);
@@ -657,13 +746,15 @@ const PLAY = (() => {
           if (b) { b.remove(); runBoxes.delete(ev.parts[t].label); }
         }
 
-        // 4 · stack: replace the whole hot block with the fused entry
-        if (hot.every(Boolean)) {
-          for (const d of hot) d.remove();
-          const fusedEntry = stackAdd(ev.seg.label, ev.seg.power);
-          fusedEntry.classList.add("hot");
-          setTimeout(() => fusedEntry.classList.remove("hot"), D(420));
-        }
+        // 4 · stack: close the equal-power boundaries + collapse the block into one run.
+        //     keep the lower-power boundary beneath it — that becomes the fused run's power.
+        for (const b of grp.internalBounds) if (b) b.remove();
+        for (const r of grp.runs) r.remove();
+        const fusedRun = makeRunEl(ev.seg.label);
+        fusedRun.classList.add("hot");
+        grp.keptBound.after(fusedRun); // sits directly above the retained lower boundary
+        requestAnimationFrame(() => fusedRun.classList.remove("enter"));
+        setTimeout(() => { if (!tk.cancelled) fusedRun.classList.remove("hot"); }, D(420));
         await sleep(D(200), tk);
         break;
       }
