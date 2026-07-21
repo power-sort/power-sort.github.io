@@ -459,7 +459,7 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
         Reference implementations of Powersort are available in several languages, alongside
         the production-quality CPython implementation. All links below are to open-source code.
       </p>
-
+      <!-- <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">Reference Implementations</h3> -->
       <div class="impl-list">
 
         <div class="impl-item">
@@ -543,6 +543,82 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
               introduced via
               <a href="https://github.com/numpy/numpy/pull/29208"
                  target="_blank" rel="noopener">NumPy PR&nbsp;#29208</a>.
+            </p>
+          </div>
+        </div>
+        
+        <div class="impl-item">
+          <span class="impl-lang c">C++</span>
+          <div>
+            <h3>
+              <a href="https://github.com/apple-open-source/macos/blob/master/WebKit/Source/JavaScriptCore/runtime/StableSort.h#L111"
+                target="_blank" rel="noopener">
+                WebKit / JavaScriptCore (<code>StableSort.h</code>)
+              </a>
+            </h3>
+            <p>
+              Apple's JavaScriptCore engine (used in Safari/WebKit) implements Powersort in a
+              templated <code>arrayStableSort</code> function, computing run-boundary power via
+              a dedicated <code>power</code> lambda and merging with
+              <code>mergePowersortRuns</code>. Short runs fall back to a bundled insertion sort.
+              The source cites the ESA&nbsp;2018 paper (LIPIcs DOI) directly.
+            </p>
+          </div>
+        </div>
+        
+        <div class="impl-item">
+          <span class="impl-lang c">Hare</span>
+          <div>
+            <h3>
+              <a href="https://github.com/hshq/harelang/blob/master/sort/sort.ha#L89"
+                target="_blank" rel="noopener">
+                Hare standard library (<code>sort/sort.ha</code>)
+              </a>
+            </h3>
+            <p>
+              Hare's standard library implements Powersort in a <code>powersort</code> function
+              with a <code>node_power</code> helper, used for slices of 256 elements or more
+              (shorter slices fall back to binary insertion sort). The source cites the
+              original Munro&ndash;Wild paper directly in a comment.
+            </p>
+          </div>
+        </div>
+
+        <div class="impl-item">
+          <span class="impl-lang c">C</span>
+          <div>
+            <h3>
+              <a href="https://github.com/kuroko-lang/kuroko/blob/master/src/obj_list.c#L654"
+                target="_blank" rel="noopener">
+                Kuroko (<code>src/obj_list.c</code>)
+              </a>
+            </h3>
+            <p>
+              The Kuroko scripting language implements Powersort in its C runtime via a static
+              <code>powersort</code> function, with <code>powersort_power</code> and
+              <code>powersort_merge</code> helpers, backing both the <code>list.sort()</code>
+              method and the built-in <code>sorted()</code> function. The implementation
+              credits the Munro&ndash;Wild paper and Sebastian Wild's reference implementation
+              directly in comments.
+            </p>
+          </div>
+        </div>
+
+        <div class="impl-item">
+          <span class="impl-lang c">C++</span>
+          <div>
+            <h3>
+              <a href="https://github.com/NixOS/nix/blob/master/src/libutil/include/nix/util/sort.hh#L215"
+                target="_blank" rel="noopener">
+                Nix (<code>libutil/sort.hh</code>)
+              </a>
+            </h3>
+            <p>
+              The Nix package manager's utility library implements <strong>Peeksort</strong>, a
+              recursive divide-and-conquer variant, via a <code>peeksort</code> function and merge
+              helper <code>mergeSortedRunsInPlace</code>. The implementation is explicitly
+              adapted (MIT-licensed) from Sebastian Wild's reference implementation and cites the
+              same underlying paper.
             </p>
           </div>
         </div>
