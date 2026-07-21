@@ -451,196 +451,179 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
     </div>
   </section>
 
-  <!-- ---- CODE ---- -->
-  <section id="code">
-    <div class="container">
-      <h2 class="section-heading">Implementations &amp; Code</h2>
-      <p class="section-intro">
-        Reference implementations of Powersort are available in several languages, alongside
-        the production-quality CPython implementation. All links below are to open-source code.
-      </p>
-      <!-- <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">Reference Implementations</h3> -->
-      <div class="impl-list">
+<!-- ---- CODE ---- -->
+<section id="code">
+  <div class="container">
+    <h2 class="section-heading">Implementations &amp; Code</h2>
+    <p class="section-intro">
+      Powersort is used in a growing number of language runtimes, standard libraries, and
+      scientific/systems software. All links below are to open-source code.
+    </p>
 
-        <div class="impl-item">
-          <span class="impl-lang python">Python</span>
-          <div>
-            <h3>
-              <a href="https://github.com/pypy/pypy/blob/main/rpython/rlib/listsort.py"
-                 target="_blank" rel="noopener">
-                PyPy source (<code>listsort.py</code>)
-              </a>
-            </h3>
-            <p>
-              Powersort has also been adapted by Carl Friedrich Bolz-Tereick for
-              <a href="https://www.pypy.org/" target="_blank" rel="noopener">PyPy</a>.
-              See the Python source on GitHub in <code>rpython/rlib/listsort.py</code>.
-            </p>
-          </div>
-        </div>
+    <div class="impl-list">
 
-        <div class="impl-item">
-          <span class="impl-lang c">C</span>
-          <div>
-            <h3>
-              <a href="https://github.com/python/cpython/blob/main/Objects/listobject.c"
-                 target="_blank" rel="noopener">
-                CPython 3.11+ (<code>Objects/listobject.c</code>)
-              </a>
-            </h3>
-            <p>
-              The production C source code powering <code>list.sort()</code> in every
-              Python&nbsp;3.11+ installation. Look for <code>powerloop</code> in the source.
-            </p>
-          </div>
+      <div class="impl-item">
+        <span class="impl-lang python">Python</span>
+        <div>
+          <h3>
+            <a href="https://github.com/pypy/pypy/blob/main/rpython/rlib/listsort.py" target="_blank" rel="noopener">
+              PyPy source (<code>listsort.py</code>)
+            </a>
+          </h3>
+          <p>
+            Powersort has been adapted by Carl Friedrich Bolz-Tereick for
+            <a href="https://www.pypy.org/" target="_blank" rel="noopener">PyPy</a>.
+            His implementation is simultaneously the production code for the PyPy Python 
+            implementation and is a very readable reference implementation of the algorithm.
+            See the Python source on GitHub in <code>rpython/rlib/listsort.py</code>.
+          </p>
         </div>
-
-        <div class="impl-item">
-          <span class="impl-lang java">Java</span>
-          <div>
-            <h3>
-              <a href="https://www.wild-inter.net/publications/munro-wild-2018"
-                 target="_blank" rel="noopener">
-                Java implementation
-              </a>
-            </h3>
-            <p>
-              A Java implementation suitable for benchmarking against Java's standard
-              <code>Arrays.sort</code>, also developed by Sebastian Wild as part of the
-              research artefacts for the ESA 2018 paper.
-            </p>
-          </div>
-        </div>
-
-        <div class="impl-item">
-          <span class="impl-lang c">C++</span>
-          <div>
-            <h3>
-              <a href="https://github.com/sebawild/powersort"
-                 target="_blank" rel="noopener">
-                C++ implementation
-              </a>
-            </h3>
-            <p>
-              Low-level C++ implementation repository with variants useful for experiments and
-              direct comparison against other implementations.
-            </p>
-          </div>
-        </div>
-
-        <div class="impl-item">
-          <span class="impl-lang c">C++</span>
-          <div>
-            <h3>
-              <a href="https://github.com/numpy/numpy/blob/main/numpy/_core/src/npysort/timsort.hpp"
-                 target="_blank" rel="noopener">
-                NumPy (<code>numpy/_core/src/npysort/timsort.hpp</code>)
-              </a>
-            </h3>
-            <p>
-              NumPy adopted Powersort's merge strategy in its sort implementation.
-              See <code>powerloop</code> and <code>found_new_run_</code> in the source,
-              introduced via
-              <a href="https://github.com/numpy/numpy/pull/29208"
-                 target="_blank" rel="noopener">NumPy PR&nbsp;#29208</a>.
-            </p>
-          </div>
-        </div>
-        
-        <div class="impl-item">
-          <span class="impl-lang c">C++</span>
-          <div>
-            <h3>
-              <a href="https://github.com/apple-open-source/macos/blob/master/WebKit/Source/JavaScriptCore/runtime/StableSort.h#L111"
-                target="_blank" rel="noopener">
-                WebKit / JavaScriptCore (<code>StableSort.h</code>)
-              </a>
-            </h3>
-            <p>
-              Apple's JavaScriptCore engine (used in Safari/WebKit) implements Powersort in a
-              templated <code>arrayStableSort</code> function, computing run-boundary power via
-              a dedicated <code>power</code> lambda and merging with
-              <code>mergePowersortRuns</code>. Short runs fall back to a bundled insertion sort.
-              The source cites the ESA&nbsp;2018 paper (LIPIcs DOI) directly.
-            </p>
-          </div>
-        </div>
-        
-        <div class="impl-item">
-          <span class="impl-lang c">Hare</span>
-          <div>
-            <h3>
-              <a href="https://github.com/hshq/harelang/blob/master/sort/sort.ha#L89"
-                target="_blank" rel="noopener">
-                Hare standard library (<code>sort/sort.ha</code>)
-              </a>
-            </h3>
-            <p>
-              Hare's standard library implements Powersort in a <code>powersort</code> function
-              with a <code>node_power</code> helper, used for slices of 256 elements or more
-              (shorter slices fall back to binary insertion sort). The source cites the
-              original Munro&ndash;Wild paper directly in a comment.
-            </p>
-          </div>
-        </div>
-
-        <div class="impl-item">
-          <span class="impl-lang c">C</span>
-          <div>
-            <h3>
-              <a href="https://github.com/kuroko-lang/kuroko/blob/master/src/obj_list.c#L654"
-                target="_blank" rel="noopener">
-                Kuroko (<code>src/obj_list.c</code>)
-              </a>
-            </h3>
-            <p>
-              The Kuroko scripting language implements Powersort in its C runtime via a static
-              <code>powersort</code> function, with <code>powersort_power</code> and
-              <code>powersort_merge</code> helpers, backing both the <code>list.sort()</code>
-              method and the built-in <code>sorted()</code> function. The implementation
-              credits the Munro&ndash;Wild paper and Sebastian Wild's reference implementation
-              directly in comments.
-            </p>
-          </div>
-        </div>
-
-        <div class="impl-item">
-          <span class="impl-lang c">C++</span>
-          <div>
-            <h3>
-              <a href="https://github.com/NixOS/nix/blob/master/src/libutil/include/nix/util/sort.hh#L215"
-                target="_blank" rel="noopener">
-                Nix (<code>libutil/sort.hh</code>)
-              </a>
-            </h3>
-            <p>
-              The Nix package manager's utility library implements <strong>Peeksort</strong>, a
-              recursive divide-and-conquer variant, via a <code>peeksort</code> function and merge
-              helper <code>mergeSortedRunsInPlace</code>. The implementation is explicitly
-              adapted (MIT-licensed) from Sebastian Wild's reference implementation and cites the
-              same underlying paper.
-            </p>
-          </div>
-        </div>
-
       </div>
 
-      <!-- Mini code sample -->
-      <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
-        Minimal Python sketch
-      </h3>
-      <pre><code><span class="code-comment">"""
+      <div class="impl-item">
+        <span class="impl-lang c">C</span>
+        <div>
+          <h3>
+            <a href="https://github.com/python/cpython/blob/main/Objects/listobject.c" target="_blank" rel="noopener">
+              CPython 3.11+ (<code>Objects/listobject.c</code>)
+            </a>
+          </h3>
+          <p>
+            The production C source code powering <code>list.sort()</code> in every default
+            Python&nbsp;3.11+ installation. Look for <code>powerloop</code> in the source.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang c">C++</span>
+        <div>
+          <h3>
+            <a href="https://github.com/apple-open-source/macos/blob/master/WebKit/Source/JavaScriptCore/runtime/StableSort.h#L111"
+              target="_blank" rel="noopener">
+              WebKit / JavaScriptCore (<code>StableSort.h</code>)
+            </a>
+          </h3>
+          <p>
+            Apple's JavaScriptCore engine (used in Safari/WebKit) implements Powersort in a
+            templated <code>arrayStableSort</code> function, computing run-boundary power via
+            a dedicated <code>power</code> lambda and merging with
+            <code>mergePowersortRuns</code>. Short runs fall back to a bundled insertion sort.
+            The source cites the ESA&nbsp;2018 paper (LIPIcs DOI) directly.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang c">C++</span>
+        <div>
+          <h3>
+            <a href="https://github.com/numpy/numpy/blob/main/numpy/_core/src/npysort/timsort.hpp" target="_blank"
+              rel="noopener">
+              NumPy (<code>numpy/_core/src/npysort/timsort.hpp</code>)
+            </a>
+          </h3>
+          <p>
+            NumPy adopted Powersort's merge strategy in its sort implementation.
+            See <code>powerloop</code> and <code>found_new_run_</code> in the source,
+            introduced via
+            <a href="https://github.com/numpy/numpy/pull/29208" target="_blank" rel="noopener">NumPy PR&nbsp;#29208</a>.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang assemblyscript">AS</span>
+        <div>
+          <h3>
+            <a href="https://github.com/AssemblyScript/assemblyscript/blob/main/std/assembly/util/sort.ts"
+              target="_blank" rel="noopener">
+              AssemblyScript standard library (<code>util/sort.ts</code>)
+            </a>
+          </h3>
+          <p>
+            The WebAssembly-targeting language's standard library implements Powersort in a
+            <code>SORT&lt;T&gt;()</code> function, with <code>nodePower()</code> and
+            <code>mergeRuns()</code> helpers, backing <code>Array&lt;T&gt;.sort()</code>. The
+            source comment cites the Munro&ndash;Wild paper directly.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang hare">Hare</span>
+        <div>
+          <h3>
+            <a href="https://github.com/hshq/harelang/blob/master/sort/sort.ha#L89" target="_blank" rel="noopener">
+              Hare standard library (<code>sort/sort.ha</code>)
+            </a>
+          </h3>
+          <p>
+            Hare's standard library implements Powersort in a <code>powersort</code> function
+            with a <code>node_power</code> helper, used for slices of 256 elements or more
+            (shorter slices fall back to binary insertion sort). The source cites the
+            original Munro&ndash;Wild paper directly in a comment.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang c">C</span>
+        <div>
+          <h3>
+            <a href="https://github.com/kuroko-lang/kuroko/blob/master/src/obj_list.c#L654" target="_blank"
+              rel="noopener">
+              Kuroko (<code>src/obj_list.c</code>)
+            </a>
+          </h3>
+          <p>
+            The Kuroko scripting language implements Powersort in its C runtime via a static
+            <code>powersort</code> function, with <code>powersort_power</code> and
+            <code>powersort_merge</code> helpers, backing both the <code>list.sort()</code>
+            method and the built-in <code>sorted()</code> function. The implementation
+            credits the Munro&ndash;Wild paper and Sebastian Wild's reference implementation
+            directly in comments.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang c">C++</span>
+        <div>
+          <h3>
+            <a href="https://github.com/NixOS/nix/blob/master/src/libutil/include/nix/util/sort.hh#L215" target="_blank"
+              rel="noopener">
+              Nix (<code>libutil/sort.hh</code>)
+            </a>
+          </h3>
+          <p>
+            The Nix package manager's utility library implements <strong>Peeksort</strong>, a
+            recursive divide-and-conquer variant, via a <code>peeksort</code> function and merge
+            helper <code>mergeSortedRunsInPlace</code>. The implementation is explicitly
+            adapted (MIT-licensed) from Sebastian Wild's reference implementation and cites the
+            same underlying paper.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mini code sample -->
+    <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
+      Minimal Python sketch
+    </h3>
+    <pre><code><span class="code-comment">"""
 Minimal illustrative Powersort sketch.
 For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel="noopener">https://tiny.cc/timsort</a>.
 """</span>
 <span class="code-keyword">import</span> math
 
 <span class="code-keyword">def</span> <span class="code-func">power</span>(run1, run2, n):
-    <span class="code-comment"># Compute the "power" of the run boundary.</span>
-    <span class="code-comment"># Given are two adjacent runs from a list of total length n.</span>
-    <span class="code-comment"># See listsort.txt for details; code follows CPython.</span>
-    i1 = run1[<span class="code-number">0</span>];  n1 = run1[<span class="code-number">1</span>]
-    i2 = run2[<span class="code-number">0</span>];  n2 = run2[<span class="code-number">1</span>]
+    <span class="code-comment"># Compute the "power" of the boundary between run1 and run2 .</span>
+    <span class="code-comment"># Input: adjacent runs run1, run2 from a list of total length n.</span>
+    <span class="code-comment"># See <a href="https://github.com/python/cpython/blob/main/Objects/listsort.txt">listsort.txt</a> for details; code follows CPython.</span>
+    i1 = run1[<span class="code-number">0</span>]; n1 = run1[<span class="code-number">1</span>]
+    i2 = run2[<span class="code-number">0</span>]; n2 = run2[<span class="code-number">1</span>]
     a = <span class="code-number">2</span> * i1 + n1
     b = a + n1 + n2
     l = <span class="code-number">0</span>
@@ -648,21 +631,18 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
         l += <span class="code-number">1</span>
         <span class="code-keyword">if</span> a >= n:
             <span class="code-keyword">assert</span> b >= a
-            a -= n;  b -= n
+            a -= n; b -= n
         <span class="code-keyword">elif</span> b >= n:
             <span class="code-keyword">break</span>
         <span class="code-keyword">assert</span> a &lt; b &lt; n
-        a &lt;&lt;= <span class="code-number">1</span>;  b &lt;&lt;= <span class="code-number">1</span>
+        a &lt;&lt;= <span class="code-number">1</span>; b &lt;&lt;= <span class="code-number">1</span>
     <span class="code-keyword">return</span> l
-
 
 <span class="code-keyword">def</span> <span class="code-func">powersort</span>(a, extend_run=extend_run):
     <span class="code-comment">"""
     Sort a list using powersort.
-    This is a slick variant for managing the stack
-    (no need to update the power inside the stack).
-    It stores the run-boundary power in the right run,
-    CPython stores it in the left run.
+    Note: Unlike CPython's version, this variant stores the run-boundary power 
+    in the <em>right</em> run. This removes the need for updating powers upon merges.
     """</span>
     n = len(a)
     i = <span class="code-number">0</span>
@@ -679,8 +659,82 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
         i = j
     <span class="code-keyword">while</span> len(runs) >= <span class="code-number">2</span>:
         merge_topmost_2(a, runs)</code></pre>
+
+    <!-- Powersort embedded as a component inside a larger hybrid sort -->
+    <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
+      Powersort-Based Hybrid Sorts
+    </h3>
+    <p class="section-intro">
+      These implementations don't use Powersort as their whole sorting algorithm, but embed its
+      node-power merge policy as one component inside a larger hybrid design.
+    </p>
+
+    <div class="impl-list">
+      <div class="impl-item">
+        <span class="impl-lang rust">Rust</span>
+        <div>
+          <h3>
+            <a href="https://github.com/rust-lang/rust/blob/master/library/core/src/slice/sort/stable/drift.rs"
+              target="_blank" rel="noopener">
+              Rust standard library &mdash; driftsort (<code>stable/drift.rs</code>)
+            </a>
+          </h3>
+          <p>
+            Rust's <code>slice::sort</code> uses <strong><a href="https://github.com/Voultapher/sort-research-rs/blob/main/writeup/driftsort_introduction/text.md" target="_blank" rel="noopener">driftsort</a></strong>, a hybrid design by
+            Orson Peters and Lukas Bergdoll that combines lazy top-down quicksort partitioning
+            with bottom-up merging (adapted from glidesort). Its top-level run-merging loop is
+            explicitly Powersort's node-power heuristic &mdash; the module doc comment states
+            this directly &mdash; layered underneath additional machinery for low-cardinality
+            inputs, panic safety, and binary-size/compile-time tuning.
+          </p>
+        </div>
+      </div>
     </div>
-  </section>
+
+    <!-- Not shipped in production; built for benchmarking, study, or as a starting point for ports -->
+    <h3 style="margin-top:2.5rem; color:var(--clr-primary); margin-bottom:.75rem;">
+      Reference &amp; Research Implementations
+    </h3>
+    <p class="section-intro">
+      Not shipped in a production language or library, but built for benchmarking, study, or as a
+      starting point for further ports.
+    </p>
+
+    <div class="impl-list">
+      <div class="impl-item">
+        <span class="impl-lang java">Java</span>
+        <div>
+          <h3>
+            <a href="https://www.wild-inter.net/publications/munro-wild-2018" target="_blank" rel="noopener">
+              Java implementation
+            </a>
+          </h3>
+          <p>
+            A Java implementation suitable for benchmarking against Java's standard
+            <code>Arrays.sort</code>, also developed by Sebastian Wild as part of the
+            research artefacts for the ESA 2018 paper.
+          </p>
+        </div>
+      </div>
+
+      <div class="impl-item">
+        <span class="impl-lang c">C++</span>
+        <div>
+          <h3>
+            <a href="https://github.com/sebawild2/powersort" target="_blank" rel="noopener">
+              C++ implementation
+            </a>
+          </h3>
+          <p>
+            Low-level C++ implementation repository with variants useful for experiments and
+            direct comparison against other implementations.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
 
 
   <section id="variants">
@@ -706,18 +760,15 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
-               href="cpython-powersort.html"
-               target="_blank" rel="noopener">
+               href="cpython-powersort.html">
               CPython (copy smaller run)
             </a>
             <a class="btn btn-primary"
-               href="pingpong-powersort.html"
-               target="_blank" rel="noopener">
+               href="pingpong-powersort.html">
               Pingpong (few copies)
             </a>
             <a class="btn btn-primary"
-               href="virtual-memory-powersort.html"
-               target="_blank" rel="noopener">
+               href="virtual-memory-powersort.html">
               Virtual-Memory (little space)
             </a>
           </div>
@@ -739,8 +790,7 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
           </div>
           <div class="pub-links">
             <a class="btn btn-primary"
-               href="multiway-powersort.html"
-               target="_blank" rel="noopener">
+               href="multiway-powersort.html">
               Multiway Powersort (animation)
             </a>
             <a class="btn btn-primary"

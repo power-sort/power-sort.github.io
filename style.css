@@ -524,6 +524,16 @@ main pre a:hover { color: #ffffff; }
 .impl-lang.python { background: #306998; }
 .impl-lang.java   { background: #b07219; }
 .impl-lang.c      { background: #4d5a6a; }
+.impl-lang.assemblyscript {
+  background: #4b7bec; /* AssemblyScript brand blue-ish */
+}
+.impl-lang.hare {
+  background: #e63946; /* Hare's logo red */
+}
+.impl-lang.rust {
+  background: #dea584; /* Rust's conventional tan/orange (GitHub Linguist color) */
+  color: #1a1a1a;
+}
 .impl-item h3 { font-size: .98rem; margin: 0 0 .25rem; }
 .impl-item h3 a { color: var(--lightblue); font-family: var(--mono); }
 .impl-item p { font-size: .9rem; color: rgba(234, 242, 255, 0.82); margin: 0; }
