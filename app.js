@@ -977,8 +977,8 @@ const PLAY = (() => {
   speedRange.addEventListener("input", () => { speed = +speedRange.value; });
 
   // initial load: the talk example
-  applyPreset("slides");
-  presetSelect.value = "slides";
+  applyPreset("hero");
+  presetSelect.value = "hero";
 
   return {};
 })();
