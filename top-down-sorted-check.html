@@ -1,0 +1,2893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sorted-Check Lab — Powersort</title>
+<meta name="description" content="Merge cost of plain top-down mergesort with a sorted check: an editable run strip, the subdivision entropy H_S, the charging scheme, and an adversarial search over run-length profiles.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   POWERSORT — brand tokens (Brand Guidelines v1.0)
+   dark blue #001C6B · blue #380FFF · light blue #0DEDF7
+   green #00D600 · lime #B5FF00 · yellow #FFFF00
+   type: IBM Plex Mono (headlines / data) + IBM Plex Sans (body)
+
+   Block up to "SORTED-CHECK LAB" is the site's shared style.css,
+   copied verbatim so this file stands alone.
+   ============================================================ */
+:root {
+  --darkblue: #001C6B;
+  --blue: #380FFF;
+  --lightblue: #0DEDF7;
+  --green: #00D600;
+  --lime: #B5FF00;
+  --yellow: #FFFF00;
+  --ink: #EAF2FF;
+  --panel: rgba(56, 15, 255, 0.16);
+  --panel-line: rgba(13, 237, 247, 0.35);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--darkblue); color: var(--ink);
+  font-family: var(--sans); font-size: 17px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--lightblue); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--yellow); outline-offset: 2px;
+}
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.9rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid rgba(181, 255, 0, 0.25);
+  position: sticky; top: 0; background: rgba(0, 28, 107, 0.92);
+  backdrop-filter: blur(6px); z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 0.9rem; text-decoration: none; }
+.brand-logo-tight { width: 118px; height: auto; display: block; }
+.site-nav { display: flex; gap: clamp(0.6rem, 2vw, 1.6rem); flex-wrap: wrap; align-items: baseline; }
+.site-nav a {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--lime);
+  text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px;
+}
+.site-nav a:hover { border-bottom-color: var(--lime); }
+.act { padding: clamp(1.6rem, 4vw, 2.6rem) clamp(1rem, 4vw, 3rem); }
+.act + .act { border-top: 1px solid rgba(181, 255, 0, 0.25); }
+.act-head { max-width: 900px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--lime);
+}
+h1, h2 {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  line-height: 1.08; margin: 0.5rem 0 1rem; letter-spacing: -0.015em;
+}
+h1 { font-size: clamp(1.8rem, 4.4vw, 2.9rem); }
+h1 em, h2 em { font-style: normal; color: var(--lime); }
+.lede { font-size: clamp(1rem, 1.6vw, 1.1rem); max-width: 68ch; color: var(--ink); }
+.lede strong { color: var(--lime); font-weight: 600; }
+.lede code { font-family: var(--mono); font-size: .92em; color: var(--lightblue); }
+.btn {
+  font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+  color: var(--lightblue); background: transparent;
+  border: 2px solid var(--lightblue); border-radius: 999px;
+  padding: 0.5rem 1.15rem; cursor: pointer; text-decoration: none;
+  display: inline-block; transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+}
+.btn:hover { transform: translateY(-1px); background: rgba(13, 237, 247, 0.12); }
+.btn-lime { color: var(--darkblue); background: var(--lime); border-color: var(--lime); }
+.btn-lime:hover { background: var(--yellow); border-color: var(--yellow); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.ctl { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.ctl > span {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em;
+  color: var(--lime); text-transform: uppercase;
+}
+.ctl select, .ctl input {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--ink);
+  background: rgba(0, 0, 0, 0.25); border: 1.5px solid var(--panel-line);
+  border-radius: 8px; padding: 0.42rem 0.6rem; max-width: 100%;
+}
+.panel {
+  border: 1px solid var(--panel-line); border-radius: 14px;
+  background: var(--panel); padding: 1rem; min-width: 0;
+}
+.panel-title {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--lime); margin-bottom: 0.7rem;
+}
+.site-footer {
+  border-top: 1px solid rgba(181, 255, 0, 0.25);
+  padding: 1.6rem clamp(1rem, 4vw, 3rem) 2.4rem;
+  display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+}
+.site-footer p { font-family: var(--mono); font-size: 0.85rem; margin: 0; color: var(--lightblue); }
+.dim { color: rgba(234,242,255,.5); }
+
+/* ============================================================
+   SORTED-CHECK LAB — page-specific
+   ============================================================ */
+.mode-nav { align-items: center; gap: clamp(.5rem, 1.6vw, 1.2rem); }
+.mode {
+  font-family: var(--mono); font-size: 0.86rem; letter-spacing: .02em;
+  color: rgba(234, 242, 255, 0.55); padding: 0.15rem 0.55rem;
+  border: 1.5px solid transparent; border-radius: 999px; white-space: nowrap;
+  background: none; cursor: pointer;
+}
+.mode.is-active { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.mode .num { opacity: .65; }
+@media (hover: hover) { .mode:not(.is-active):hover { color: var(--lime); } }
+.mode-panel[hidden] { display: none; }
+
+.act-hero { padding-bottom: 0; }
+.act-hero h1 { margin-bottom: .6rem; }
+
+.lab-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; align-items: start; }
+
+.panel-stage { padding: 0.9rem 1rem 1rem; background: rgba(0, 0, 0, 0.16); }
+.stage-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: .7rem;
+}
+.cost-readout { text-align: right; line-height: 1.05; }
+.cost-readout .cost-label {
+  display: block; font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--lime);
+}
+.cost-readout .cost-value {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem); letter-spacing: -.02em;
+}
+.cost-readout .cost-sub { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.62); }
+
+#stage { width: 100%; height: auto; display: block; touch-action: none; }
+#stage:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.stage-hint {
+  font-family: var(--mono); font-size: .72rem; color: rgba(234, 242, 255, 0.55);
+  margin-top: .5rem; line-height: 1.7;
+}
+.stage-hint kbd {
+  font-family: var(--mono); font-size: .95em; color: var(--lightblue);
+  border: 1px solid rgba(13,237,247,.3); border-radius: 4px; padding: 0 .28em;
+}
+.stage-error { font-family: var(--mono); font-size: .8rem; color: var(--yellow); margin-top: .4rem; min-height: 1.2em; }
+
+/* ---- SVG pieces shared by both drawing styles ---- */
+.node-rect { stroke: transparent; stroke-width: 2; }
+.node-rect.is-hot { stroke: #fff; }
+.n-merge { fill: var(--lime); }
+.n-skip  { fill: none; stroke: rgba(13,237,247,.35); stroke-width: 1; }
+.n-live  { fill: var(--yellow); stroke: var(--yellow); stroke-width: 1.6; }
+.n-hidden { fill: none; stroke: rgba(13,237,247,.35); stroke-width: .8; opacity: .3; }
+.n-run   { fill: var(--lightblue); }
+.n-run.alt { fill: #FF5FD1; }
+.n-run.is-selected { fill: var(--yellow); }
+.n-label { font-family: var(--mono); font-weight: 600; fill: var(--darkblue); pointer-events: none; }
+.edge { stroke: rgba(234, 242, 255, .5); stroke-width: 1.2; fill: none; }
+.guide { stroke: var(--yellow); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0; }
+.axis { stroke: rgba(13, 237, 247, .3); stroke-width: 1; }
+.axis-text { font-family: var(--mono); font-size: 11px; fill: rgba(234,242,255,.5); }
+.handle { fill: transparent; cursor: col-resize; }
+.grip { stroke: var(--darkblue); stroke-width: 2; opacity: 0; }
+.bnd:hover .grip { opacity: 1; }
+.leaf-hit { cursor: grab; }
+.edge, .guide, .grip, .axis, .axis-text, .n-label, .node-rect, .lvl-d, .lvl-b, .sg { pointer-events: none; }
+
+#tip {
+  position: fixed; z-index: 60; pointer-events: none; opacity: 0;
+  font-family: var(--mono); font-size: .75rem; line-height: 1.5;
+  background: #001050; color: var(--ink);
+  border: 1px solid var(--panel-line); border-radius: 8px;
+  padding: .35rem .55rem; white-space: pre;
+  transition: opacity 90ms ease;
+}
+#tip.wide { white-space: normal; width: 360px; padding: .5rem .6rem; font-size: .72rem; line-height: 1.45; }
+#tip .tp-h { color: var(--lime); font-weight: 600; margin-bottom: .2rem; }
+#tip .tp-d { color: rgba(234,242,255,.55); font-weight: 400; display: block; }
+#tip .tp-r { margin: .25rem 0; }
+#tip .tp-r b { color: var(--lightblue); }
+#tip .tp-box {
+  border: 1px solid rgba(255,255,0,.4); border-radius: 6px;
+  background: rgba(255,255,0,.07); padding: .3rem .4rem; margin: .3rem 0;
+}
+#tip .tp-g { color: #00D600; } #tip .tp-rd { color: #FF5C5C; }
+#tip .tp-bad { color: var(--yellow); font-weight: 600; }
+#tip .tp-t { width: 100%; border-collapse: collapse; margin: .3rem 0; font-size: .68rem; }
+#tip .tp-t th { color: var(--lime); font-weight: 600; text-align: right; padding: 0 .25rem .1rem;
+  border-bottom: 1px solid rgba(181,255,0,.25); font-size: .62rem; letter-spacing: .04em; }
+#tip .tp-t td { text-align: right; padding: .05rem .25rem; }
+#tip .tp-t tr.g td:first-child { color: #00D600; }
+#tip .tp-t tr.r td:first-child { color: #FF5C5C; }
+#tip .tp-t tr.tp-hi { background: rgba(255,255,0,.14); }
+#tip .tp-t tr.tp-hi td { color: var(--yellow); font-weight: 600; }
+#tip .tp-t tr.tp-dim td { color: rgba(234,242,255,.4); text-align: left; }
+#tip .tp-sum { border-top: 1px solid rgba(13,237,247,.25); padding-top: .25rem; color: rgba(234,242,255,.85); }
+.lvl-d { font-family: var(--mono); font-size: 10px; fill: rgba(181,255,0,.8); }
+.lvl-b { font-family: var(--mono); font-size: 10px; fill: rgba(234,242,255,.42); }
+.sg { transition: opacity 90ms ease; }
+
+.run-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; align-items: center; }
+.tool {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .02em;
+  color: var(--ink); background: rgba(0, 0, 0, .25);
+  border: 1.5px solid var(--panel-line); border-radius: 8px;
+  padding: .3rem .6rem; cursor: pointer;
+}
+.tool:hover { border-color: var(--lime); color: var(--lime); }
+.tool[disabled] { opacity: .4; cursor: not-allowed; }
+.tool.is-on { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.tool .k { color: rgba(234,242,255,.45); margin-left: .35rem; }
+.tool-sep { width: 1px; align-self: stretch; background: rgba(13,237,247,.25); margin: .1rem .4rem; }
+
+.run-io { display: flex; gap: .7rem; flex-wrap: wrap; align-items: flex-end; margin-top: .9rem; }
+.run-io .ctl-grow { flex: 1 1 22rem; }
+.run-io .ctl { min-width: 0; max-width: 100%; }
+.run-io input[type="text"] { width: 100%; }
+.run-io input[type="number"] { width: 6.5rem; }
+.run-io .js-gen { width: 19rem; max-width: 100%; }
+
+.panel-side { display: flex; flex-direction: row; flex-wrap: wrap; gap: 1.1rem; }
+.panel-side > .panel { flex: 1 1 300px; min-width: 0; }
+.panel-side > .panel-wide { flex: 1 1 100%; }
+.input-summary { font-family: var(--mono); font-size: .8rem; color: var(--lightblue); margin: 0 0 .6rem; }
+.input-summary b { color: var(--lime); font-weight: 600; }
+.metrics { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem; }
+.metrics td { padding: .22rem 0; border-bottom: 1px solid rgba(13, 237, 247, .12); }
+.metrics td:last-child { text-align: right; color: var(--lightblue); font-weight: 600; white-space: nowrap; }
+.metrics tr.hi td:last-child { color: var(--lime); }
+.metrics tr.warn td:last-child { color: var(--yellow); }
+.metrics tr.sect td { color: var(--lime); font-size: .68rem; letter-spacing: .1em;
+  text-transform: uppercase; padding-top: .7rem; border-bottom-color: rgba(181,255,0,.25); }
+.metrics td .unit { color: rgba(234,242,255,.45); font-weight: 400; }
+#ruler { width: 100%; height: auto; display: block; margin-top: .2rem; }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-family: var(--mono); font-size: .72rem; color: rgba(234,242,255,.7); }
+.legend span { display: flex; align-items: center; gap: .35rem; }
+.legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.model-note { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.6); margin: .6rem 0 0; line-height: 1.6; }
+.model-note.bad { color: var(--yellow); }
+
+.chain-cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,320px); gap: 1.2rem; align-items: start; }
+@media (max-width: 900px) { .chain-cols { grid-template-columns: 1fr; } }
+.chain-cap { font-family: var(--mono); font-size: .7rem; color: var(--lime); margin: 0 0 .35rem; letter-spacing: .04em; }
+#chainLevels, #chainBars, #chainG { width: 100%; max-width: 360px; height: auto; display: block; }
+.ch-lbl { font-family: var(--mono); font-size: 9.5px; fill: rgba(234,242,255,.55); }
+.ch-d { font-family: var(--mono); font-size: 9.5px; fill: rgba(181,255,0,.85); }
+.ch-val { font-family: var(--mono); font-size: 9.5px; fill: var(--lightblue); }
+.ch-hi { font-family: var(--mono); font-size: 10px; font-weight: 700; fill: var(--yellow); }
+
+.subdiv-box {
+  font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.75);
+  background: rgba(0,0,0,.25); border: 1px solid rgba(13,237,247,.18);
+  border-radius: 8px; padding: .5rem .6rem; margin-top: .6rem;
+  max-height: 7.5rem; overflow: auto; line-height: 1.7; word-break: break-word;
+}
+.subdiv-box b { color: var(--lime); font-weight: 600; }
+.subdiv-box .sep { color: var(--yellow); }
+
+.gen-bar {
+  display: flex; flex-wrap: wrap; gap: .9rem 1.2rem; align-items: flex-end;
+  padding: .9rem 1rem; border: 1px solid var(--panel-line); border-radius: 12px;
+  background: var(--panel); margin-bottom: 1rem;
+}
+.gen-bar .ctl select { min-width: min(15rem, 100%); }
+.gen-bar .ctl input[type="number"] { width: 6.2rem; }
+.gen-bar .gen-note { flex: 1 1 100%; font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.55); margin: 0; }
+
+.m3-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 1rem; align-items: start; }
+@media (max-width: 1080px) { .m3-cols { grid-template-columns: 1fr; } }
+.m3-side { display: flex; flex-direction: column; gap: 1rem; }
+
+.search-panel .ctl { margin-bottom: .5rem; }
+.search-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.search-row .ctl { min-width: 0; max-width: 100%; }
+.search-panel select, .search-panel input, .search-row select, .search-row input { max-width: 100%; }
+#sMetric { width: 100%; }
+.search-status {
+  font-family: var(--mono); font-size: .78rem; line-height: 1.5;
+  color: rgba(234, 242, 255, .8); margin: .7rem 0 0; min-height: 2.4em;
+}
+.search-status b { color: var(--lime); }
+.search-status .hit { color: var(--yellow); }
+.mini-legend { font-family: var(--mono); font-size: .72rem; color: rgba(234,242,255,.6); margin-top: .4rem; }
+
+.conj-list { display: flex; flex-direction: column; gap: .3rem; }
+.conj {
+  display: grid; grid-template-columns: 20px 1fr auto; gap: .5rem; align-items: baseline;
+  font-family: var(--mono); font-size: .76rem; padding: .3rem .1rem;
+  border-bottom: 1px solid rgba(13, 237, 247, .1);
+}
+.conj .mark { font-weight: 700; }
+.conj .mark.ok { color: var(--green); }
+.conj .mark.bad { color: var(--yellow); }
+.conj .mark.refuted { color: rgba(234,242,255,.35); }
+.conj-name { color: rgba(234, 242, 255, .9); }
+.conj-name .tag {
+  font-size: .62rem; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 999px; padding: 0 .4rem; margin-left: .35rem; vertical-align: middle;
+}
+.conj-name .tag.open { background: rgba(13,237,247,.18); color: var(--lightblue); }
+.conj-name .tag.thm { background: rgba(0,214,0,.18); color: var(--green); }
+.conj-name .tag.refuted { background: rgba(255,255,0,.18); color: var(--yellow); }
+.conj-detail { grid-column: 2 / -1; font-size: .7rem; color: rgba(234,242,255,.5); }
+.conj-stop { grid-column: 1; }
+.conj-stop input { accent-color: var(--yellow); margin: 0; }
+.conj-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.conj-head .link {
+  font-family: var(--mono); font-size: .72rem; background: none; border: none;
+  color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0;
+}
+
+.hall {
+  display: flex; flex-direction: column; gap: .45rem; padding: .8rem 1rem;
+  border: 1px solid var(--panel-line); border-radius: 12px; background: var(--panel); margin-top: 1rem;
+}
+.hall-title { font-family: var(--mono); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--lime); }
+.hall-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.hall-chip {
+  font-family: var(--mono); font-size: .72rem; color: var(--ink);
+  background: rgba(0,0,0,.25); border: 1.5px solid rgba(13,237,247,.25);
+  border-radius: 8px; padding: .22rem .6rem; cursor: pointer;
+}
+.hall-chip:hover { border-color: var(--lime); color: var(--lime); }
+.hall-chip b { color: var(--yellow); }
+.hall-empty { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.45); }
+
+.sweep { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .78rem; }
+.sweep th, .sweep td { padding: .25rem .5rem; border-bottom: 1px solid rgba(13,237,247,.12); text-align: right; }
+.sweep th { color: var(--lime); font-weight: 600; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
+.sweep td:first-child, .sweep th:first-child { text-align: left; }
+.sweep tbody tr { cursor: pointer; }
+.sweep tbody tr:hover { background: rgba(13,237,247,.07); }
+.sweep td.prof { text-align: left; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(234,242,255,.6); }
+.scroll { max-height: 260px; overflow: auto; }
+
+.selftest { font-family: var(--mono); font-size: .8rem; }
+.selftest .ok { color: var(--lime); }
+.selftest .fail { color: var(--yellow); }
+
+/* presentation mode: stage only */
+body.present .site-header, body.present .act-hero, body.present .site-footer,
+body.present .panel-side, body.present .run-tools, body.present .run-io,
+body.present .stage-hint, body.present .stage-error { display: none; }
+body.present .act { padding: 0; border: none; }
+body.present .lab-grid { grid-template-columns: 1fr; gap: 0; }
+body.present .panel-stage { border: none; border-radius: 0; background: var(--darkblue); height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+#exitPresent { display: none; position: fixed; right: 12px; bottom: 12px; z-index: 60; opacity: .3; }
+#exitPresent:hover { opacity: 1; }
+body.present #exitPresent { display: inline-block; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html" aria-label="Powersort home"><svg class="brand-logo-tight" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Powersort"> <g transform="translate(-603.26978,-337.98157)"> <path fill="#b5ff00" d="m 664.42969,659.43359 12.99609,-11.63281 c 8.72656,9.50391 19.39453,14.73438 34.32422,14.73438 13.57812,0 22.88672,-4.45704 22.88672,-14.34375 0,-8.53516 -6.79297,-10.85938 -15.32422,-12.02735 l -15.90234,-2.51953 c -15.70704,-2.32812 -33.35157,-7.94922 -33.35157,-28.50781 0,-20.36328 17.0625,-31.22266 42.66016,-31.22266 18.61719,0 32,5.82031 41.11328,15.70703 L 742,602.03125 c -5.23438,-6.00781 -14.34375,-12.01953 -30.05469,-12.01953 -13.76953,0 -21.14062,4.65625 -21.14062,13.3789 0,8.53516 6.98047,10.85938 15.32031,12.02344 l 15.90234,2.52344 c 15.90235,2.32812 33.35547,7.75781 33.35547,28.30859 0,20.16797 -16.67578,32.38672 -44.01953,32.38672 -21.52734,0 -37.42969,-7.5625 -46.93359,-19.19922" /> <path fill="#b5ff00" d="m 774.24609,626.27344 c 0,-32 18.03516,-52.35938 47.51172,-52.35938 29.47656,0 47.50781,20.35938 47.50781,52.35938 0,32 -18.03125,52.35937 -47.50781,52.35937 -29.47656,0 -47.51172,-20.35937 -47.51172,-52.35937 m 72.91407,7.5625 v -15.1211 c 0,-18.61718 -10.08204,-28.12109 -25.40235,-28.12109 -15.32422,0 -25.40625,9.50391 -25.40625,28.12109 v 15.1211 c 0,18.61718 10.08203,28.12109 25.40625,28.12109 15.32031,0 25.40235,-9.50391 25.40235,-28.12109" /> <path fill="#b5ff00" d="m 881.77344,659.24219 h 22.50781 v -65.9336 h -22.50781 v -17.0664 h 43.64453 v 26.5664 h 1.16406 c 3.87891,-13.96484 12.60547,-26.5664 32.96484,-26.5664 h 7.96485 v 20.16797 h -15.71875 c -17.25781,0 -26.375,11.4414 -26.375,25.40625 v 37.42578 h 32.20312 v 17.0664 h -75.84765 z m 0,0" /> <path fill="#b5ff00" d="m 1040.1172,676.30859 c -17.457,0 -25.5977,-10.47265 -25.5977,-25.40625 v -57.59375 h -26.77341 v -17.0664 h 17.85161 c 7.371,0 10.2773,-2.51953 10.2773,-10.27735 v -21.0664 h 19.7813 v 31.34375 h 38.6015 v 17.0664 h -38.6015 v 65.9336 h 38.6015 v 17.0664 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,659.24219 h 93.6172 v 17.0664 h -93.6172 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,617.74219 h 56.9609 v 17.0664 h -56.9609 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,576.24219 h 20.3047 v 17.0664 h -20.3047 z m 0,0" /> <path fill="#b5ff00" d="m 1255.5703,583.23047 -38.3125,-38.3125 -12.0703,12.0664 -26.2461,26.2461 12.0664,12.0664 17.7149,-17.71093 v 98.57031 h 17.0664 v -98.57031 l 17.7148,17.71093 z m 0,0" /> <path fill="#0dedf7" d="M 669.53125,520.46875 V 403.375 h 55.35547 c 21.80859,0 35.5664,15.26953 35.5664,37.41016 0,22.14843 -13.75781,37.41406 -35.5664,37.41406 h -29.85938 v 42.26953 z m 25.49609,-64.41797 h 26.84375 c 7.55078,0 12.24219,-4.02344 12.24219,-11.57031 v -7.38672 c 0,-7.54688 -4.69141,-11.57031 -12.24219,-11.57031 h -26.84375 z m 0,0" /> <path fill="#0dedf7" d="m 770.01953,461.92578 c 0,-39.75781 20.46484,-60.5625 51.5,-60.5625 31.03516,0 51.5,20.80469 51.5,60.5625 0,39.75781 -20.46484,60.55859 -51.5,60.55859 -31.03516,0 -51.5,-20.80078 -51.5,-60.55859 m 75.99219,8.71875 v -17.44531 c 0,-18.61719 -9.22656,-29.1875 -24.49219,-29.1875 -15.26562,0 -24.49219,10.57031 -24.49219,29.1875 v 17.44531 c 0,18.625 9.22657,29.19141 24.49219,29.19141 15.26563,0 24.49219,-10.56641 24.49219,-29.19141" /> <path fill="#0dedf7" d="M 903.89062,520.46875 877.38281,403.375 h 25.16406 l 11.07422,56.20312 6.20703,32.53907 h 0.5 l 7.38282,-32.53907 12.91797,-56.20312 h 27.84375 l 13.08984,56.20312 7.21094,32.53907 h 0.5039 l 6.20703,-32.53907 11.23833,-56.20312 h 24.1562 l -27.1758,117.09375 h -29.02341 l -14.76172,-63.41016 -5.70313,-25.66406 h -0.5039 l -5.8711,25.66406 -14.76172,63.41016 z m 0,0" /> <path fill="#0dedf7" d="M 1043.6367,520.46875 V 403.375 h 79.6836 v 22.65234 h -54.1875 v 23.98828 h 46.4688 v 22.47657 h -46.4688 v 25.33203 h 54.1875 v 22.64453 z m 0,0" /> <path fill="#0dedf7" d="m 1165.9297,520.46875 h -25.4961 V 403.375 h 55.5234 c 21.6407,0 35.3985,15.10156 35.3985,37.41016 0,15.77343 -7.0469,28.35156 -21.3086,33.71875 l 22.9844,45.96484 h -28.3477 l -20.4688,-42.94141 h -18.2851 z m 26.8398,-64.41797 c 7.5508,0 12.2461,-4.02344 12.2461,-11.57031 v -7.38672 c 0,-7.54688 -4.6953,-11.57031 -12.2461,-11.57031 h -26.8398 v 30.52734 z m 0,0" /> </g> </svg></a>
+  <nav class="site-nav mode-nav" aria-label="Lab modes">
+    <button class="mode is-active" type="button" data-mode="1"><span class="num">1</span> runs</button>
+    <button class="mode" type="button" data-mode="2"><span class="num">2</span> search</button>
+    <a href="index.html">back to site</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ==================== MODE 1 ==================== -->
+<section class="mode-panel" id="mode1">
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow">sorted-check lab · mode 1 of 2 · run editor</span>
+    <h1>One <code style="font-family:var(--mono);font-size:1em">if</code> before the merge.<br><em>Move the runs and watch it pay.</em></h1>
+    <p class="lede">
+      Plain top-down mergesort, plus a single test: after sorting both halves, merge only when
+      <code>A[m-1] &gt; A[m]</code>. A call whose whole range sits inside one run fails that test and
+      pays nothing. This is <strong>not</strong> the run-adaptive framework — there is no run
+      decomposition and no merge tree over runs, just the fixed dyadic recursion with some of its
+      merges switched off. Drag the run strip at the bottom of the tree; everything above it is
+      rebuilt on every change.
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="lab-grid">
+
+    <div class="panel panel-stage">
+      <div class="stage-head">
+        <div>
+          <div class="panel-title" style="margin:0">recursion tree · faded = merge skipped</div>
+          <p class="input-summary" id="inputSummary" style="margin:.35rem 0 0"></p>
+        </div>
+        <div class="cost-readout">
+          <span class="cost-label">merge cost</span>
+          <span class="cost-value" id="costBig">—</span>
+          <span class="cost-sub" id="costSub">&nbsp;</span>
+        </div>
+      </div>
+
+      <svg id="stage" xmlns="http://www.w3.org/2000/svg" tabindex="0" role="img"
+           aria-label="Recursion tree of top-down mergesort with sorted check. The bottom strip is the editable input: each bar is one run."></svg>
+      <p class="stage-error" id="stageError"></p>
+
+      <div class="run-tools">
+        <button class="tool" id="playBtn" type="button">play<span class="k">space</span></button>
+        <button class="tool" id="stepBack" type="button">◀<span class="k">←</span></button>
+        <button class="tool" id="stepFwd" type="button">▶<span class="k">→</span></button>
+        <button class="tool" id="showAll" type="button">show final</button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="optSlides" type="button">presentation drawing</button>
+        <button class="tool" id="optCharge" type="button">charging colors</button>
+        <button class="tool is-on" id="optLabels" type="button">length labels</button>
+        <button class="tool is-on" id="optLevels" type="button">level bounds</button>
+        <button class="tool" id="optRefs" type="button">n(H+2) bar</button>
+        <button class="tool" id="optTitle" type="button">caption</button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="presentBtn" type="button">present<span class="k">f</span></button>
+        <button class="tool" id="svgBtn" type="button">download svg</button>
+        <label class="ctl" style="flex-direction:row;align-items:center;gap:.4rem;margin-left:auto">
+          <span style="text-transform:none;letter-spacing:0">delay</span>
+          <input type="range" id="speed" min="4" max="400" value="60" step="4" style="width:110px;padding:0;border:none;background:none">
+        </label>
+      </div>
+
+      <p class="stage-hint">
+        drag a boundary to resize two runs · drag a run past its neighbour to swap · click to select ·
+        <kbd>←</kbd><kbd>→</kbd> select &nbsp;<kbd>↑</kbd><kbd>↓</kbd> resize (<kbd>shift</kbd> ×10)
+        &nbsp;<kbd>s</kbd> split &nbsp;<kbd>j</kbd> join &nbsp;<kbd>d</kbd> duplicate &nbsp;<kbd>x</kbd> delete
+        &nbsp;<kbd>,</kbd><kbd>.</kbd> swap &nbsp;<kbd>u</kbd> undo &nbsp;<kbd>space</kbd> play &nbsp;<kbd>f</kbd> present
+      </p>
+
+      <div class="run-tools js-tools"></div>
+      <div class="run-io js-runio"></div>
+    </div>
+
+    <aside class="panel-side">
+      <div class="panel">
+        <div class="panel-title">metrics</div>
+        <table class="metrics"><tbody id="metrics"></tbody></table>
+        <svg id="ruler" viewBox="0 0 300 62" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+        <p class="model-note" id="modelNote"></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">legend</div>
+        <div class="legend" id="legendBox"></div>
+
+        <div class="panel-title" style="margin-top:1.3rem">subdivision entropy H<sub>S</sub></div>
+        <p class="mini-legend" style="margin:0 0 .5rem">
+          Top-down mergesort cuts every run along the recursion grid, so it behaves exactly as if the
+          input had been the <b>subdivided</b> profile below: each run is split into the maximal
+          recursion-tree nodes it contains. <b>H<sub>S</sub></b> is the run-length entropy of that
+          profile. Merge cost equals <b>n·H<sub>S</sub></b> exactly when <em>n</em> is a power of two,
+          and sits just above it otherwise.
+        </p>
+        <div class="subdiv-box" id="subdivBox"></div>
+        <div class="run-tools" style="margin-top:.6rem">
+          <button class="tool" id="applySubdiv" type="button">replace input by its subdivision</button>
+        </div>
+        <p class="mini-legend">Applying it twice changes nothing — the subdivision is its own fixed
+          point, which is the quickest check that the equivalence is real.</p>
+
+        <div class="panel-title" style="margin-top:1.3rem">generate</div>
+        <div class="search-row" style="margin-bottom:.6rem">
+          <label class="ctl"><span>n</span><input type="number" id="presetN" value="64" min="2" max="2048"></label>
+          <label class="ctl"><span>runs</span><input type="number" id="presetK" value="4" min="1" max="512"></label>
+        </div>
+        <div class="run-tools" style="margin-top:0">
+          <button class="tool" data-preset="slide" type="button">slide 15,15,17,17</button>
+          <button class="tool" data-preset="extremal" type="button">1, n−2, 1</button>
+          <button class="tool" data-preset="perm" type="button">permutation</button>
+          <button class="tool" data-preset="rev" type="button">reversed</button>
+        </div>
+      </div>
+
+      <div class="panel panel-wide">
+        <div class="panel-title">the chain, level by level — <span id="chainWho"></span></div>
+        <p class="mini-legend" id="chainHead" style="margin-bottom:.6rem"></p>
+        <div class="chain-cols">
+          <div>
+            <p class="chain-cap">per level: bound min{L, 2n/2<sup>d</sup>} (pale) vs. actually charged (solid)</p>
+            <svg id="chainLevels" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin meet"></svg>
+          </div>
+          <div>
+            <p class="chain-cap">the three steps</p>
+            <svg id="chainBars" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMin meet"></svg>
+            <p class="chain-cap" style="margin-top:.7rem">where the 3 comes from: g(f) = 2 − f + 2<sup>f</sup></p>
+            <svg id="chainG" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 86" preserveAspectRatio="xMidYMin meet"></svg>
+          </div>
+        </div>
+        <p class="model-note" id="chainNote"></p>
+      </div>
+
+      <div class="panel panel-wide">
+        <div class="panel-title">charging scheme — proof of cost ≤ (H+3)n</div>
+        <p class="mini-legend" style="margin-bottom:.5rem">
+          Split every counted merge's cost at run boundaries: run <em>i</em> is charged its overlap
+          with each straddling node. The <b style="color:#00D600">green</b>/<b style="color:#FF5C5C">red</b>
+          cut is by <b>level</b>: the top <b>G = ⌊lg(2n/l<sub>i</sub>)⌋</b> levels are green.
+          At most <b>2</b> active nodes per level can overlap a run — one holding each endpoint;
+          anything strictly inside straddles no boundary and the sorted check skips it. Since every
+          subproblem on level <em>d</em> has size ≤ <b>⌈n/2<sup>d</sup>⌉</b> (all <em>n</em>, not just
+          powers of two), the level-<em>d</em> charge is ≤ <b>min{l<sub>i</sub>, 2n/2<sup>d</sup>}</b>,
+          which sums to (G+1)l<sub>i</sub> + 2n/2<sup>G</sup> ≤ <b>l<sub>i</sub>·lg(n/l<sub>i</sub>) + 3l<sub>i</sub></b>.
+          Summing over runs gives nH + 3n. The last two columns are the two upper bounds, in the order
+          they are applied. Hover any charged part (with charging colours on) for the level-by-level
+          breakdown; the per-run excess average depth is in the metrics panel.
+        </p>
+        <p class="mini-legend" id="chargeSummary" style="font-family:var(--mono);color:var(--ink)"></p>
+        <div class="scroll" style="margin-top:.5rem">
+          <table class="sweep" id="chargeTbl"></table>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+</section><!-- /mode 1 -->
+
+<!-- ==================== MODE 2 ==================== -->
+<section class="mode-panel" id="mode2" hidden>
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow">sorted-check lab · mode 2 of 2 · adversarial search</span>
+    <h1>Throw run profiles at it.<br><em>See what breaks.</em></h1>
+    <p class="lede">
+      Searching compositions is exhaustive over inputs: for a fixed run-length profile the
+      reverse-ordered construction attains the maximum cost of any array with that profile, so
+      nothing is missed by only moving run boundaries. Push <strong>(cost − nH)/n</strong>,
+      <strong>H<sub>S</sub> − H</strong> or the <strong>excess average depth</strong> and see whether
+      any of them gets past 3. Ticking a conjecture turns the search into a counterexample hunt.
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="gen-bar">
+    <label class="ctl"><span>random input</span><select id="m3gen"></select></label>
+    <label class="ctl"><span>n</span><input type="number" id="m3n" value="800" min="2" step="1"></label>
+    <label class="ctl"><span>runs</span><input type="number" id="m3r" value="16" min="1" step="1"></label>
+    <button class="btn btn-lime" id="m3roll" type="button">roll a new input</button>
+    <button class="btn" id="m3send1" type="button">open in mode 1</button>
+    <p class="gen-note" id="m3genNote"></p>
+  </div>
+
+  <div class="m3-cols">
+    <div>
+      <div class="panel" style="margin-bottom:1rem">
+        <div class="panel-title">current input</div>
+        <p class="input-summary" id="m3summary"></p>
+        <svg id="stage3" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;touch-action:none"
+             tabindex="0" role="img" aria-label="The input runs. Drag a boundary to resize two runs, drag a run past its neighbour to swap them."></svg>
+        <p class="stage-hint" style="margin-top:.4rem">
+          drag a boundary to resize · drag a run past its neighbour to swap ·
+          <kbd>←</kbd><kbd>→</kbd> select &nbsp;<kbd>↑</kbd><kbd>↓</kbd> resize &nbsp;<kbd>u</kbd> undo
+        </p>
+        <div class="run-tools js-tools"></div>
+        <div class="run-io js-runio"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">sweep — best found per n</div>
+        <div class="scroll"><table class="sweep" id="sweepTbl"></table></div>
+        <div class="run-tools" style="margin-top:.7rem">
+          <button class="tool" id="csvBtn" type="button">copy csv</button>
+          <button class="tool" id="clearBtn" type="button">clear</button>
+          <span class="mini-legend" style="margin:0 0 0 .4rem">click a row to load that profile into the editor</span>
+        </div>
+      </div>
+
+      <div class="hall" id="hall">
+        <div class="hall-title">hall of fame — worst inputs found this session</div>
+        <div class="hall-row" id="hallRow"><span class="hall-empty">nothing yet — run a search.</span></div>
+      </div>
+    </div>
+
+    <aside class="m3-side">
+      <div class="panel search-panel">
+        <div class="panel-title">adversarial search</div>
+        <label class="ctl"><span>by maximising</span>
+          <select id="sMetric">
+            <option value="excess">(cost − nH) / n</option>
+            <option value="exdepth">excess average depth (max over runs)</option>
+            <option value="hs">H_S − H</option>
+            <option value="redratio">red_i / l_i  (max)</option>
+            <option value="red">total red / n</option>
+            <option value="ratioNH">cost / nH</option>
+            <option value="costHS">(cost − n·H_S) / n</option>
+            <option value="cAtB">(cost − b·n) / nH</option>
+          </select></label>
+        <div class="search-row">
+          <label class="ctl"><span>b</span><input type="number" id="sB" value="2" step="0.25"></label>
+          <label class="ctl"><span>n</span>
+            <select id="sNmode"><option value="fixed">fixed</option><option value="upto" selected>up to</option></select></label>
+          <label class="ctl"><span>n value</span><input type="number" id="sN" value="2000" min="2" max="65536"></label>
+        </div>
+        <div class="search-row">
+          <label class="ctl"><span>runs</span>
+            <select id="sRmode"><option value="upto" selected>up to</option><option value="fixed">fixed</option></select></label>
+          <label class="ctl"><span>runs value</span><input type="number" id="sR" value="40" min="1" max="4096"></label>
+          <label class="ctl"><span>samples / restarts</span><input type="number" id="sIter" value="6000" min="1" max="200000"></label>
+        </div>
+        <div class="search-row" style="margin-top:.6rem">
+          <button class="btn btn-lime" id="sampleBtn" type="button">sample + climb</button>
+          <button class="btn" id="climbBtn" type="button">climb from current</button>
+          <button class="btn" id="extremifyBtn" type="button">extremify current</button>
+        </div>
+        <div class="search-row" style="margin-top:.4rem">
+          <button class="btn" id="searchBtn" type="button">anneal boundaries</button>
+          <button class="btn" id="sweepBtn" type="button">run sweep</button>
+          <button class="btn" id="exhaustBtn" type="button">exhaustive n≤22</button>
+          <button class="btn" id="stopBtn" type="button" disabled>stop</button>
+          <button class="btn" id="loadWorstBtn" type="button" disabled>load worst found</button>
+        </div>
+        <label class="ctl" style="margin-top:.5rem"><span>sweep n over</span>
+          <input type="text" id="sweepIn" value="16, 32, 64, 128, 256, 512, 1024, 2048"></label>
+        <p class="mini-legend"><b>sample + climb</b> draws structured random profiles (uniform compositions,
+          alternating tiny/large, one-big-rest-singletons, geometric blocks), then hill-climbs from the best
+          one by local edits — resize, rescale, split, delete, insert. <b>climb from current</b> skips the
+          sampling and starts from the input in the editor.</p>
+        <p class="mini-legend"><b>extremify</b> repeatedly makes the shortest runs shorter and the longest runs
+          longer, taking the best improving polarising move each round, until nothing improves. The run count
+          never changes; n is free to move up to the n value unless n is <em>fixed</em>.</p>
+        <p class="mini-legend"><b>anneal boundaries</b> simulated-anneals over boundary sets with an O(log n)
+          incremental evaluator, at a pinned n. <b>exhaustive</b> enumerates all 2<sup>n−1</sup> boundary sets
+          by a Gray-code walk, so it is a proof for that n.</p>
+        <p class="search-status" id="sStatus">Ticking a conjecture below turns any of these into a counterexample hunt: it stops the moment that conjecture fails.</p>
+      </div>
+
+      <div class="panel">
+        <div class="conj-head">
+          <div class="panel-title" style="margin:0">conjectures</div>
+          <div><button class="link" type="button" data-stopset="1">stop-tick all</button> · <button class="link" type="button" data-stopset="0">none</button></div>
+        </div>
+        <p class="mini-legend">checked live against the input in the editor. Tick the box to make the search stop on a violation.</p>
+        <div class="conj-list" id="conjList"></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+</section><!-- /mode 2 -->
+
+</main>
+
+<footer class="site-footer">
+  <div class="selftest" id="selftest">running self-test…</div>
+  <p style="margin-left:auto">sorted-check lab · <span class="dim">plain top-down mergesort, one <code>if</code></span></p>
+</footer>
+
+<button class="btn" id="exitPresent" type="button">exit present</button>
+<div id="tip"></div>
+<script>
+"use strict";
+/* ==========================================================================
+   MODEL — half-open ranges A[l..r), n = r-l, m = l + floor(n/2)
+   ========================================================================== */
+function buildNodes(n){
+  const out=[];
+  (function rec(l,r,d){
+    const sz=r-l; if(sz<=1) return;
+    const m=l+Math.floor(sz/2);
+    rec(l,m,d+1); rec(m,r,d+1);
+    out.push({l,r,m,depth:d,size:sz});
+  })(0,n,0);
+  return out;
+}
+function plainCost(n){ let c=0; for(const v of buildNodes(n)) c+=v.size; return c; }
+
+function simulateExact(A0){
+  const A=A0.slice(), n=A.length, buf=new Array(n), events=[];
+  let cost=0;
+  (function rec(l,r,d){
+    const sz=r-l; if(sz<=1) return;
+    const m=l+Math.floor(sz/2);
+    rec(l,m,d+1); rec(m,r,d+1);
+    const executed = A[m-1] > A[m];
+    if(executed){
+      let i=l,j=m,k=l;
+      while(i<m&&j<r) buf[k++] = (A[j]<A[i]) ? A[j++] : A[i++];
+      while(i<m) buf[k++]=A[i++];
+      while(j<r) buf[k++]=A[j++];
+      for(let t=l;t<r;t++) A[t]=buf[t];
+      cost+=sz;
+    }
+    events.push({l,r,m,depth:d,size:sz,executed});
+  })(0,n,0);
+  return {cost,events,sorted:A};
+}
+function runsOf(A){
+  const n=A.length,b=[];
+  for(let i=1;i<n;i++) if(A[i]<A[i-1]) b.push(i);
+  const lengths=[]; let prev=0;
+  for(const x of b){ lengths.push(x-prev); prev=x; }
+  lengths.push(n-prev);
+  return {boundaries:b,lengths};
+}
+function straddleCost(n,boundaries){
+  const P=new Int32Array(n+2);
+  for(const x of boundaries) if(x>0&&x<n) P[x]=1;
+  for(let i=1;i<=n;i++) P[i]+=P[i-1];
+  let c=0;
+  for(const v of buildNodes(n)) if(P[v.r-1]-P[v.l]>0) c+=v.size;
+  return c;
+}
+function canonicalArray(lengths){
+  const n=lengths.reduce((a,b)=>a+b,0), A=[]; let top=n;
+  for(const L of lengths){ const s=top-L+1; for(let i=0;i<L;i++) A.push(s+i); top-=L; }
+  return A;
+}
+const sum=a=>a.reduce((x,y)=>x+y,0);
+function entropy(runs){                       // H in bits per element
+  const n=sum(runs); let s=0;
+  for(const L of runs) if(L>0) s+=(L/n)*Math.log2(n/L);
+  return s;
+}
+function boundsOf(lengths){
+  const B=[]; let a=0;
+  for(let i=0;i<lengths.length-1;i++){ a+=lengths[i]; B.push(a); }
+  return B;
+}
+
+/* ==========================================================================
+   TD-SC SUBDIVISION  and the SUBDIVISION RUN-LENGTH ENTROPY  H_S
+
+   Top-down mergesort never sees a run as a whole: the recursion cuts it at
+   every grid line it crosses.  Decompose each run into the *maximal*
+   recursion-tree nodes contained in it (the canonical / segment-tree
+   decomposition of the run's interval) and you get a fictitious profile that
+   the algorithm treats identically to the original — in the straddle model,
+   which is the worst case over arrays with the given run lengths.
+
+     [7, 2, 4, 10, 9]  (n=32)  ->  [4,2,1 | 1,1 | 1,2,1 | 1,2,4,2,1 | 1,8]
+     [1, 62, 1]        (n=64)  ->  [1 | 1,2,4,8,16,16,8,4,2,1 | 1]
+     [8, 2, 2, 8, 5]   (n=25)  ->  [6,1,1 | 1,1 | 2 | 6,1,1 | 1,4]
+
+   Two facts fall out, both checked in the self-test:
+     cost  =  sum over pieces of  len * depth-in-the-recursion-tree
+     cost  =  n * H_S             exactly when n is a power of two
+   (for other n the depth of a piece can exceed lg(n/len) slightly, and the
+   cost sits a little above n*H_S).
+   ========================================================================== */
+function subdivideDetailed(lengths){
+  const n=sum(lengths), pieces=[];
+  let a=0;
+  lengths.forEach((L,i)=>{
+    const b=a+L;
+    (function rec(l,r,d){
+      if(r<=a||l>=b) return;                       // disjoint from run i
+      if(l>=a&&r<=b){ pieces.push({len:r-l,depth:d,run:i,l,r}); return; }
+      const m=l+Math.floor((r-l)/2);
+      rec(l,m,d+1); rec(m,r,d+1);
+    })(0,n,0);
+    a=b;
+  });
+  return pieces;
+}
+function subdivide(lengths){ return subdivideDetailed(lengths).map(p=>p.len); }
+function entropyS(lengths){ return entropy(subdivide(lengths)); }
+/* cost via the subdivision — the identity above, useful as a cross-check */
+function costFromSubdivision(lengths){
+  let c=0; for(const p of subdivideDetailed(lengths)) c+=p.len*p.depth; return c;
+}
+const isPow2=n=>n>0&&(n&(n-1))===0;
+
+/* ==========================================================================
+   CHARGING SCHEME — the proof of cost <= (H+3)n
+
+   Split every run-boundary-model merge's cost at run boundaries: run i is
+   charged its overlap length with each straddling node.  The split into
+   GREEN and RED is by LEVEL, not by node size: for a run of length L the
+   top  G = floor(lg(2n/L))  levels are green, everything below is red.
+   (For d <= G the per-level bound below is exactly L, which is what makes
+   this the right cut.)
+
+   The argument, per run i of length L:
+
+   (a) At each level d, at most TWO active nodes overlap run i.  A node that
+       overlaps run i and contains neither of run i's two endpoints lies
+       entirely inside run i, so it straddles no boundary and the sorted
+       check skips it.  Only the node holding the left endpoint and the one
+       holding the right endpoint can be active.
+
+   (b) Every subproblem at level d has size at most ceil(n/2^d) — true for
+       all n, not just powers of two, since ceil(ceil(n/2)/2) = ceil(n/4).
+       With (a), the charge to run i from level d is at most 2n/2^d; it is
+       also at most L, since the level's nodes are disjoint.  So
+
+           charge_i(d)  <=  min{ L, 2n/2^d }.
+
+   (c) Summing over levels, with G = floor(lg(2n/L)) and using that the min
+       is L exactly for d <= G:
+
+           sum_{d>=0} min{L, 2n/2^d}  =  (G+1)L + 2n/2^G
+                                      <=  L lg(n/L) + 3L,
+
+       with equality at L = n.  Summing over runs gives  cost <= nH + 3n.
+
+   green_i + red_i always equals the straddle-model cost exactly.  This is an
+   analysis device, not something the algorithm computes.
+   ========================================================================== */
+function runStarts(lengths){
+  const starts=[0]; let acc=0;
+  for(const L of lengths){ acc+=L; starts.push(acc); }
+  return starts;
+}
+function runAt(starts,x){
+  let lo=0,hi=starts.length-2;
+  while(lo<hi){ const mid=(lo+hi+1)>>1; if(starts[mid]<=x) lo=mid; else hi=mid-1; }
+  return lo;
+}
+/* number of green levels for a run of length L inside an array of length n */
+const greenLevels=(n,L)=>L>0?Math.max(0,Math.floor(Math.log2(2*n/L))):0;
+/* max size of any subproblem on level d — holds for every n */
+const levelSizeBound=(n,d)=>Math.ceil(n/Math.pow(2,d));
+/* the per-level charge bound of step (b) */
+const levelChargeBound=(n,L,d)=>Math.min(L,2*n/Math.pow(2,d));
+/* closed form of sum_{d>=0} min{L, 2n/2^d} */
+function sumChargeBound(n,L){
+  if(L<=0) return 0;
+  const G=greenLevels(n,L);
+  return (G+1)*L + 2*n/Math.pow(2,G);
+}
+/* the bound we actually use: L lg(n/L) + 3L */
+const targetBound=(n,L)=>L>0?L*Math.log2(n/L)+3*L:0;
+
+function computeCharge(nodes,n,boundaries,lengths){
+  const k=lengths.length;
+  const starts=runStarts(lengths);
+  const P=new Int32Array(n+2);
+  for(const x of boundaries) if(x>0&&x<n) P[x]=1;
+  for(let i=1;i<=n;i++) P[i]+=P[i-1];
+  const isActive=(l,r)=>(P[r-1]-P[l])>0;
+  const green=new Float64Array(k), red=new Float64Array(k);
+  const segsByNode=new Array(nodes.length);
+  const segsByRun=Array.from({length:k},()=>[]);
+  const byLevel=Array.from({length:k},()=>new Map());     // depth -> charged
+  const nodesAtLevel=Array.from({length:k},()=>new Map()); // depth -> #active nodes
+  const G=lengths.map(L=>greenLevels(n,L));
+  nodes.forEach((v,ni)=>{
+    segsByNode[ni]=[];
+    if(!isActive(v.l,v.r)) return;
+    const i0=runAt(starts,v.l), i1=runAt(starts,v.r-1);
+    for(let i=i0;i<=i1;i++){
+      const a=starts[i], b=starts[i+1];
+      const from=Math.max(v.l,a), to=Math.min(v.r,b);
+      if(to<=from) continue;
+      const cls = v.depth < G[i] ? "green" : "red";      // by LEVEL, not size
+      const amt=to-from;
+      if(cls==="green") green[i]+=amt; else red[i]+=amt;
+      const seg={run:i,from,to,cls,node:ni,depth:v.depth,size:v.size,amt};
+      segsByNode[ni].push(seg);
+      segsByRun[i].push(seg);
+      byLevel[i].set(v.depth,(byLevel[i].get(v.depth)||0)+amt);
+      nodesAtLevel[i].set(v.depth,(nodesAtLevel[i].get(v.depth)||0)+1);
+    }
+  });
+  const maxDepth=nodes.reduce((a,v)=>Math.max(a,v.depth),0);
+  const perRun=[];
+  for(let i=0;i<k;i++){
+    const l=lengths[i], g=G[i];
+    const greenBound = l*g;                      // g levels, at most l each
+    const sumBound = sumChargeBound(n,l);        // sum_d min{l, 2n/2^d}
+    const redBound = Math.max(0,sumBound-greenBound);
+    const target = targetBound(n,l);
+    const share = l>0 ? Math.log2(n/l) : 0;
+    const charged = green[i]+red[i];
+    const avgDepth = l>0 ? charged/l : 0;
+    /* per-level rows, for the hover popup */
+    const levels=[];
+    for(let d=0;d<=maxDepth;d++){
+      levels.push({d,
+        nodeBound:levelSizeBound(n,d),
+        nodes:nodesAtLevel[i].get(d)||0,
+        charged:byLevel[i].get(d)||0,
+        bound:levelChargeBound(n,l,d),
+        green:d<g});
+    }
+    perRun.push({i,a:starts[i],b:starts[i+1],l,
+      green:green[i],red:red[i],charged,
+      G:g,greenBound,redBound,sumBound,target,levels,
+      avgDepth, share, excess: avgDepth-share,
+      greenOK:green[i]<=greenBound+1e-6,
+      redOK:red[i]<=2*l+1e-6,                    // the old (refuted) red <= 2l
+      sumOK:charged<=sumBound+1e-6,
+      targetOK:charged<=target+1e-6});
+  }
+  const greenTotal=perRun.reduce((s,r)=>s+r.green,0);
+  const redTotal=perRun.reduce((s,r)=>s+r.red,0);
+  return {perRun,segsByNode,segsByRun,greenTotal,redTotal};
+}
+
+/* Everything a metric or a conjecture might want, from run lengths alone.
+   `cost` is the straddle-model cost: the worst case over all arrays with
+   this run-length profile, which is what the search reasons about. */
+const factsCache=new Map();
+function facts(lengths){
+  const key=lengths.join(",");
+  const hit=factsCache.get(key);
+  if(hit) return hit;
+  const n=sum(lengths), B=boundsOf(lengths);
+  const H=entropy(lengths), nodes=buildNodes(n);
+  const ch=computeCharge(nodes,n,B,lengths);
+  let redWorst=0, redBadWorst=-Infinity, redTotal=0, exDepth=-Infinity, exRun=0;
+  let sumOK=true, targetOK=true, greenOK=true, maxNodesPerLevel=0;
+  for(const r of ch.perRun){
+    if(r.l>0 && r.red/r.l>redWorst) redWorst=r.red/r.l;
+    const d=r.red-2*r.l; if(d>redBadWorst) redBadWorst=d;
+    redTotal+=r.red;
+    if(r.excess>exDepth){ exDepth=r.excess; exRun=r.i; }
+    if(!r.sumOK) sumOK=false;
+    if(!r.targetOK) targetOK=false;
+    if(!r.greenOK) greenOK=false;
+    for(const lv of r.levels) if(lv.nodes>maxNodesPerLevel) maxNodesPerLevel=lv.nodes;
+  }
+  const HS=entropyS(lengths);
+  const f={n,r:lengths.length,lengths,H,nH:n*H,
+           cost:straddleCost(n,B),plain:plainCost(n),
+           HS,nHS:n*HS,
+           greenTotal:ch.greenTotal,redTotal,
+           redWorst,redBadWorst,redAllOK:ch.perRun.every(r=>r.redOK),
+           sumOK,targetOK,greenOK,maxNodesPerLevel,
+           exDepth,exRun,perRun:ch.perRun};
+  if(factsCache.size>4000) factsCache.clear();
+  factsCache.set(key,f);
+  return f;
+}
+
+const $=id=>document.getElementById(id);
+const fmt=(x,d)=>Number.isFinite(x)?(Math.round(x*Math.pow(10,d))/Math.pow(10,d)).toFixed(d):"—";
+const fmtInt=x=>Number.isFinite(x)?Math.round(x).toLocaleString("en-US"):"—";
+
+/* ==========================================================================
+   STATE
+   The run lengths are the source of truth.  `A` is the concrete array: the
+   canonical (reverse-ordered) realisation of the profile, unless the user
+   loaded a literal array, in which case the runs are read back off it.
+   ========================================================================== */
+const MAXDRAW=2048;
+const S={
+  mode:1, kind:"runs",                       // "runs" | "array"
+  runs:[15,15,17,17], A:[], selected:0,
+  past:[], future:[],
+  n:0, nodes:[], exec:[], cost:0, plain:0, H:0, nH:0, straddle:0, charge:null,
+  reveal:Infinity, playing:false, timer:null, speed:60,
+  opt:{slides:false,charge:false,labels:true,levels:true,refs:false,caption:false}
+};
+
+function recompute(){
+  S.n=S.A.length;
+  const rr=runsOf(S.A);
+  S.boundaries=rr.boundaries;
+  const sim=simulateExact(S.A);
+  S.nodes=sim.events; S.exec=sim.events.map(e=>e.executed);
+  S.cost=sim.cost; S.plain=plainCost(S.n);
+  S.H=entropy(S.runs); S.nH=S.n*S.H;
+  S.straddle=straddleCost(S.n,boundsOf(S.runs));
+  S.charge=computeCharge(S.nodes,S.n,boundsOf(S.runs),S.runs);
+  S.starts=runStarts(S.runs);                // recomputed every time: no stale cache
+}
+
+function snapshot(){ return {runs:S.runs.slice(),kind:S.kind,A:S.A.slice()}; }
+function restore(s){ S.runs=s.runs; S.kind=s.kind; S.A=s.A; }
+
+/* commit a run-length profile (switches to the canonical realisation) */
+function commit(runs,{history=true,defer=false}={}){
+  let L=runs.map(x=>Math.max(1,Math.round(x))).filter(x=>x>=1);
+  if(!L.length) L=[1];
+  if(sum(L)>MAXDRAW){
+    $("stageError").textContent="⚠ n is capped at "+MAXDRAW+" for the stage — profile not applied.";
+    return;
+  }
+  if(history){ S.past.push(snapshot()); if(S.past.length>200) S.past.shift(); S.future.length=0; }
+  $("stageError").textContent="";
+  S.runs=L; S.kind="runs"; S.A=canonicalArray(L);
+  S.selected=Math.min(S.selected,S.runs.length-1);
+  S.reveal=Infinity; stopPlay(); recompute();
+  if(defer) scheduleRender(); else render();
+}
+/* commit a literal array (runs are whatever it happens to have) */
+function commitArray(A,{history=true}={}){
+  if(A.length>MAXDRAW){ $("stageError").textContent="⚠ n is capped at "+MAXDRAW+" for the stage."; return; }
+  if(history){ S.past.push(snapshot()); S.future.length=0; }
+  $("stageError").textContent="";
+  S.A=A.slice(); S.kind="array"; S.runs=runsOf(S.A).lengths;
+  S.selected=Math.min(S.selected,S.runs.length-1);
+  S.reveal=Infinity; stopPlay(); recompute(); render();
+}
+function undo(){ if(!S.past.length) return; S.future.push(snapshot()); restore(S.past.pop());
+  S.selected=Math.min(S.selected,S.runs.length-1); S.reveal=Infinity; stopPlay(); recompute(); render(); }
+function redo(){ if(!S.future.length) return; S.past.push(snapshot()); restore(S.future.pop());
+  S.selected=Math.min(S.selected,S.runs.length-1); S.reveal=Infinity; stopPlay(); recompute(); render(); }
+
+let rafPending=false;
+function scheduleRender(){
+  if(rafPending) return;
+  rafPending=true;
+  requestAnimationFrame(()=>{ rafPending=false; render(); });
+}
+/* ==========================================================================
+   STAGE DRAWING
+   Two styles over the same recursion tree:
+     "lab"     (default) merge-cost-lab idiom — bars per recursive call, an
+               editable run strip at the bottom, length labels, an axis.
+     "slides"  the lecture-slide drawing — one cell per array element with its
+               value, dashed run cuts, and the merge-cost bar chart below.
+   Both share the editor overlay, so the input is draggable either way.
+   ========================================================================== */
+const PADX=14, PADTOP=10;
+const CH={ green0:"#00D600", green1:"#B5FF00", red0:"#FF5C5C", red1:"#FFA35C",
+           arrA:"#0DEDF7", arrB:"#FF5FD1", bg:"#00175A", lime:"#B5FF00",
+           lightblue:"#0DEDF7", yellow:"#FFFF00", darkblue:"#001C6B",
+           line:"rgba(13,237,247,.35)", dim:"rgba(234,242,255,.45)",
+           mono:"'IBM Plex Mono', ui-monospace, monospace" };
+
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const shown=i=>i<S.reveal;
+const live=i=>S.reveal!==Infinity && i===S.reveal-1;
+
+/* ---- the editable run strip: bars + hit areas + resize handles ---- */
+function stripParts(PFX,X,y,barH,editable){
+  const p=[], r=S.runs.length, st=S.starts;
+  for(let i=0;i<r;i++){
+    const x0=X(st[i])+0.7, x1=X(st[i+1])-0.7, w=Math.max(1.4,x1-x0);
+    const cls="n-run"+(S.opt.charge&&i%2?" alt":"")+(editable&&i===S.selected?" is-selected":"");
+    p.push('<rect id="'+PFX+'run'+i+'" class="node-rect '+cls+'" x="'+x0.toFixed(2)+'" y="'+y.toFixed(2)+
+           '" width="'+w.toFixed(2)+'" height="'+barH.toFixed(2)+'" rx="'+Math.min(6,barH/2).toFixed(1)+'"/>');
+    const lab=String(S.runs[i]);
+    if(S.opt.labels && w>lab.length*7.4+8 && barH>=13)
+      p.push('<text class="n-label" x="'+(x0+w/2).toFixed(2)+'" y="'+(y+barH/2+4).toFixed(2)+
+             '" text-anchor="middle" font-size="'+Math.min(13,barH-5).toFixed(1)+'">'+lab+'</text>');
+  }
+  if(!editable) return p.join("");
+  for(let i=0;i<r;i++){
+    const x0=X(st[i]), x1=X(st[i+1]);
+    p.push('<rect class="leaf-hit" data-role="leaf" data-bar="'+PFX+'run'+i+'" data-i="'+i+
+           '" data-x0="'+x0.toFixed(2)+'" data-x1="'+x1.toFixed(2)+'" data-len="'+S.runs[i]+
+           '" x="'+x0.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+Math.max(1,x1-x0).toFixed(2)+
+           '" height="'+barH.toFixed(2)+'" fill="transparent"/>');
+  }
+  for(let i=0;i<r-1;i++){
+    const x=X(st[i+1]);
+    const room=Math.min(X(st[i+1])-X(st[i]),X(st[i+2])-X(st[i+1]));
+    const hw=Math.max(3,Math.min(7,room*0.45));
+    p.push('<g class="bnd"><rect class="handle" data-role="handle" data-i="'+i+
+      '" x="'+(x-hw).toFixed(2)+'" y="'+(y-3).toFixed(2)+'" width="'+(2*hw).toFixed(2)+
+      '" height="'+(barH+6).toFixed(2)+'"/>'+
+      '<line class="grip" x1="'+x.toFixed(2)+'" x2="'+x.toFixed(2)+'" y1="'+(y+2).toFixed(2)+
+      '" y2="'+(y+barH-2).toFixed(2)+'"/></g>');
+  }
+  return p.join("");
+}
+
+function chargeFill(seg){
+  const parity=seg.run%2;
+  return seg.cls==="green" ? (parity?CH.green1:CH.green0) : (parity?CH.red1:CH.red0);
+}
+
+/* ---- lab style: the whole recursion tree, run strip at the bottom ---- */
+function drawTreeLab(svg,{editable=true,budget=640,showAxis=true,width}={}){
+  const n=S.n, r=S.runs.length, st=S.starts;
+  const W=Math.round(Math.max(560,Math.min(1600,width||svg.clientWidth||1200)));
+  const GUT=S.opt.levels?66:0;                 // left gutter for the level labels
+  const PADL=PADX+GUT;
+  svg.dataset.w=W; svg.dataset.padx=PADL; svg.dataset.padr=PADX;
+  const PFX=svg.id+"-";
+  const X=pos=>PADL+pos/n*(W-PADL-PADX);
+
+  const capH=S.opt.caption?26:0;
+  const maxDepth=S.nodes.reduce((a,v)=>Math.max(a,v.depth),0);
+  const rows=maxDepth+2;                                  // tree rows + run strip
+  const rowH=Math.max(13,Math.min(44,budget/rows));
+  const barH=Math.max(8,Math.min(26,rowH-10));
+  const treeTop=PADTOP+capH;
+  const rowY=d=>treeTop+d*rowH;
+  const stripY=rowY(maxDepth)+barH+Math.max(10,(rowH-barH));
+  const AXIS=showAxis?26:8;
+  const H=stripY+barH+AXIS;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+
+  const p=[];
+  p.push('<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="'+CH.bg+'"/>');
+  p.push('<style id="'+PFX+'hl"></style>');
+  if(S.opt.caption)
+    p.push('<text x="'+PADX+'" y="20" font-family="'+CH.mono+'" font-size="15" font-weight="600" fill="'+
+      CH.lightblue+'">n = '+n+" · "+r+" runs · H = "+fmt(S.H,3)+" bit · H_S = "+fmt(entropyS(S.runs),3)+"</text>");
+  if(S.opt.levels){
+    for(let d=0;d<=maxDepth;d++){
+      const y=rowY(d)+barH/2+3.5;
+      p.push('<text class="lvl-d" x="'+PADX+'" y="'+y.toFixed(1)+'">'+d+"</text>");
+      p.push('<text class="lvl-b" x="'+(PADL-8).toFixed(1)+'" y="'+y.toFixed(1)+
+             '" text-anchor="end">≤'+fmtInt(levelSizeBound(n,d))+"</text>");
+    }
+    p.push('<text class="lvl-b" x="'+PADX+'" y="'+(stripY+barH/2+3.5).toFixed(1)+'">runs</text>');
+  }
+
+  /* index nodes by span so a node can find its children */
+  const idx=new Map();
+  S.nodes.forEach((v,i)=>idx.set(v.l*(n+1)+v.r,i));
+  const cx=(l,r2)=>(X(l)+X(r2))/2;
+  const yOf=(l,r2,d)=>{ const i=idx.get(l*(n+1)+r2); return i===undefined?stripY:rowY(d); };
+
+  /* connectors (bus style): parent down, across between children, down again */
+  const edges=[];
+  for(const v of S.nodes){
+    const yTop=rowY(v.depth)+barH, yBus=yTop+Math.max(4,(rowH-barH)/2);
+    const cL=cx(v.l,v.m), cR=cx(v.m,v.r), cP=cx(v.l,v.r);
+    edges.push("M"+cP.toFixed(2)+","+yTop.toFixed(2)+"V"+yBus.toFixed(2));
+    edges.push("M"+cL.toFixed(2)+","+yBus.toFixed(2)+"H"+cR.toFixed(2));
+    edges.push("M"+cL.toFixed(2)+","+yBus.toFixed(2)+"V"+yOf(v.l,v.m,v.depth+1).toFixed(2));
+    edges.push("M"+cR.toFixed(2)+","+yBus.toFixed(2)+"V"+yOf(v.m,v.r,v.depth+1).toFixed(2));
+  }
+  p.push('<path class="edge" d="'+edges.join(" ")+'"/>');
+
+  /* node bars */
+  const rx=Math.min(6,barH/2).toFixed(1);
+  S.nodes.forEach((v,i)=>{
+    const x0=X(v.l)+0.7, w=Math.max(1.4,X(v.r)-0.7-x0), y=rowY(v.depth);
+    const box=(cls,extra)=>'<rect id="'+PFX+'bar'+i+'" class="node-rect '+cls+'" x="'+x0.toFixed(2)+
+      '" y="'+y.toFixed(2)+'" width="'+w.toFixed(2)+'" height="'+barH.toFixed(2)+'" rx="'+rx+'"'+(extra||"")+"/>";
+    if(S.opt.charge && shown(i) && !live(i)){
+      const segs=S.charge.segsByNode[i];
+      if(segs && segs.length){
+        for(const seg of segs){
+          const sx0=X(seg.from)+0.7, sw=Math.max(0.5,X(seg.to)-0.7-sx0);
+          p.push('<rect class="sg" data-seg="1" data-run="'+seg.run+'" data-key="'+i+"_"+seg.run+
+                 '" x="'+sx0.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+sw.toFixed(2)+
+                 '" height="'+barH.toFixed(2)+'" fill="'+chargeFill(seg)+'" opacity=".95"/>');
+        }
+        p.push(box("","  fill=\"none\" stroke=\""+CH.lime+"\" stroke-width=\".8\""));
+      } else {
+        p.push(box("","  fill=\""+(runOfPos(v.l)%2?CH.arrB:CH.arrA)+"\" opacity=\".2\""));
+      }
+      return;
+    }
+    if(!shown(i)) p.push(box("n-hidden"));
+    else if(live(i)) p.push(box("n-live"));
+    else if(S.exec[i]) p.push(box("n-merge"));
+    else p.push(box("n-skip"));
+    if(S.opt.labels && shown(i) && (S.exec[i]||live(i))){
+      const lab=String(v.size);
+      if(w>lab.length*7.4+8 && barH>=13)
+        p.push('<text class="n-label" x="'+(x0+w/2).toFixed(2)+'" y="'+(y+barH/2+4).toFixed(2)+
+               '" text-anchor="middle" font-size="'+Math.min(13,barH-5).toFixed(1)+'">'+lab+"</text>");
+    }
+  });
+
+  /* hit areas for the tree.  In charging mode every charged PART gets its own
+     hit area, so hovering picks out one (node, run) pair. */
+  S.nodes.forEach((v,i)=>{
+    const x0=X(v.l), x1=X(v.r), y=rowY(v.depth);
+    const segs=S.opt.charge&&shown(i)&&!live(i)?S.charge.segsByNode[i]:null;
+    if(segs&&segs.length){
+      for(const seg of segs){
+        const sx0=X(seg.from), sx1=X(seg.to);
+        p.push('<rect data-role="seg" data-node="'+i+'" data-i="'+seg.run+
+          '" data-x0="'+sx0.toFixed(2)+'" data-x1="'+sx1.toFixed(2)+
+          '" x="'+sx0.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+Math.max(1,sx1-sx0).toFixed(2)+
+          '" height="'+barH.toFixed(2)+'" fill="transparent"/>');
+      }
+      return;
+    }
+    p.push('<rect data-role="node" data-bar="'+PFX+"bar"+i+'" data-x0="'+x0.toFixed(2)+'" data-x1="'+x1.toFixed(2)+
+      '" data-lo="'+v.l+'" data-hi="'+v.r+'" data-len="'+v.size+'" data-d="'+v.depth+
+      '" data-ex="'+(S.exec[i]?1:0)+'" x="'+x0.toFixed(2)+'" y="'+y.toFixed(2)+
+      '" width="'+Math.max(1,x1-x0).toFixed(2)+'" height="'+barH.toFixed(2)+'" fill="transparent"/>');
+  });
+
+  p.push(stripParts(PFX,X,stripY,barH,editable));
+  p.push('<line class="guide g0" y1="'+PADTOP+'" y2="'+(stripY+barH).toFixed(2)+'"/>');
+  p.push('<line class="guide g1" y1="'+PADTOP+'" y2="'+(stripY+barH).toFixed(2)+'"/>');
+
+  if(showAxis){
+    const yA=stripY+barH+12;
+    p.push('<line class="axis" x1="'+PADL+'" x2="'+(W-PADX)+'" y1="'+yA+'" y2="'+yA+'"/>');
+    p.push('<text class="axis-text" x="'+PADL+'" y="'+(yA+13)+'">0</text>');
+    p.push('<text class="axis-text" x="'+(W-PADX)+'" y="'+(yA+13)+'" text-anchor="end">n = '+fmtInt(n)+"</text>");
+    p.push('<text class="axis-text" x="'+(W/2)+'" y="'+(yA+13)+'" text-anchor="middle">'+
+      r+" runs · tree height "+(maxDepth+1)+" · cost "+fmtInt(S.reveal===Infinity?S.cost:partialCost())+"</text>");
+  }
+  svg.innerHTML=p.join("");
+}
+
+/* ---- run strip on its own (mode 3 editor) ---- */
+function drawStripOnly(svg){
+  const n=S.n, r=S.runs.length;
+  const W=Math.round(Math.max(560,Math.min(1600,svg.clientWidth||1200)));
+  svg.dataset.w=W; svg.dataset.padx=PADX;
+  const PFX=svg.id+"-";
+  svg.dataset.padr=PADX;
+  const X=pos=>PADX+pos/n*(W-2*PADX);
+  const barH=26, y=PADTOP, H=y+barH+26;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+  const p=[stripParts(PFX,X,y,barH,true)];
+  p.push('<line class="guide g0" y1="'+y+'" y2="'+(y+barH)+'"/>');
+  p.push('<line class="guide g1" y1="'+y+'" y2="'+(y+barH)+'"/>');
+  const yA=y+barH+12;
+  p.push('<line class="axis" x1="'+PADX+'" x2="'+(W-PADX)+'" y1="'+yA+'" y2="'+yA+'"/>');
+  p.push('<text class="axis-text" x="'+PADX+'" y="'+(yA+13)+'">0</text>');
+  p.push('<text class="axis-text" x="'+(W-PADX)+'" y="'+(yA+13)+'" text-anchor="end">n = '+fmtInt(n)+"</text>");
+  p.push('<text class="axis-text" x="'+(W/2)+'" y="'+(yA+13)+'" text-anchor="middle">'+r+" runs</text>");
+  svg.innerHTML=p.join("");
+}
+
+/* run index of an array position — recomputed from S.starts, never cached */
+function runOfPos(x){ return runAt(S.starts,x); }
+function partialCost(){
+  let c=0; const lim=Math.min(S.reveal,S.nodes.length);
+  for(let i=0;i<lim;i++) if(S.exec[i]) c+=S.nodes[i].size;
+  return c;
+}
+
+/* ---- slide style: the lecture drawing, values and all ---- */
+function drawSlides(svg,{editable=true}={}){
+  const n=S.n; if(!n) return;
+  const showVals=n<=96;
+  const W=1800, MX=34;
+  svg.dataset.w=W; svg.dataset.padx=MX; svg.dataset.padr=MX;
+  const PFX=svg.id+"-";
+  const nRows=Math.max(1,Math.ceil(Math.log2(Math.max(2,n))));
+  const rowH = n>256?21:(n>128?26:31);
+  const barH = Math.min(rowH-9,19);
+  const capH = S.opt.caption?28:0;
+  const treeTop=14+capH;
+  const arrTop=treeTop+nRows*rowH+12;
+  const arrH = n>256?15:(n>128?19:23);
+  const barsTop=arrTop+arrH+52;
+  const nBars=S.opt.refs?4:3;
+  const barGap=28;
+  const H=barsTop+nBars*barGap+18;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+
+  const AW=W-2*MX, cw=AW/n;
+  const X=i=>MX+i*cw;
+  const rowY=d=>treeTop+d*rowH, midY=d=>rowY(d)+barH/2;
+  const ax=v=>v.size<=1?X(v.l)+cw/2:X(v.m);
+  const ay=v=>v.size<=1?arrTop:midY(v.depth);
+  const p=[];
+  p.push('<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="'+CH.bg+'"/>');
+  if(S.opt.caption)
+    p.push('<text x="'+MX+'" y="22" font-family="'+CH.mono+'" font-size="15" font-weight="600" fill="'+
+      CH.lightblue+'">n = '+n+" · "+S.runs.length+" runs · H = "+fmt(S.H,3)+" bit</text>");
+
+  const map=new Map();
+  S.nodes.forEach((v,i)=>map.set(v.l*(n+1)+v.r,i));
+  const childOf=(v,left)=>{
+    const l=left?v.l:v.m, r=left?v.m:v.r;
+    const i=map.get(l*(n+1)+r);
+    return i===undefined?{l,r,size:r-l,depth:v.depth+1}:S.nodes[i];
+  };
+  const edges=[];
+  for(const v of S.nodes){
+    const px=ax(v),py=ay(v);
+    for(const left of [true,false]){
+      const c=childOf(v,left);
+      edges.push("M "+px+" "+py+" H "+ax(c)+" V "+ay(c));
+    }
+  }
+  p.push('<path class="edge" d="'+edges.join(" ")+'"/>');
+
+  const rx=Math.min(barH/2,7);
+  for(let i=0;i<S.nodes.length;i++){
+    const v=S.nodes[i], x0=X(v.l)+1, w=Math.max(1.5,X(v.r)-1-x0), y=rowY(v.depth);
+    if(S.opt.charge && shown(i) && !live(i)){
+      const segs=S.charge.segsByNode[i];
+      if(segs && segs.length){
+        for(const seg of segs){
+          const sx0=X(seg.from)+1, sw=Math.max(0.5,X(seg.to)-1-sx0);
+          p.push('<rect class="sg" data-seg="1" data-run="'+seg.run+'" data-key="'+i+"_"+seg.run+
+                 '" x="'+sx0.toFixed(2)+'" y="'+y+'" width="'+sw.toFixed(2)+'" height="'+barH+
+                 '" fill="'+chargeFill(seg)+'" opacity=".95"/>');
+        }
+        p.push('<rect id="'+PFX+'bar'+i+'" class="node-rect" x="'+x0.toFixed(2)+'" y="'+y+'" width="'+w.toFixed(2)+
+               '" height="'+barH+'" rx="'+rx+'" fill="none" stroke="'+CH.lime+'" stroke-width=".8"/>');
+      } else {
+        p.push('<rect id="'+PFX+'bar'+i+'" class="node-rect" x="'+x0.toFixed(2)+'" y="'+y+'" width="'+w.toFixed(2)+
+               '" height="'+barH+'" rx="'+rx+'" fill="'+(runOfPos(v.l)%2?CH.arrB:CH.arrA)+
+               '" stroke="'+CH.line+'" stroke-width=".8" opacity=".22"/>');
+      }
+      continue;
+    }
+    let fill,stroke,sw,op;
+    if(!shown(i)){ fill="none"; stroke=CH.line; sw=.8; op=.3; }
+    else if(live(i)){ fill=CH.yellow; stroke=CH.yellow; sw=1.6; op=1; }
+    else if(S.exec[i]){ fill=CH.lime; stroke=CH.lime; sw=1; op=.92; }
+    else { fill="none"; stroke=CH.line; sw=1; op=1; }
+    p.push('<rect id="'+PFX+'bar'+i+'" class="node-rect" x="'+x0.toFixed(2)+'" y="'+y+'" width="'+w.toFixed(2)+
+           '" height="'+barH+'" rx="'+rx+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+sw+'" opacity="'+op+'"/>');
+  }
+  const rDot=Math.max(1.8,Math.min(barH*0.38,cw*0.5,7.5));
+  for(let i=0;i<S.nodes.length;i++){
+    const v=S.nodes[i];
+    p.push('<circle cx="'+ax(v).toFixed(2)+'" cy="'+ay(v).toFixed(2)+'" r="'+rDot.toFixed(2)+
+      '" fill="'+(live(i)?CH.yellow:(shown(i)&&S.exec[i]?CH.darkblue:"rgba(13,237,247,.25)"))+
+      '" stroke="'+(live(i)?CH.yellow:CH.line)+'" stroke-width="'+(live(i)?1.6:.8)+
+      '" opacity="'+(shown(i)?1:.35)+'" pointer-events="none"/>');
+  }
+  for(let i=0;i<n;i++){
+    const cellFill = S.opt.charge ? (runOfPos(i)%2?CH.arrB:CH.arrA) : CH.lightblue;
+    p.push('<rect x="'+X(i).toFixed(2)+'" y="'+arrTop+'" width="'+cw.toFixed(3)+'" height="'+arrH+
+           '" fill="'+cellFill+'" stroke="'+CH.bg+'" stroke-width="'+(n>256?.3:.6)+'" pointer-events="none"/>');
+    if(showVals)
+      p.push('<text x="'+(X(i)+cw/2).toFixed(2)+'" y="'+(arrTop+arrH/2+arrH*0.2).toFixed(2)+
+        '" text-anchor="middle" font-family="'+CH.mono+'" font-size="'+Math.min(12,cw*0.62).toFixed(1)+
+        '" font-weight="600" fill="'+CH.darkblue+'" pointer-events="none">'+S.A[i]+"</text>");
+  }
+  for(let i=1;i<S.runs.length;i++){
+    const b=S.starts[i];
+    p.push('<line x1="'+X(b).toFixed(2)+'" y1="'+(treeTop-7)+'" x2="'+X(b).toFixed(2)+'" y2="'+(arrTop+arrH+8)+
+      '" stroke="'+CH.yellow+'" stroke-width="1.6" stroke-dasharray="5 4" stroke-linecap="round" opacity=".9" pointer-events="none"/>');
+  }
+  /* charged-part hit areas, so the popup works in the slide drawing too */
+  if(S.opt.charge){
+    for(let i=0;i<S.nodes.length;i++){
+      if(!shown(i)||live(i)) continue;
+      const segs=S.charge.segsByNode[i]; if(!segs||!segs.length) continue;
+      const y=rowY(S.nodes[i].depth);
+      for(const seg of segs){
+        const sx0=X(seg.from), sx1=X(seg.to);
+        p.push('<rect data-role="seg" data-node="'+i+'" data-i="'+seg.run+
+          '" data-x0="'+sx0.toFixed(2)+'" data-x1="'+sx1.toFixed(2)+
+          '" x="'+sx0.toFixed(2)+'" y="'+y+'" width="'+Math.max(1,sx1-sx0).toFixed(2)+
+          '" height="'+barH+'" fill="transparent"/>');
+      }
+    }
+  }
+  /* editable overlay sits on the array row */
+  if(editable){
+    const st=S.starts;
+    for(let i=0;i<S.runs.length;i++){
+      const x0=X(st[i]), x1=X(st[i+1]);
+      p.push('<rect class="leaf-hit" data-role="leaf" data-i="'+i+'" data-x0="'+x0.toFixed(2)+'" data-x1="'+x1.toFixed(2)+
+        '" data-len="'+S.runs[i]+'" x="'+x0.toFixed(2)+'" y="'+arrTop+'" width="'+Math.max(1,x1-x0).toFixed(2)+
+        '" height="'+arrH+'" fill="transparent"/>');
+    }
+    for(let i=0;i<S.runs.length-1;i++){
+      const x=X(st[i+1]);
+      p.push('<g class="bnd"><rect class="handle" data-role="handle" data-i="'+i+'" x="'+(x-7).toFixed(2)+
+        '" y="'+(arrTop-3)+'" width="14" height="'+(arrH+6)+'"/></g>');
+    }
+  }
+  p.push(slideCostBars(W,MX,barsTop,barGap));
+  svg.innerHTML=p.join("");
+}
+
+function slideCostBars(W,MX,top,gap){
+  const liveCost = S.reveal===Infinity ? S.cost : partialCost();
+  const rows=[
+    {v:S.plain, shown:S.plain, lab:"plain mergesort", col:CH.dim},
+    {v:S.cost,  shown:liveCost, lab:"with sorted check", col:CH.lime},
+    {v:S.nH,    shown:S.nH, lab:"nH", col:CH.lightblue}
+  ];
+  if(S.opt.refs) rows.push({v:S.nH+2*S.n, shown:S.nH+2*S.n, lab:"n(H+2)", col:"rgba(234,242,255,.35)"});
+  const max=Math.max(1,...rows.map(r=>r.v));
+  const avail=W-MX-330;
+  const p=['<text x="'+MX+'" y="'+(top-14)+'" font-family="'+CH.mono+
+           '" font-size="12" font-weight="600" fill="'+CH.lime+'" letter-spacing="1.6">MERGE COST</text>'];
+  rows.forEach((r,i)=>{
+    const y=top+i*gap, h=14, w=Math.max(0,avail*(r.shown/max));
+    p.push('<rect x="'+MX+'" y="'+y+'" width="'+avail+'" height="'+h+'" rx="3" fill="rgba(13,237,247,.10)"/>');
+    p.push('<rect x="'+MX+'" y="'+y+'" width="'+w.toFixed(2)+'" height="'+h+'" rx="3" fill="'+r.col+'"/>');
+    const txt=Number.isInteger(r.shown)?fmtInt(r.shown):fmt(r.shown,1);
+    p.push('<text x="'+(MX+avail+14)+'" y="'+(y+h-1)+'" font-family="'+CH.mono+
+           '" font-size="15" font-weight="700" fill="'+r.col+'">'+txt+"</text>");
+    p.push('<text x="'+(MX+avail+14+txt.length*9.4+12)+'" y="'+(y+h-1)+'" font-family="'+CH.mono+
+           '" font-size="12" fill="rgba(234,242,255,.65)">'+r.lab+"</text>");
+  });
+  return p.join("");
+}
+
+function drawStage(){
+  const svg=$("stage");
+  if(!S.n){ svg.innerHTML=""; return; }
+  if(S.opt.slides) drawSlides(svg,{editable:true});
+  else drawTreeLab(svg,{editable:true,budget:document.body.classList.contains("present")?760:620});
+}
+
+/* ==========================================================================
+   COST RULER — where the cost sits between nH and the n(H+2) target
+   ========================================================================== */
+function drawRuler(cost,nH,n,nHS){
+  const lo=nH, hi=Math.max(nH+3.4*n, cost*1.03, nH+1);
+  const x=v=>8+Math.max(0,Math.min(1,(v-lo)/(hi-lo)))*284;
+  const mark=(v,color,up)=>up
+    ? '<path d="M'+x(v).toFixed(1)+',31 l-4.5,-8 h9 z" fill="'+color+'"/>'
+    : '<line x1="'+x(v).toFixed(1)+'" x2="'+x(v).toFixed(1)+'" y1="34" y2="43" stroke="'+color+'" stroke-width="1.5"/>';
+  const text=(v,color,label,y,anchor)=>
+    '<text x="'+x(v).toFixed(1)+'" y="'+y+'" fill="'+color+'" font-family="IBM Plex Mono, monospace" font-size="9" text-anchor="'+anchor+'">'+label+'</text>';
+  $("ruler").innerHTML=
+    '<line x1="8" x2="292" y1="34" y2="34" stroke="rgba(13,237,247,.3)" stroke-width="1"/>'+
+    '<rect x="'+x(nH).toFixed(1)+'" y="31" width="'+(x(nH+3*n)-x(nH)).toFixed(1)+'" height="6" fill="rgba(181,255,0,.16)"/>'+
+    mark(nH,'#0DEDF7',false)+mark(nH+2*n,'rgba(234,242,255,.35)',false)+mark(nH+3*n,'rgba(234,242,255,.55)',false)+
+    mark(nHS,'#00D600',true)+mark(cost,'#B5FF00',true)+
+    text(nH,'#0DEDF7','nH',54,'start')+
+    text(nH+3*n,'rgba(234,242,255,.55)','n(H+3)',54,x(nH+3*n)>250?'end':'middle')+
+    (Math.abs(x(cost)-x(nHS))>26?text(nHS,'#00D600','nH_S',17,x(nHS)<24?'start':'middle'):'')+
+    text(cost,'#B5FF00','cost',17,x(cost)>268?'end':'middle');
+}
+/* ==========================================================================
+   RENDER
+   ========================================================================== */
+function render(){
+  if(S.mode===1) renderMode1(); else renderMode2();
+  renderConjectures();
+  syncEditorControls();
+}
+
+function syncEditorControls(){
+  const text=S.runs.join(", ");
+  document.querySelectorAll(".js-runtext").forEach(el=>{ if(document.activeElement!==el) el.value=text; });
+  document.querySelectorAll(".js-undo").forEach(el=>{ el.disabled=!S.past.length; });
+  document.querySelectorAll(".js-redo").forEach(el=>{ el.disabled=!S.future.length; });
+}
+
+function renderMode1(){
+  drawStage();
+  const n=S.n, nH=S.nH, cost=S.cost, r=S.runs.length;
+  const f=facts(S.runs);
+  $("inputSummary").innerHTML="n <b>"+fmtInt(n)+"</b> · runs <b>"+fmtInt(r)+
+    "</b> · H <b>"+fmt(S.H,3)+"</b> bit · H_S <b>"+fmt(f.HS,3)+"</b> bit"+
+    (S.kind==="array"?' <span class="dim">· literal array</span>':"");
+  $("costBig").textContent=fmtInt(cost);
+  $("costSub").textContent=(nH>0?"(cost − nH)/n = "+fmt((cost-nH)/n,3)+"  ·  ":"")+
+    fmt(100*cost/Math.max(1,S.plain),1)+" % of plain";
+
+  const rows=[
+    ["elements n",fmtInt(n)],
+    ["runs r",fmtInt(r)+' <span class="unit">· '+fmtInt(S.nodes.length)+" calls</span>"],
+    ["selected run","#"+(S.selected+1)+' <span class="unit">· length '+fmtInt(S.runs[S.selected]||0)+
+      " · G = "+greenLevels(S.n,S.runs[S.selected]||1)+"</span>"],
+    ["merge cost",fmtInt(cost),"hi"],
+    ["plain mergesort",fmtInt(S.plain)],
+    ["saved",fmtInt(S.plain-cost)+' <span class="unit">= '+fmt((S.plain-cost)/n,2)+" n</span>"],
+    ["__sect__","entropies"],
+    ["H",fmt(S.H,4)+' <span class="unit">bit</span>'],
+    ["n·H (lower bound)",fmtInt(nH)],
+    ["H_S <span class='unit'>subdivision</span>",fmt(f.HS,4)+' <span class="unit">bit</span>',"hi"],
+    ["n·H_S",fmtInt(f.nHS)],
+    ["H_S − H",fmt(f.HS-S.H,3),f.HS-S.H>3?"warn":""],
+    ["subdivision pieces",fmtInt(subdivide(S.runs).length)],
+    ["__sect__","how far above nH"],
+    ["(cost − nH)/n",fmt((cost-nH)/n,3),(cost-nH)/n>3?"warn":""],
+    ["excess average depth",fmt(f.exDepth,3)+' <span class="unit">· run #'+(f.exRun+1)+"</span>",f.exDepth>3?"warn":""],
+    ["(cost − n·H_S)/n",fmt((f.cost-f.nHS)/n,4)],
+    ["cost / nH",nH>1e-9?fmt(cost/nH,3):"—"],
+    ["tree height",fmtInt(Math.ceil(Math.log2(Math.max(2,n))))]
+  ];
+  $("metrics").innerHTML=rows.map(([k,v,cls])=>
+    k==="__sect__" ? '<tr class="sect"><td colspan="2">'+v+"</td></tr>"
+      : '<tr class="'+(cls||"")+'"><td>'+k+"</td><td>"+v+"</td></tr>").join("");
+  drawRuler(cost,nH,n,f.nHS);
+
+  const note=$("modelNote");
+  if(S.straddle===S.cost){
+    note.className="model-note";
+    note.textContent="run-boundary model agrees ("+fmtInt(S.straddle)+"): every straddling call really merges, so this is the worst input for its profile.";
+  } else {
+    note.className="model-note bad";
+    note.textContent="⚠ run-boundary model says "+fmtInt(S.straddle)+", exact simulation "+fmtInt(S.cost)+
+      ". Straddling is necessary but not sufficient — some straddling calls still find max(left) ≤ min(right).";
+  }
+
+  renderSubdivBox();
+  renderChain();
+  renderCharge();
+  renderLegend();
+  $("playBtn").innerHTML=(S.playing?"pause":"play")+'<span class="k">space</span>';
+}
+
+function renderLegend(){
+  $("legendBox").innerHTML = S.opt.charge
+    ? '<span><i style="background:#00D600"></i> green charge</span>'+
+      '<span><i style="background:#FF5C5C"></i> red charge</span>'+
+      '<span><i style="background:#0DEDF7"></i> run A</span>'+
+      '<span><i style="background:#FF5FD1"></i> run B</span>'
+    : '<span><i style="background:#B5FF00"></i> merge runs</span>'+
+      '<span><i style="background:transparent;border:1.5px solid rgba(13,237,247,.35)"></i> skipped</span>'+
+      '<span><i style="background:#FFFF00"></i> current call / selected run</span>'+
+      '<span><i style="background:#0DEDF7"></i> input run</span>';
+}
+
+function renderSubdivBox(){
+  const pieces=subdivideDetailed(S.runs);
+  const cap=400;
+  const parts=[]; let cur=-1, buf=[];
+  for(let i=0;i<Math.min(pieces.length,cap);i++){
+    const p=pieces[i];
+    if(p.run!==cur){ if(buf.length) parts.push(buf.join(" ")); buf=[]; cur=p.run; }
+    buf.push(p.len);
+  }
+  if(buf.length) parts.push(buf.join(" "));
+  const more=pieces.length>cap?' <span class="dim">… '+(pieces.length-cap)+" more</span>":"";
+  const f=facts(S.runs);
+  $("subdivBox").innerHTML=
+    "<b>"+pieces.length+" pieces</b> · H_S = <b>"+fmt(f.HS,4)+"</b> · n·H_S = <b>"+fmtInt(f.nHS)+"</b>"+
+    (isPow2(S.n)?' · <span class="dim">n is a power of two, so cost = n·H_S exactly</span>':
+      ' · <span class="dim">cost − n·H_S = '+fmt(f.cost-f.nHS,1)+"</span>")+
+    "<br>"+parts.map(x=>esc(x)).join(' <span class="sep">|</span> ')+more;
+}
+
+/* ==========================================================================
+   THE CHAIN, drawn out for one run.
+
+     charged_i  <=  SUM_d min{L, 2n/2^d}          (per level, step 3)
+                 =  (G+1)L + 2n/2^G               (exact closed form)
+                 =  L * ( lg(n/L) + g(f) ),  g(f) = 2 - f + 2^f
+                 <= L * lg(n/L) + 3L              (since g <= 3 on [0,1))
+
+   where G = floor(lg(2n/L)) and f = lg(2n/L) - G is the fractional part.
+   The middle step is an identity, not an inequality: writing 2^f = 2n/(L 2^G),
+
+     d <  G : min = L                (bound flat at L, the "green" levels)
+     d =  G : min = L                (still flat -- the first RED level costs a full L)
+     d =  G+k : min = L * 2^f / 2^k  (geometric, base 2n/2^G, NOT base L)
+
+   so red_i <= L + L*2^f = L(1 + 2^f), which lies in [2L, 3L): the naive
+   per-level red bound L/2^(d-G) is exactly a factor 2^f too small, and
+   red <= 2L holds only in the boundary case f = 0.
+   ========================================================================== */
+const gOfF=f=>2-f+Math.pow(2,f);
+const SVG_SCALE=1.2;   // drawn width per viewBox unit, keeps SVG type near the panel type
+
+function renderChain(){
+  const pr=S.charge&&S.charge.perRun[S.selected];
+  if(!pr){ return; }
+  const n=S.n, L=pr.l, G=pr.G;
+  const lgv=Math.log2(2*n/L), f=lgv-G, tf=Math.pow(2,f);
+  $("chainWho").textContent="run #"+(S.selected+1)+" of "+S.runs.length;
+  $("chainHead").innerHTML=
+    "L = <b>"+fmtInt(L)+"</b> \u00b7 n = <b>"+fmtInt(n)+"</b> \u00b7 lg(2n/L) = "+fmt(lgv,4)+
+    " \u00b7 G = \u230alg(2n/L)\u230b = <b>"+G+"</b> \u00b7 f = "+fmt(f,4)+
+    " \u00b7 2\u1da0 = 2n/(L\u00b72\u1d33) = <b>"+fmt(tf,4)+"</b>";
+
+  /* ---- per-level bars, all scaled to L (the bound never exceeds L) ---- */
+  const rows=pr.levels.filter(lv=>lv.d<=Math.min(pr.levels.length-1,G+7));
+  /* lay the row labels out first, so the bar area can be sized around them
+     instead of letting the longest label run off the right edge */
+  const labels=rows.map(lv=>fmt(lv.charged,0)+" / "+fmt(lv.bound,1)+" = "+
+    (lv.d<=G?"L":"L\u00b72\u1da0/2"+supDigits(lv.d-G)));
+  const CHW=5.75, RH=13, X0=22, PAD=8;
+  const labW=Math.max(...labels.map(t=>t.length))*CHW+PAD;
+  const W=Math.max(300,X0+120+labW), X1=W-labW, H=rows.length*RH+8;
+  $("chainLevels").setAttribute("viewBox","0 0 "+W+" "+H);
+  /* the SVG scales to its column; on a wide screen that blows the 9.5px type
+     up far past the surrounding text, so cap the drawn width at 1.2x the
+     viewBox (9.5px -> ~11.4px, matching the .74rem panel copy) */
+  $("chainLevels").style.maxWidth=Math.round(W*SVG_SCALE)+"px";
+  const bw=v=>Math.max(0,(X1-X0)*(L>0?v/L:0));
+  const lp=[];
+  rows.forEach((lv,k)=>{
+    const y=4+k*RH, h=RH-4.5;
+    const col=lv.green?"#00D600":"#FF5C5C";
+    lp.push('<text class="ch-d" x="0" y="'+(y+h-1)+'">'+lv.d+"</text>");
+    lp.push('<rect x="'+X0+'" y="'+y+'" width="'+bw(lv.bound).toFixed(1)+'" height="'+h+
+            '" rx="2" fill="'+col+'" opacity=".26"/>');
+    lp.push('<rect x="'+X0+'" y="'+y+'" width="'+bw(lv.charged).toFixed(1)+'" height="'+h+
+            '" rx="2" fill="'+col+'" opacity=".95"/>');
+    lp.push('<text class="ch-lbl" x="'+(X1+6).toFixed(1)+'" y="'+(y+h-1)+'">'+labels[k]+"</text>");
+  });
+  $("chainLevels").innerHTML=lp.join("");
+
+  /* ---- the three steps ---- */
+  const vals=[
+    {v:pr.charged, lab:"\u03a3 charged", col:"#B5FF00"},
+    {v:pr.sumBound, lab:"\u03a3 min{L, 2n/2\u1d48} = (G+1)L + 2n/2\u1d33", col:"#0DEDF7"},
+    {v:pr.target, lab:"L\u00b7lg(n/L) + 3L", col:"rgba(234,242,255,.45)"}
+  ];
+  const max=Math.max(1,...vals.map(x=>x.v)), BW=190, BH=15, GAP=25;
+  $("chainBars").setAttribute("viewBox","0 0 300 "+(vals.length*GAP+6));
+  $("chainBars").style.maxWidth=Math.round(300*SVG_SCALE)+"px";
+  $("chainG").style.maxWidth=Math.round(300*SVG_SCALE)+"px";
+  $("chainBars").innerHTML=vals.map((x,i)=>{
+    const y=4+i*GAP;
+    return '<rect x="0" y="'+y+'" width="'+BW+'" height="'+BH+'" rx="3" fill="rgba(13,237,247,.10)"/>'+
+      '<rect x="0" y="'+y+'" width="'+(BW*x.v/max).toFixed(1)+'" height="'+BH+'" rx="3" fill="'+x.col+'"/>'+
+      '<text class="ch-val" x="'+(BW+6)+'" y="'+(y+BH-3)+'">'+fmt(x.v,1)+"</text>"+
+      '<text class="ch-lbl" x="2" y="'+(y+BH+9)+'">'+x.lab+"</text>";
+  }).join("");
+
+  /* ---- g(f) on [0,1) with the current f marked ---- */
+  const lo=2.88, hi=3.02, gx=f2=>14+f2*272, gy=v=>68-((v-lo)/(hi-lo))*54;
+  let path="";
+  for(let i=0;i<=120;i++){ const f2=i/120; path+=(i?"L":"M")+gx(f2).toFixed(1)+","+gy(gOfF(f2)).toFixed(1); }
+  const fmin=Math.log2(1/Math.LN2);
+  $("chainG").innerHTML=
+    '<line x1="14" x2="286" y1="'+gy(3)+'" y2="'+gy(3)+'" stroke="rgba(234,242,255,.35)" stroke-width="1" stroke-dasharray="3 3"/>'+
+    '<text class="ch-lbl" x="288" y="'+(gy(3)+3)+'" text-anchor="end">3</text>'+
+    '<path d="'+path+'" fill="none" stroke="#0DEDF7" stroke-width="1.6"/>'+
+    '<circle cx="'+gx(fmin).toFixed(1)+'" cy="'+gy(gOfF(fmin)).toFixed(1)+'" r="2.4" fill="rgba(234,242,255,.5)"/>'+
+    '<text class="ch-lbl" x="'+gx(fmin).toFixed(1)+'" y="'+(gy(gOfF(fmin))+12).toFixed(1)+
+      '" text-anchor="middle">min 2.9139</text>'+
+    '<circle cx="'+gx(f).toFixed(1)+'" cy="'+gy(gOfF(f)).toFixed(1)+'" r="3.4" fill="#FFFF00"/>'+
+    '<text class="ch-hi" x="'+Math.max(14,Math.min(286,gx(f))).toFixed(1)+'" y="'+
+      Math.max(9,gy(gOfF(f))-6).toFixed(1)+'" text-anchor="'+
+      (gx(f)>210?"end":(gx(f)<90?"start":"middle"))+'">g(f) = '+fmt(gOfF(f),4)+"</text>"+
+    '<text class="ch-lbl" x="14" y="82">f = 0</text>'+
+    '<text class="ch-lbl" x="286" y="82" text-anchor="end">f \u2192 1</text>';
+
+  const red=pr.red, naive=L*(2-Math.pow(2,-(pr.levels.length-1-G)));
+  $("chainNote").innerHTML=
+    "The tail is geometric \u2014 but with base 2n/2\u1d33 = L\u00b72\u1da0, not L. Level G is still charged a full L, "+
+    "so red<sub>i</sub> \u2264 L(1 + 2\u1da0) = <b>"+fmt(L*(1+tf),1)+"</b>, which ranges over [2L, 3L) as f runs over [0,1); "+
+    "here red<sub>i</sub> = "+fmt(red,0)+" and 2L = "+fmt(2*L,0)+". The naive bound L/2^(d\u2212G) is a factor 2\u1da0 = "+
+    fmt(tf,3)+" too small at every red level, and is tight only when f = 0. "+
+    "Slack in the chain: "+fmt(pr.sumBound-pr.charged,1)+" from the per-level bound, then "+
+    fmt(pr.target-pr.sumBound,1)+" from g(f) \u2264 3.";
+}
+const SUP="\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079";
+function supDigits(k){ return String(k).split("").map(c=>SUP[+c]).join(""); }
+
+function renderCharge(){
+  const ch=S.charge; if(!ch) return;
+  const n=S.n;
+  const worst=ch.perRun.reduce((m,r)=>r.l>0?Math.max(m,r.red/r.l):m,0);
+  const allSum=ch.perRun.every(r=>r.sumOK);
+  const allTgt=ch.perRun.every(r=>r.targetOK);
+  const maxAct=ch.perRun.reduce((m,r)=>Math.max(m,...r.levels.map(l=>l.nodes)),0);
+  const exWorst=ch.perRun.reduce((m,r)=>Math.max(m,r.excess),-Infinity);
+  const ok=b=>b?"<b style='color:var(--lime)'>holds</b>":"<b style='color:var(--yellow)'>\u2717 violated</b>";
+  $("chargeSummary").innerHTML=
+    "max active nodes per level per run = <b>"+maxAct+"</b> (\u2264 2 \u2014 "+ok(maxAct<=2)+")"+
+    " &middot; every run: charged \u2264 \u03a3\u2098 min{L, 2n/2\u1d48} "+ok(allSum)+
+    " &middot; \u2264 L\u00b7lg(n/L)+3L "+ok(allTgt)+
+    " &middot; green \u03a3 "+fmtInt(ch.greenTotal)+" \u00b7 red \u03a3 "+fmtInt(ch.redTotal)+
+    " &middot; worst red/l\u1d62 = "+fmt(worst,3)+
+    " &middot; worst excess depth = <b style='color:"+(exWorst>3?"var(--yellow)":"var(--lime)")+"'>"+fmt(exWorst,3)+"</b>";
+  const rows=ch.perRun, cap=250;
+  const shownRows=rows.length>cap?rows.slice(0,cap):rows;
+  $("chargeTbl").innerHTML=
+    "<thead><tr><th>run</th><th>l\u1d62</th><th>G</th><th>green</th><th>red</th><th>charged</th>"+
+    "<th>\u2264 \u03a3\u2098 min{l\u1d62, 2n/2\u1d48}</th><th>\u2264 l\u1d62\u00b7lg(n/l\u1d62) + 3l\u1d62</th>"+
+    "</tr></thead><tbody>"+
+    shownRows.map(r=>{
+      const bad=!r.targetOK||!r.sumOK;
+      return "<tr"+(bad?" style='color:var(--yellow);font-weight:600'":"")+"><td>"+(r.i+1)+
+      "</td><td>"+r.l+"</td><td>"+r.G+"</td><td>"+fmt(r.green,1)+"</td><td>"+fmt(r.red,1)+
+      "</td><td>"+fmt(r.charged,1)+
+      "</td><td>"+fmt(r.sumBound,2)+"</td><td>"+fmt(r.target,2)+"</td></tr>";
+    }).join("")+
+    (rows.length>cap?"<tr><td colspan='8' style='color:rgba(234,242,255,.5)'>\u2026 "+
+      (rows.length-cap)+" more runs not shown</td></tr>":"")+
+    "</tbody>";
+}
+
+function renderMode2(){
+  drawStripOnly($("stage3"));
+  const f=facts(S.runs);
+  $("m3summary").innerHTML=
+    "n <b>"+fmtInt(f.n)+"</b> · runs <b>"+fmtInt(f.r)+"</b> · H <b>"+fmt(f.H,3)+
+    "</b> · H_S <b>"+fmt(f.HS,3)+"</b> · cost <b>"+fmtInt(f.cost)+
+    "</b> · (cost−nH)/n <b>"+fmt((f.cost-f.nH)/f.n,3)+
+    "</b> · excess depth <b>"+fmt(f.exDepth,3)+"</b>";
+}
+
+/* ==========================================================================
+   CONJECTURES
+   ========================================================================== */
+const CONJ=[
+  {id:"plain", tag:"thm", name:"cost \u2264 plain mergesort cost",
+   test:f=>f.cost<=f.plain+1e-6,
+   detail:f=>fmtInt(f.cost)+" \u2264 "+fmtInt(f.plain)},
+  {id:"lvlsize", tag:"thm", name:"every subproblem on level d has size \u2264 \u2308n/2\u1d48\u2309",
+   test:f=>buildNodes(f.n).every(v=>v.size<=levelSizeBound(f.n,v.depth)),
+   detail:f=>"holds for all n, not just powers of two (\u2308\u2308n/2\u2309/2\u2309 = \u2308n/4\u2309)"},
+  {id:"act2", tag:"thm", name:"at most 2 active nodes per level overlap a run",
+   test:f=>f.maxNodesPerLevel<=2,
+   detail:f=>"max over runs and levels = "+f.maxNodesPerLevel+
+             "  (a node inside a run straddles no boundary, so it is skipped)"},
+  {id:"lvlcharge", tag:"thm", name:"charge to a run from level d \u2264 min{L, 2n/2\u1d48}",
+   test:f=>f.perRun.every(r=>r.levels.every(lv=>lv.charged<=lv.bound+1e-6)),
+   detail:f=>"the two facts above, plus disjointness of a level's nodes"},
+  {id:"sumbound", tag:"thm", name:"\u03a3\u2098 min{L, 2n/2\u1d48} = (G+1)L + 2n/2\u1d33 \u2264 L\u00b7lg(n/L) + 3L",
+   test:f=>f.perRun.every(r=>r.sumBound<=r.target+1e-6),
+   detail:f=>"G = \u230alg(2n/L)\u230b; equality at L = n, where both sides are 3n"},
+  {id:"h3", tag:"thm", name:"cost \u2264 nH + 3n",
+   test:f=>f.cost<=f.nH+3*f.n+1e-6,
+   detail:f=>"(cost \u2212 nH)/n = "+fmt((f.cost-f.nH)/f.n,3)+
+             "  \u2014 sum the per-run bound over runs: \u03a3\u1d62 (l\u1d62lg(n/l\u1d62) + 3l\u1d62) = nH + 3n"},
+  {id:"ex3", tag:"thm", name:"excess average depth \u2264 3 on every run",
+   test:f=>f.exDepth<=3+1e-9,
+   detail:f=>"max\u1d62 charged\u1d62/l\u1d62 \u2212 lg(n/l\u1d62) = "+fmt(f.exDepth,4)+
+             "  on run #"+(f.exRun+1)+"  (same per-run bound, divided by l\u1d62)"},
+  {id:"exDom", tag:"thm", name:"excess average depth \u2265 (cost \u2212 nH)/n",
+   test:f=>f.exDepth>=(f.cost-f.nH)/f.n-1e-9,
+   detail:f=>fmt(f.exDepth,4)+" \u2265 "+fmt((f.cost-f.nH)/f.n,4)+"  (weighted average \u2264 max)"},
+  {id:"subdivId", tag:"thm", name:"cost = \u03a3\u2c7c l\u2c7c \u00b7 depth\u2c7c over the td-sc subdivision",
+   test:f=>Math.abs(costFromSubdivision(f.lengths)-f.cost)<1e-6,
+   detail:f=>"\u03a3 l\u2c7c\u00b7depth\u2c7c = "+fmtInt(costFromSubdivision(f.lengths))+", cost = "+fmtInt(f.cost)},
+  {id:"pow2HS", tag:"thm", name:"cost = n\u00b7H_S whenever n is a power of two",
+   test:f=>!isPow2(f.n)||Math.abs(f.cost-f.nHS)<1e-6,
+   detail:f=>isPow2(f.n)?"n = "+f.n+" = 2^k, cost \u2212 n\u00b7H_S = "+fmt(f.cost-f.nHS,6)
+                        :"n = "+f.n+" is not a power of two \u2014 vacuous here"},
+  {id:"hs3", tag:"open", name:"H_S \u2264 H + 3",
+   test:f=>f.HS<=f.H+3+1e-9,
+   detail:f=>"H_S \u2212 H = "+fmt(f.HS-f.H,4)+
+             "  (follows from cost \u2264 nH+3n only when n is a power of two)"},
+  {id:"red2l", tag:"refuted", name:"charging: red\u1d62 \u2264 2 l\u1d62 for every run",
+   test:f=>f.redAllOK,
+   detail:f=>"worst red/l\u1d62 = "+fmt(f.redWorst,3)+
+             "  \u2014 still refuted under the level-based split (n=674, [7,13,115,215,30,208,86] gives 2.337)"},
+];
+const stopSet=new Set();
+CONJ.filter(c=>c.tag==="open").forEach(c=>stopSet.add(c.id));
+
+function testConj(c,f){
+  try{ return {ok:!!c.test(f), detail:c.detail?c.detail(f):""}; }
+  catch(e){ return {ok:false, detail:String(e.message||e)}; }
+}
+function renderConjectures(){
+  const f=facts(S.runs);
+  $("conjList").innerHTML=CONJ.map(c=>{
+    const {ok,detail}=testConj(c,f);
+    const refuted=c.tag==="refuted";
+    const mark=refuted?(ok?"·":"✗"):(ok?"✓":"✗");
+    const cls=refuted?(ok?"refuted":"bad"):(ok?"ok":"bad");
+    return '<div class="conj">'+
+      '<label class="conj-stop"><input type="checkbox" data-conj="'+c.id+'"'+(stopSet.has(c.id)?" checked":"")+'></label>'+
+      '<span class="conj-name">'+c.name+'<span class="tag '+c.tag+'">'+(c.tag==="thm"?"proven":c.tag)+"</span></span>"+
+      '<span class="mark '+cls+'">'+mark+"</span>"+
+      '<span class="conj-detail">'+detail+"</span></div>";
+  }).join("");
+  $("conjList").querySelectorAll("input[data-conj]").forEach(cb=>{
+    cb.onchange=()=>{ cb.checked?stopSet.add(cb.dataset.conj):stopSet.delete(cb.dataset.conj); };
+  });
+}
+document.querySelectorAll("[data-stopset]").forEach(b=>{
+  b.onclick=()=>{ stopSet.clear(); if(b.dataset.stopset==="1") CONJ.forEach(c=>stopSet.add(c.id)); renderConjectures(); };
+});
+function violated(lengths){
+  if(!stopSet.size) return null;
+  const f=facts(lengths);
+  for(const c of CONJ) if(stopSet.has(c.id) && !testConj(c,f).ok) return c;
+  return null;
+}
+
+/* ==========================================================================
+   PLAYBACK
+   ========================================================================== */
+function stopPlay(){ S.playing=false; clearTimeout(S.timer); }
+function tick(){
+  if(!S.playing) return;
+  if(S.reveal>=S.nodes.length){ S.reveal=Infinity; stopPlay(); render(); return; }
+  S.reveal++; render();
+  S.timer=setTimeout(tick,S.speed);
+}
+$("playBtn").onclick=function(){
+  if(S.playing){ stopPlay(); render(); return; }
+  if(S.reveal===Infinity||S.reveal>=S.nodes.length) S.reveal=0;
+  S.playing=true; render(); tick();
+};
+$("stepFwd").onclick=function(){ stopPlay();
+  if(S.reveal===Infinity){ S.reveal=0; render(); return; }
+  S.reveal=Math.min(S.reveal+1,S.nodes.length); render(); };
+$("stepBack").onclick=function(){ stopPlay(); if(S.reveal===Infinity) S.reveal=S.nodes.length;
+  S.reveal=Math.max(0,S.reveal-1); render(); };
+$("showAll").onclick=function(){ stopPlay(); S.reveal=Infinity; render(); };
+$("speed").oninput=function(e){ S.speed=+e.target.value; };
+
+[["optSlides","slides"],["optCharge","charge"],["optLabels","labels"],["optLevels","levels"],["optRefs","refs"],["optTitle","caption"]]
+.forEach(([id,key])=>{
+  $(id).classList.toggle("is-on",!!S.opt[key]);
+  $(id).onclick=function(){ S.opt[key]=!S.opt[key]; this.classList.toggle("is-on",S.opt[key]); render(); };
+});
+
+/* ==========================================================================
+   RUN EDITING  (ported from the merge cost lab's mode 1)
+   ========================================================================== */
+function select(i){ S.selected=Math.max(0,Math.min(i,S.runs.length-1)); render(); }
+
+const EDITS={
+  split: ()=>{ const r=S.runs.slice(), i=S.selected, l=r[i];
+    if(l<2) return; r.splice(i,1,Math.floor(l/2),Math.ceil(l/2)); commit(r); },
+  joinRight: ()=>{ const r=S.runs.slice(), i=S.selected;
+    if(i>=r.length-1) return; r.splice(i,2,r[i]+r[i+1]); commit(r); },
+  swapLeft: ()=>{ const r=S.runs.slice(), i=S.selected;
+    if(i===0) return; [r[i-1],r[i]]=[r[i],r[i-1]]; S.selected=i-1; commit(r); },
+  swapRight: ()=>{ const r=S.runs.slice(), i=S.selected;
+    if(i>=r.length-1) return; [r[i],r[i+1]]=[r[i+1],r[i]]; S.selected=i+1; commit(r); },
+  grow: (k=1)=>{ const r=S.runs.slice(); r[S.selected]+=k; commit(r); },
+  shrink: (k=1)=>{ const r=S.runs.slice(); r[S.selected]=Math.max(1,r[S.selected]-k); commit(r); },
+  double: ()=>{ const r=S.runs.slice(); r[S.selected]*=2; commit(r); },
+  halve: ()=>{ const r=S.runs.slice(); r[S.selected]=Math.max(1,Math.round(r[S.selected]/2)); commit(r); },
+  duplicate: ()=>{ const r=S.runs.slice(), i=S.selected; r.splice(i,0,r[i]); commit(r); },
+  remove: ()=>{ if(S.runs.length<2) return; const r=S.runs.slice(); r.splice(S.selected,1); commit(r); },
+  reverse: ()=>commit(S.runs.slice().reverse()),
+  shuffle: ()=>{ const r=S.runs.slice();
+    for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; }
+    commit(r); },
+  sortDesc: ()=>commit(S.runs.slice().sort((a,b)=>b-a)),
+  subdivide: ()=>commit(subdivide(S.runs))
+};
+
+const TOOLS=[
+  ["split","split","s"],["joinRight","join →","j"],
+  ["swapLeft","← swap",","],["swapRight","swap →","."],
+  ["grow","longer","↑"],["shrink","shorter","↓"],
+  ["double","×2",""],["halve","÷2",""],
+  ["duplicate","duplicate","d"],["remove","delete","x"],
+  null,
+  ["reverse","reverse all",""],["shuffle","shuffle",""],["sortDesc","sort ↓",""],
+  ["subdivide","subdivide",""]
+];
+
+function buildTools(){
+  const html=TOOLS.map(t=>t===null?'<span class="tool-sep"></span>':
+    '<button class="tool" data-edit="'+t[0]+'" type="button">'+t[1]+(t[2]?'<span class="k">'+t[2]+"</span>":"")+"</button>")
+    .join("")+
+    '<span class="tool-sep"></span>'+
+    '<button class="tool js-undo" type="button">undo<span class="k">u</span></button>'+
+    '<button class="tool js-redo" type="button">redo</button>';
+  document.querySelectorAll(".js-tools").forEach(h=>{ h.innerHTML=html; });
+
+  const io='<label class="ctl ctl-grow"><span>run lengths</span>'+
+    '<input type="text" class="js-runtext" spellcheck="false" autocomplete="off"></label>'+
+    '<label class="ctl"><span>generator</span><select class="js-gen">'+
+    GENERATORS.map(g=>'<option value="'+g.id+'">'+g.label+"</option>").join("")+"</select></label>"+
+    '<label class="ctl"><span>n</span><input type="number" class="js-genN" value="600" min="2" step="1"></label>'+
+    '<label class="ctl"><span>runs</span><input type="number" class="js-genR" value="12" min="1" step="1"></label>'+
+    '<button class="btn btn-lime js-genbtn" type="button">generate</button>';
+  document.querySelectorAll(".js-runio").forEach(h=>{ h.innerHTML=io; });
+}
+
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".js-tools button, .js-genbtn");
+  if(!b) return;
+  if(b.classList.contains("js-undo")) return undo();
+  if(b.classList.contains("js-redo")) return redo();
+  if(b.classList.contains("js-genbtn")){
+    const io=b.closest(".js-runio");
+    const g=GENERATORS.find(x=>x.id===io.querySelector(".js-gen").value);
+    const n=Math.max(2,Math.round(+io.querySelector(".js-genN").value||600));
+    const r=Math.max(1,Math.round(+io.querySelector(".js-genR").value||12));
+    let out; try{ out=g.make(n,r); }catch(err){ out=[n]; }
+    S.selected=0;
+    return commit(out);
+  }
+  if(b.dataset.edit) EDITS[b.dataset.edit]();
+});
+document.addEventListener("change",e=>{
+  if(!e.target.classList.contains("js-runtext")) return;
+  const parsed=e.target.value.split(/[^0-9.]+/).map(Number).filter(x=>Number.isFinite(x)&&x>=1);
+  if(parsed.length) commit(parsed); else render();
+});
+$("applySubdiv").onclick=()=>EDITS.subdivide();
+
+/* ---- pointer editing on any svg carrying an editable strip ---- */
+let drag=null;
+function posOf(evt,svg){
+  const w=+svg.dataset.w||1200, px=+svg.dataset.padx||PADX;
+  let x;
+  const ctm=svg.getScreenCTM&&svg.getScreenCTM();
+  if(ctm&&typeof DOMPoint!=="undefined"){
+    x=new DOMPoint(evt.clientX,evt.clientY).matrixTransform(ctm.inverse()).x;
+  } else {                                   // fallback: plain box arithmetic
+    const b=svg.getBoundingClientRect();
+    x=(evt.clientX-b.left)/Math.max(1,b.width)*w;
+  }
+  return (x-px)/(w-2*px)*S.n;
+}
+function attachEditor(svg){
+  svg.addEventListener("pointerdown",e=>{
+    const el=e.target.closest("[data-role]");
+    if(!el) return;
+    const role=el.dataset.role, i=+el.dataset.i;
+    if(role==="handle"){
+      drag={svg,type:"handle",i,at:S.starts[i],total:S.runs[i]+S.runs[i+1],dirty:false};
+      svg.setPointerCapture(e.pointerId); e.preventDefault();
+    } else if(role==="leaf"){
+      drag={svg,type:"run",i,x:e.clientX,moved:false,dirty:false};
+      select(i); svg.setPointerCapture(e.pointerId); e.preventDefault();
+    }
+  });
+  svg.addEventListener("pointermove",e=>{
+    if(!drag){ hover(e); return; }
+    const pos=posOf(e,drag.svg);
+    if(drag.type==="handle"){
+      const len=Math.max(1,Math.min(drag.total-1,Math.round(pos-drag.at)));
+      if(len===S.runs[drag.i]) return;
+      const r=S.runs.slice();
+      r[drag.i]=len; r[drag.i+1]=drag.total-len;
+      if(!drag.dirty){ S.past.push(snapshot()); S.future.length=0; drag.dirty=true; }
+      commit(r,{history:false,defer:true});
+    } else {
+      if(Math.abs(e.clientX-drag.x)>3) drag.moved=true;
+      if(!drag.moved) return;
+      const r=S.runs.slice();
+      let i=drag.i, changed=false, s=runStarts(r);
+      while(i>0 && pos<s[i]){ [r[i-1],r[i]]=[r[i],r[i-1]]; i--; s=runStarts(r); changed=true; }
+      while(i<r.length-1 && pos>s[i+1]){ [r[i],r[i+1]]=[r[i+1],r[i]]; i++; s=runStarts(r); changed=true; }
+      if(!changed) return;
+      if(!drag.dirty){ S.past.push(snapshot()); S.future.length=0; drag.dirty=true; }
+      drag.i=i; S.selected=i;
+      commit(r,{history:false,defer:true});
+    }
+  });
+  const end=()=>{ if(drag){ drag=null; render(); } };
+  svg.addEventListener("pointerup",end);
+  svg.addEventListener("pointercancel",end);
+  svg.addEventListener("pointerleave",hideTip);
+}
+
+const tip=$("tip");
+let hot=null, hlRun=null;
+
+function setHighlight(svg,run,key){
+  const st=svg.querySelector("style");
+  if(!st) return;
+  if(run===null){ st.textContent=""; return; }
+  st.textContent=
+    "[data-seg]{opacity:.16}"+
+    '[data-seg][data-run="'+run+'"]{opacity:1}'+
+    (key?'[data-seg][data-key="'+key+'"]{stroke:#fff;stroke-width:2.2;paint-order:stroke}':"");
+}
+function clearHighlights(){
+  if(hlRun!==null){
+    document.querySelectorAll("#stage,#stage3").forEach(sv=>setHighlight(sv,null));
+    hlRun=null;
+  }
+}
+function hideTip(){
+  tip.style.opacity=0; tip.classList.remove("wide");
+  document.querySelectorAll(".guide").forEach(g=>{ g.style.opacity=0; });
+  if(hot){ hot.classList.remove("is-hot"); hot=null; }
+  clearHighlights();
+}
+
+/* the level-by-level popup: how the charge to one run is bounded */
+function chargePopup(runIdx,nodeIdx){
+  const pr=S.charge.perRun[runIdx];
+  if(!pr) return "";
+  const n=S.n, L=pr.l;
+  const seg=nodeIdx!=null?(S.charge.segsByNode[nodeIdx]||[]).find(x=>x.run===runIdx):null;
+  const hd=seg?seg.depth:null;
+  const rows=pr.levels.filter(lv=>lv.charged>0||lv.d===hd||lv.d<=pr.G);
+  const head='<div class="tp-h">run '+(runIdx+1)+" of "+S.runs.length+
+    ' <span class="tp-d">L = '+fmtInt(L)+" \u00b7 n = "+fmtInt(n)+" \u00b7 green levels G = \u230alg(2n/L)\u230b = "+pr.G+"</span></div>";
+  const totals='<div class="tp-r"><b>charged '+fmt(pr.charged,0)+"</b> = green "+fmt(pr.green,0)+
+    " + red "+fmt(pr.red,0)+"</div>";
+  let hover="";
+  if(seg){
+    const lv=pr.levels[hd];
+    hover='<div class="tp-box">hovered part \u00b7 node A['+seg.from+".."+seg.to+") of call size "+
+      fmtInt(seg.size)+' <span class="tp-d">(level '+hd+", so size \u2264 \u2308n/2^"+hd+"\u2309 = "+
+      fmtInt(lv.nodeBound)+")</span><br>charged to this run <b>"+fmt(seg.amt,0)+
+      "</b> \u2264 min{L, 2n/2^"+hd+"} = <b>"+fmt(lv.bound,2)+"</b> \u00b7 "+
+      (lv.green?'<span class="tp-g">green</span>':'<span class="tp-rd">red</span>')+"</div>";
+  }
+  const G=pr.G, tf=2*n/(L*Math.pow(2,G));
+  const body=rows.map(lv=>{
+    const cls=(lv.d===hd?" tp-hi":"")+(lv.green?" g":" r");
+    const form=lv.d<=G?"L":"L\u00b72\u1da0/2"+supDigits(lv.d-G);
+    return '<tr class="'+cls.trim()+'"><td>'+lv.d+"</td><td>"+fmtInt(lv.nodeBound)+"</td><td>"+
+      lv.nodes+"</td><td>"+fmt(lv.charged,0)+"</td><td>"+fmt(lv.bound,2)+"</td><td>"+form+"</td></tr>";
+  }).join("");
+  const tail=pr.levels.length>rows.length
+    ? '<tr class="tp-dim"><td colspan="6">\u2026 deeper levels charge nothing</td></tr>' : "";
+  const table='<table class="tp-t"><thead><tr><th>d</th><th>\u2308n/2\u1d48\u2309</th>'+
+    '<th>act</th><th>charged</th><th>\u2264 min{L, 2n/2\u1d48}</th><th>=</th></tr></thead><tbody>'+
+    body+tail+'</tbody></table>';
+  const f=Math.log2(2*n/L)-G;
+  const chain='<div class="tp-r tp-sum">\u03a3 charged <b>'+fmt(pr.charged,0)+"</b> \u2264 \u03a3 bounds <b>"+
+    fmt(pr.sumBound,2)+"</b> = (G+1)L + 2n/2\u1d33<br>= L\u00b7(lg(n/L) + g(f)), g(f) = 2\u2212f+2\u1da0 = "+
+    fmt(gOfF(f),4)+" \u2264 3<br>\u2264 L\u00b7lg(n/L) + 3L = <b>"+
+    fmt(pr.target,2)+"</b>"+(pr.targetOK?"":' <span class="tp-bad">\u2717 violated</span>')+"</div>";
+  return head+totals+hover+table+chain;
+}
+
+function hover(e){
+  const el=e.target.closest("[data-role]");
+  if(!el){ hideTip(); return; }
+  if(hot) hot.classList.remove("is-hot");
+  hot=el.dataset.bar?$(el.dataset.bar):null;
+  if(hot) hot.classList.add("is-hot");
+  const svg=el.ownerSVGElement;
+  const g0=svg.querySelector(".guide.g0"), g1=svg.querySelector(".guide.g1");
+  if(g0&&el.dataset.x0){
+    g0.setAttribute("x1",el.dataset.x0); g0.setAttribute("x2",el.dataset.x0);
+    g1.setAttribute("x1",el.dataset.x1); g1.setAttribute("x2",el.dataset.x1);
+    g0.style.opacity=.8; g1.style.opacity=.8;
+  }
+  const role=el.dataset.role;
+  tip.classList.remove("wide");
+  if(role==="seg"){
+    const run=+el.dataset.i, node=+el.dataset.node;
+    setHighlight(svg,run,node+"_"+run); hlRun=run;
+    tip.innerHTML=chargePopup(run,node);
+    tip.classList.add("wide");
+  } else if(role==="leaf"&&S.opt.charge){
+    const run=+el.dataset.i;
+    setHighlight(svg,run,null); hlRun=run;
+    tip.innerHTML=chargePopup(run,null);
+    tip.classList.add("wide");
+  } else if(role==="node"){
+    clearHighlights();
+    tip.textContent="call A["+el.dataset.lo+".."+el.dataset.hi+")\nlength "+fmtInt(+el.dataset.len)+
+      " \u00b7 depth "+el.dataset.d+" \u00b7 size \u2264 \u2308n/2^"+el.dataset.d+"\u2309 = "+
+      fmtInt(levelSizeBound(S.n,+el.dataset.d))+"\n"+
+      (el.dataset.ex==="1"?"merge executed":"skipped by the sorted check");
+  } else if(role==="leaf"){
+    clearHighlights();
+    const i=+el.dataset.i, pr=S.charge?S.charge.perRun[i]:null;
+    tip.textContent="run "+(i+1)+" of "+S.runs.length+"\nlength "+fmtInt(+el.dataset.len)+
+      (pr?"\navg depth "+fmt(pr.avgDepth,2)+" \u00b7 share "+fmt(pr.share,2)+"\nexcess "+fmt(pr.excess,2):"");
+  } else return;
+  const w=tip.classList.contains("wide")?360:200;
+  tip.style.left=Math.max(6,Math.min(window.innerWidth-w-6,e.clientX+14))+"px";
+  const h=tip.offsetHeight||240;
+  tip.style.top=Math.max(6,Math.min(window.innerHeight-h-6,e.clientY+16))+"px";
+  tip.style.opacity=1;
+}
+document.addEventListener("pointermove",e=>{
+  if(drag) return;
+  if(e.target.closest && e.target.closest("svg") && e.target.closest("[data-role]")) hover(e);
+});
+
+/* ---- keyboard ---- */
+document.addEventListener("keydown",e=>{
+  const t=e.target;
+  if(t&&(t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.tagName==="SELECT")) return;
+  const big=e.shiftKey?10:1;
+  const map={
+    ArrowLeft:()=>select(S.selected-1),
+    ArrowRight:()=>select(S.selected+1),
+    ArrowUp:()=>EDITS.grow(big),
+    ArrowDown:()=>EDITS.shrink(big),
+    s:EDITS.split, j:EDITS.joinRight, d:EDITS.duplicate, x:EDITS.remove,
+    ",":EDITS.swapLeft, ".":EDITS.swapRight, u:undo, r:redo,
+    f:togglePresent,
+    " ":()=>$("playBtn").click(),
+    "[":()=>$("stepBack").click(),
+    "]":()=>$("stepFwd").click()
+  };
+  if(e.key==="Escape"&&document.body.classList.contains("present")){ e.preventDefault(); togglePresent(); return; }
+  const f=map[e.key];
+  if(f){ e.preventDefault(); f(); }
+});
+
+/* ==========================================================================
+   INPUT GENERATORS
+   ========================================================================== */
+function rescale(parts,n){
+  const r=parts.length, s=sum(parts)||r;
+  const out=parts.map(x=>Math.max(1,Math.round(x/s*n)));
+  let diff=n-sum(out);
+  for(let g=0;diff!==0&&g<4*r+8;g++){
+    const i=g%r;
+    if(diff>0){ out[i]++; diff--; }
+    else if(out[i]>1){ out[i]--; diff++; }
+  }
+  return out;
+}
+function randomComposition(n,r){
+  r=Math.max(1,Math.min(r,n));
+  const cuts=new Set();
+  while(cuts.size<r-1) cuts.add(1+Math.floor(Math.random()*(n-1)));
+  const c=[...cuts].sort((a,b)=>a-b), out=[]; let prev=0;
+  for(const x of c){ out.push(x-prev); prev=x; }
+  out.push(n-prev); return out;
+}
+function equalRuns(n,k){
+  k=Math.max(1,Math.min(k,n));
+  const base=Math.floor(n/k), rem=n%k, L=[];
+  for(let i=0;i<k;i++) L.push(base+(i<rem?1:0));
+  return L;
+}
+function dyadicHostile(n,k){
+  const L=equalRuns(n,Math.max(1,Math.min(k,n)));
+  for(let i=0;i+1<L.length;i+=2) if(L[i]>1){ L[i]--; L[i+1]++; }
+  return L;
+}
+function rtim(n){ if(n<=3) return [n]; const h=n>>1; return rtim(h).concat(rtim(h-1),[(n&1)+1]); }
+
+const GEN_NOTES={
+  random:"Uniformly random composition of n into r positive parts — the generic case.",
+  geometric:"Run lengths drawn i.i.d. from an exponential, then rescaled to sum to n.",
+  equal:"r runs of equal length: entropy log₂ r, and the recursion grid lines up nicely.",
+  dyadic:"Equal runs pushed one element off the dyadic grid, so every level has to merge.",
+  ramp:"Lengths 1, 2, …, r rescaled to n.",
+  spike:"One run holds almost everything, the rest are singletons — very low entropy.",
+  extremal:"(1, n−2, 1): the profile that drives (cost − nH)/n, H_S − H and the excess depth towards 3.",
+  leading1:"A singleton first run, then equal runs — one element is enough to switch every merge back on.",
+  halving:"Geometrically halving run lengths.",
+  sawtooth:"Many length-2 runs and one square run: tiny entropy, many runs.",
+  rtim:"RTim(n): the recursive sequence that maximises Timsort's merge cost.",
+  slide:"The lecture-slide example 15, 15, 17, 17 over n = 64 (cost 216, plain 384, nH ≈ 127.8).",
+  subdiv:"A random profile, replaced by its own td-sc subdivision."
+};
+const GENERATORS=[
+  {id:"random",label:"random composition",make:(n,r)=>randomComposition(n,r)},
+  {id:"geometric",label:"geometric run lengths",make:(n,r)=>
+     rescale(Array.from({length:r},()=>1-Math.log(1-Math.random())),n)},
+  {id:"equal",label:"equal runs",make:(n,r)=>equalRuns(n,r)},
+  {id:"dyadic",label:"dyadic-hostile equal runs",make:(n,r)=>dyadicHostile(n,r)},
+  {id:"ramp",label:"ramp 1, 2, 3, …, r",make:(n,r)=>rescale(Array.from({length:r},(_,i)=>i+1),n)},
+  {id:"spike",label:"one huge run + tiny runs",make:(n,r)=>
+     rescale([Math.max(1,n-r+1)].concat(Array(Math.max(0,r-1)).fill(1)),n)},
+  {id:"extremal",label:"(1, n−2, 1) — drives every metric to 3",make:n=>[1,Math.max(1,n-2),1]},
+  {id:"leading1",label:"(1, equal runs) — leading singleton",make:(n,r)=>
+     [1].concat(equalRuns(Math.max(1,n-1),Math.max(1,r-1)))},
+  {id:"halving",label:"(2n, n, n/2, …, 4, 4, 2)",make:n=>{
+     const out=[]; let x=Math.max(4,1<<Math.floor(Math.log2(Math.max(4,n/4))));
+     out.push(2*x,x); while(x>4){ x>>=1; out.push(x); } out.push(4,2); return out; }},
+  {id:"sawtooth",label:"(2, 2, …, 2, k²) — tiny entropy, many runs",make:(n,r)=>{
+     const k=Math.max(2,r-1); return Array(k).fill(2).concat([k*k]); }},
+  {id:"rtim",label:"RTim(n) — Timsort's worst case",make:n=>rtim(n)},
+  {id:"slide",label:"slide example 15, 15, 17, 17",make:()=>[15,15,17,17]},
+  {id:"subdiv",label:"random, then subdivided",make:(n,r)=>subdivide(randomComposition(n,r))}
+];
+
+/* mode-1 quick presets that are not pure run profiles */
+document.querySelectorAll("[data-preset]").forEach(btn=>{
+  btn.onclick=()=>{
+    const n=Math.max(2,Math.min(MAXDRAW,parseInt($("presetN").value)||64));
+    const p=btn.dataset.preset;
+    if(p==="perm"){
+      const A=Array.from({length:n},(_,i)=>i+1);
+      for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=A[i]; A[i]=A[j]; A[j]=t; }
+      S.selected=0; commitArray(A); return;
+    }
+    if(p==="rev"){ S.selected=0; commitArray(Array.from({length:n},(_,i)=>n-i)); return; }
+    if(p==="slide"){ S.selected=0; commit([15,15,17,17]); return; }
+    if(p==="extremal"){ S.selected=0; commit([1,Math.max(1,n-2),1]); return; }
+  };
+});
+/* ==========================================================================
+   FAST EVALUATOR
+   cost(B) = plainCost(n) − (sizes of nodes whose open interval holds no
+   boundary). Toggling a boundary touches one root-to-leaf path: O(log n).
+   ========================================================================== */
+function makeEvaluator(n){
+  const nodes=buildNodes(n), N=nodes.length;
+  const size=new Int32Array(N), map=new Map();
+  for(let i=0;i<N;i++){ size[i]=nodes[i].size; map.set(nodes[i].l*(n+1)+nodes[i].r,i); }
+  const touch=new Array(n+1);
+  for(let p=1;p<n;p++){
+    const list=[]; let l=0,r=n;
+    for(;;){
+      list.push(map.get(l*(n+1)+r));
+      const m=l+Math.floor((r-l)/2);
+      if(p<m) r=m; else if(p>m) l=m; else break;
+    }
+    touch[p]=list;
+  }
+  let plain=0; for(let i=0;i<N;i++) plain+=size[i];
+  const cnt=new Int32Array(N), on=new Uint8Array(n+1);
+  let savings=plain, bnd=[], sumPhi;
+  const phi=r=>r>0?r*Math.log2(r):0;
+  sumPhi=phi(n);
+  const lower=p=>{ let lo=0,hi=bnd.length; while(lo<hi){ const m=(lo+hi)>>1; if(bnd[m]<p) lo=m+1; else hi=m; } return lo; };
+  function toggle(p){
+    if(p<1||p>=n) return;
+    const t=touch[p];
+    if(on[p]){
+      on[p]=0;
+      for(let i=0;i<t.length;i++){ const j=t[i]; if(--cnt[j]===0) savings+=size[j]; }
+      const k=lower(p), prev=k>0?bnd[k-1]:0, next=(k+1<bnd.length)?bnd[k+1]:n;
+      bnd.splice(k,1);
+      sumPhi+=phi(next-prev)-phi(p-prev)-phi(next-p);
+    } else {
+      on[p]=1;
+      for(let i=0;i<t.length;i++){ const j=t[i]; if(cnt[j]++===0) savings-=size[j]; }
+      const k=lower(p), prev=k>0?bnd[k-1]:0, next=k<bnd.length?bnd[k]:n;
+      bnd.splice(k,0,p);
+      sumPhi+=phi(p-prev)+phi(next-p)-phi(next-prev);
+    }
+  }
+  function reset(list){
+    on.fill(0); cnt.fill(0); savings=plain; bnd=[]; sumPhi=phi(n);
+    if(list) for(const p of list) toggle(p);
+  }
+  return {n,plain,
+    cost:()=>plain-savings,
+    nH:()=>n*Math.log2(n)-sumPhi,
+    boundaries:()=>bnd.slice(),
+    lengths:()=>{ const L=[]; let prev=0; for(const x of bnd){ L.push(x-prev); prev=x; } L.push(n-prev); return L; },
+    isOn:p=>!!on[p],
+    count:()=>bnd.length,
+    toggle,reset};
+}
+
+/* ==========================================================================
+   OBJECTIVES
+   ========================================================================== */
+const METRIC_LABEL={
+  excess:"(cost−nH)/n", exdepth:"excess avg depth", hs:"H_S − H",
+  redratio:"max red\u1d62/l\u1d62", red:"total red / n",
+  ratioNH:"cost/nH", costHS:"(cost−nH_S)/n", cAtB:"(cost−b·n)/nH"
+};
+const FAST_KIND={excess:1,ratioNH:1,cAtB:1};      // computable from the evaluator alone
+
+function scoreLengths(lengths,kind,b){
+  const f=facts(lengths);
+  switch(kind){
+    case "exdepth":  return f.exDepth;
+    case "hs":       return f.HS-f.H;
+    case "redratio": return f.redWorst;
+    case "red":      return f.redTotal/f.n;
+    case "costHS":   return (f.cost-f.nHS)/f.n;
+    case "ratioNH":  return f.nH>1e-9?f.cost/f.nH:-Infinity;
+    case "cAtB":     return f.nH>1e-9?(f.cost-b*f.n)/f.nH:-Infinity;
+    default:         return f.n>0?(f.cost-f.nH)/f.n:-Infinity;   // excess
+  }
+}
+function objective(kind,cost,nH,n,b,E){
+  if(FAST_KIND[kind]){
+    if(kind==="excess")  return n>0?(cost-nH)/n:-Infinity;
+    if(kind==="ratioNH") return nH>1e-9?cost/nH:-Infinity;
+    return nH>1e-9?(cost-b*n)/nH:-Infinity;
+  }
+  return E?scoreLengths(E.lengths(),kind,b):-Infinity;
+}
+
+/* ==========================================================================
+   SEARCH — shared plumbing
+   ========================================================================== */
+let searchAbort=false, stoppedBy=null, worstFound=null;
+const results=[], hall=[];
+const SEARCH_BTNS=["sampleBtn","climbBtn","extremifyBtn","searchBtn","sweepBtn","exhaustBtn"];
+function setBusy(on){
+  SEARCH_BTNS.forEach(id=>{ $(id).disabled=on; });
+  $("stopBtn").disabled=!on;
+}
+function status(html){ $("sStatus").innerHTML=html; }
+function readSearchOpts(){
+  return {
+    kind:$("sMetric").value,
+    b:parseFloat($("sB").value)||0,
+    nMode:$("sNmode").value,
+    nVal:Math.max(2,Math.min(65536,parseInt($("sN").value)||2000)),
+    rMode:$("sRmode").value,
+    rVal:Math.max(1,parseInt($("sR").value)||40),
+    iter:Math.max(1,parseInt($("sIter").value)||6000)
+  };
+}
+const fmtScore=(v,kind)=>kind==="ratioNH"?fmt(v,4):fmt(v,4);
+
+function pushHall(entry){
+  hall.unshift(entry);
+  if(hall.length>18) hall.pop();
+  renderHall();
+}
+function renderHall(){
+  if(!hall.length){ $("hallRow").innerHTML='<span class="hall-empty">nothing yet — run a search.</span>'; return; }
+  $("hallRow").innerHTML=hall.map((e,i)=>
+    '<button class="hall-chip" type="button" data-h="'+i+'">'+esc(e.label)+" <b>"+esc(e.score)+
+    "</b> · n "+fmtInt(e.n)+" · "+e.runs.length+" runs</button>").join("");
+  $("hallRow").querySelectorAll("[data-h]").forEach(b=>{
+    b.onclick=()=>{ const h=hall[+b.dataset.h]; S.selected=0; commit(h.runs.slice()); };
+  });
+}
+function setWorst(runs){ worstFound=runs?runs.slice():null; $("loadWorstBtn").disabled=!worstFound; }
+$("loadWorstBtn").onclick=()=>{ if(worstFound){ S.selected=0; commit(worstFound.slice()); } };
+
+function landOnCounterexample(conj,runs,how){
+  const f=facts(runs);
+  setWorst(runs);
+  status('<span class="hit">✗ counterexample found</span> — <b>'+conj.name+"</b> fails.<br>"+
+    testConj(conj,f).detail+"<br>"+how+" · loaded into the editor.");
+  pushHall({label:"CEX "+conj.id,score:"✗",n:f.n,runs});
+  S.selected=0; commit(runs.slice());
+}
+
+function addResult(r,kind,proved){
+  results.push({n:r.n,val:r.val,lengths:r.lengths,cost:r.cost,nH:r.nH,
+    kind:(METRIC_LABEL[kind]||kind)+(proved?" ✓proved":"")});
+  results.sort((x,y)=>(x.n-y.n)||(y.val-x.val));
+  drawResults();
+}
+function drawResults(){
+  const t=$("sweepTbl");
+  if(!results.length){ t.innerHTML=""; return; }
+  t.innerHTML="<thead><tr><th>n</th><th>r</th><th>metric</th><th>value</th><th>cost</th>"+
+    "<th>nH</th><th>(cost−nH)/n</th><th>H_S−H</th><th>profile</th></tr></thead><tbody>"+
+    results.map((r,i)=>{
+      const f=facts(r.lengths);
+      return '<tr data-i="'+i+'"><td>'+r.n+"</td><td>"+r.lengths.length+"</td><td>"+r.kind+
+      '</td><td style="color:var(--lime);font-weight:700">'+fmt(r.val,4)+"</td><td>"+fmtInt(r.cost)+
+      "</td><td>"+fmtInt(r.nH)+"</td><td>"+fmt((r.cost-r.nH)/r.n,3)+"</td><td>"+
+      fmt(f.HS-f.H,3)+'</td><td class="prof">'+r.lengths.join(" ")+"</td></tr>";
+    }).join("")+"</tbody>";
+  t.querySelectorAll("tbody tr").forEach(tr=>{
+    tr.onclick=()=>{
+      const r=results[+tr.dataset.i];
+      if(r.n>MAXDRAW){ status('<span class="hit">n = '+r.n+" is above the stage cap of "+MAXDRAW+".</span>"); return; }
+      S.selected=0; commit(r.lengths.slice());
+    };
+  });
+}
+$("clearBtn").onclick=()=>{ results.length=0; drawResults(); };
+$("csvBtn").onclick=()=>{
+  const hdr="n,r,metric,value,cost,nH,nHS,plain,excess_over_n,excess_depth,HS_minus_H,profile\n";
+  const body=results.map(r=>{
+    const f=facts(r.lengths);
+    return [r.n,r.lengths.length,'"'+r.kind+'"',fmt(r.val,6),r.cost,fmt(r.nH,4),fmt(f.nHS,4),
+      plainCost(r.n),fmt((r.cost-r.nH)/r.n,6),fmt(f.exDepth,6),fmt(f.HS-f.H,6),
+      '"'+r.lengths.join(" ")+'"'].join(",");
+  }).join("\n");
+  const t=hdr+body;
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(()=>status("results copied as csv."),()=>status("clipboard blocked."));
+  else status("clipboard unavailable.");
+};
+
+/* cooperative chunking so long searches never freeze the page */
+function runChunks(step,done){
+  setBusy(true); searchAbort=false; stoppedBy=null;
+  (function chunk(){
+    const t0=performance.now();
+    let more=true;
+    while(more && performance.now()-t0<40 && !searchAbort) more=step();
+    if(more && !searchAbort) setTimeout(chunk,0);
+    else { setBusy(false); done(!more); }
+  })();
+}
+$("stopBtn").onclick=()=>{ searchAbort=true; setBusy(false); status("stopped."); };
+
+/* ==========================================================================
+   SAMPLE + CLIMB   (merge cost lab, mode 3)
+   Structured random profiles, then a hill-climb by small local edits.  The
+   uniform sampler alone almost never stumbles onto the extremal shapes, so a
+   slice of the samples are deliberately polarised.
+   ========================================================================== */
+function makeSampler(o){
+  const pickN=()=>o.nMode==="fixed"?o.nVal:2+Math.floor(Math.random()*(o.nVal-1));
+  const pickR=n=>o.rMode==="fixed"?Math.min(n,o.rVal):Math.max(1,1+Math.floor(Math.random()*Math.min(n,o.rVal)));
+  return function(){
+    const n=pickN(), r=Math.max(1,pickR(n));
+    const kind=Math.random();
+    if(kind<0.5||r<3) return randomComposition(n,r);
+    if(kind<0.7){                                    // alternating small / big
+      const out=[]; let big=Math.random()<0.5;
+      for(let i=0;i<r;i++){ out.push(big?50:1); big=!big; }
+      return rescale(out,n);
+    }
+    if(kind<0.85){                                   // one/few big, rest singletons
+      const out=Array(r).fill(1);
+      const heavy=1+Math.floor(Math.random()*Math.min(3,r));
+      for(let k=0;k<heavy;k++) out[Math.floor(Math.random()*r)]=20+Math.floor(Math.random()*400);
+      return rescale(out,n);
+    }
+    const out=[];                                    // geometric-ish blocks
+    for(let i=0;i<r;i++) out.push(1+Math.floor((-Math.log(1-Math.random()))*(1+Math.random()*30)));
+    return rescale(out,n);
+  };
+}
+
+function sampleClimb(fromCurrent){
+  const o=readSearchOpts();
+  const sample=makeSampler(o);
+  const t0=performance.now();
+  let best=-Infinity, bestRuns=null, hit=null, sampled=0;
+  let phase=fromCurrent?1:0, step=0;
+  const climbSteps=fromCurrent?12000:6000;
+  const fixedRuns=o.rMode==="fixed";
+  let cur=null, curScore=-Infinity, maxRuns=90;
+
+  if(fromCurrent){
+    bestRuns=S.runs.slice();
+    const c=violated(bestRuns);
+    if(c){ hit={c,runs:bestRuns}; phase=2; }
+    best=scoreLengths(bestRuns,o.kind,o.b);
+    cur=bestRuns.slice(); curScore=best;
+    maxRuns=fixedRuns?bestRuns.length:90;
+  }
+
+  status((fromCurrent?"climbing from the current input…":"sampling…"));
+  runChunks(()=>{
+    if(phase===0){                                   // ---- random sampling ----
+      const runs=sample();
+      sampled++;
+      const c=violated(runs);
+      if(c){ hit={c,runs}; phase=2; return false; }
+      const s=scoreLengths(runs,o.kind,o.b);
+      if(s>best){ best=s; bestRuns=runs; }
+      if(sampled>=o.iter){
+        phase=1; cur=bestRuns.slice(); curScore=best;
+        maxRuns=fixedRuns?bestRuns.length:90;
+      }
+      return true;
+    }
+    if(phase===1){                                   // ---- hill-climb ----
+      if(!cur||step>=climbSteps){ phase=2; return false; }
+      step++;
+      const cand=cur.slice();
+      const op=fixedRuns?Math.floor(Math.random()*2):Math.floor(Math.random()*5);
+      const i=Math.floor(Math.random()*cand.length);
+      if(op===0) cand[i]=Math.max(1,cand[i]+Math.floor(Math.random()*16)-8);
+      else if(op===1) cand[i]=Math.max(1,Math.round(cand[i]*(0.6+Math.random()*0.8)));
+      else if(op===2&&cand.length<maxRuns){ const l=cand[i]; if(l>=2) cand.splice(i,1,Math.ceil(l/2),Math.max(1,l-Math.ceil(l/2))); }
+      else if(op===3&&cand.length>2) cand.splice(i,1);
+      else if(op===4&&cand.length<maxRuns) cand.splice(i,0,1+Math.floor(Math.random()*12));
+      if(cand.length<2) return true;
+      if(fixedRuns&&cand.length!==cur.length) return true;
+      const cn=sum(cand);
+      if(o.nMode==="fixed"&&cn!==o.nVal){ cand[cand.length-1]+=o.nVal-cn; if(cand[cand.length-1]<1) return true; }
+      else if(cn>o.nVal||cn<2) return true;
+      const c=violated(cand);
+      if(c){ hit={c,runs:cand}; phase=2; return false; }
+      const s=scoreLengths(cand,o.kind,o.b);
+      if(s>=curScore){ cur=cand; curScore=s; if(s>best){ best=s; bestRuns=cand; } }
+      return true;
+    }
+    return false;
+  },()=>{
+    const ms=(performance.now()-t0).toFixed(0);
+    if(hit){ landOnCounterexample(hit.c,hit.runs,"after "+fmtInt(sampled)+" samples · "+ms+" ms"); return; }
+    if(!bestRuns){ status("nothing found."); return; }
+    setWorst(bestRuns);
+    const f=facts(bestRuns);
+    addResult({n:f.n,val:best,lengths:bestRuns,cost:f.cost,nH:f.nH},o.kind);
+    pushHall({label:METRIC_LABEL[o.kind],score:fmtScore(best,o.kind),n:f.n,runs:bestRuns});
+    status("worst <b>"+METRIC_LABEL[o.kind]+"</b> = <b>"+fmtScore(best,o.kind)+"</b> "+
+      (fromCurrent?"by hill-climbing from the current input":"over "+fmtInt(sampled)+" samples")+
+      " · n = "+fmtInt(f.n)+" · "+bestRuns.length+" runs · "+ms+" ms.<br>"+
+      "no ticked conjecture violated. “load worst found” to inspect it.");
+  });
+}
+$("sampleBtn").onclick=()=>sampleClimb(false);
+$("climbBtn").onclick=()=>sampleClimb(true);
+
+/* ==========================================================================
+   EXTREMIFY — make the short runs shorter and the long runs longer, greedily,
+   for as long as the metric improves.  The run count is preserved by every
+   move; n is pinned only if the search box says so.
+   ========================================================================== */
+function polarisingMoves(runs,{fixedN,capN}){
+  const out=[], startN=sum(runs);
+  const add=c=>{
+    if(c.length!==runs.length) return;
+    for(const l of c) if(l<1) return;
+    const cn=sum(c);
+    if(fixedN?cn!==startN:cn>capN) return;
+    out.push(c);
+  };
+  const order=runs.map((_,i)=>i).sort((a,b)=>runs[a]-runs[b]);
+  /* donors are the shortest runs that still *can* shrink — once a run is down
+     to 1 it is spent and the next-shortest has to take over */
+  const donors=order.filter(i=>runs[i]>1).slice(0,4);
+  const receivers=order.slice(-4);
+
+  for(const i of donors) for(const j of receivers){
+    if(i===j) continue;
+    for(const frac of [0.25,0.5,1]){
+      const d=Math.max(1,Math.round((runs[i]-1)*frac));
+      const c=runs.slice(); c[i]-=d; c[j]+=d; add(c);
+    }
+    for(const d of [1,2]){ const c=runs.slice(); c[i]-=d; c[j]+=d; add(c); }
+  }
+  if(!fixedN){
+    for(const i of donors){
+      for(const f of [0.5,0.25]){ const c=runs.slice(); c[i]=Math.max(1,Math.round(c[i]*f)); add(c); }
+      for(const d of [1,2]){ const c=runs.slice(); c[i]-=d; add(c); }
+      const c1=runs.slice(); c1[i]=1; add(c1);
+    }
+    for(const j of receivers){
+      for(const f of [1.25,1.5,2]){ const c=runs.slice(); c[j]=Math.round(c[j]*f); add(c); }
+      for(const d of [1,2]){ const c=runs.slice(); c[j]+=d; add(c); }
+    }
+  }
+  /* stretch everything away from the middle at once, by value and by rank */
+  const mean=startN/runs.length;
+  const finish=c=>add(fixedN?rescale(c,startN):c);
+  for(const f of [1.1,1.25,1.6,2.5])
+    finish(runs.map(l=>Math.max(1,Math.round(l>=mean?l*f:l/f))));
+  const rank=new Map(order.map((idx,pos)=>[idx,pos])), half=runs.length/2;
+  for(const f of [1.25,1.6,2.5])
+    finish(runs.map((l,i)=>Math.max(1,Math.round(rank.get(i)<half?l/f:l*f))));
+  return out;
+}
+
+function extremify(){
+  const o=readSearchOpts();
+  const fixedN=o.nMode==="fixed";
+  const startN=sum(S.runs);
+  const capN=Math.max(o.nVal,startN);
+  const moveOpts={fixedN,capN};
+  const t0=performance.now();
+
+  let cur=S.runs.slice();
+  const c0=violated(cur);
+  if(c0){ landOnCounterexample(c0,cur,"the current input already violates it"); return; }
+  const startScore=scoreLengths(cur,o.kind,o.b);
+  let curScore=startScore, rounds=0, hit=null;
+  let cands=null, ci=0, roundBest=null, roundBestScore=curScore;
+
+  status("extremifying…");
+  runChunks(()=>{
+    if(rounds>=300) return false;
+    if(!cands){ cands=polarisingMoves(cur,moveOpts); ci=0; roundBest=null; roundBestScore=curScore; }
+    if(ci<cands.length){
+      const cand=cands[ci++];
+      const c=violated(cand);
+      if(c){ hit={c,runs:cand}; return false; }
+      const s=scoreLengths(cand,o.kind,o.b);
+      if(s>roundBestScore+1e-12){ roundBestScore=s; roundBest=cand; }
+      return true;
+    }
+    if(!roundBest) return false;                    // nothing improved: done
+    cur=roundBest; curScore=roundBestScore; rounds++; cands=null;
+    return true;
+  },()=>{
+    const ms=(performance.now()-t0).toFixed(0);
+    if(hit){ landOnCounterexample(hit.c,hit.runs,"after "+rounds+" extremify rounds · "+ms+" ms"); return; }
+    const endN=sum(cur);
+    setWorst(cur);
+    status(rounds===0
+      ? "already extremal for <b>"+METRIC_LABEL[o.kind]+"</b> — no polarising move improved it ("+
+        fmtScore(startScore,o.kind)+", "+ms+" ms)."
+      : "extremified: <b>"+METRIC_LABEL[o.kind]+"</b> "+fmtScore(startScore,o.kind)+" → <b>"+
+        fmtScore(curScore,o.kind)+"</b> in "+rounds+" round"+(rounds===1?"":"s")+" · "+ms+" ms.<br>"+
+        cur.length+" runs unchanged; n "+(endN===startN?"= "+fmtInt(startN)+", unchanged":fmtInt(startN)+" → "+fmtInt(endN))+
+        ". The input in the editor is the extremified one.");
+    if(rounds>0){
+      const f=facts(cur);
+      pushHall({label:"extremify "+METRIC_LABEL[o.kind],score:fmtScore(curScore,o.kind),n:f.n,runs:cur});
+      addResult({n:f.n,val:curScore,lengths:cur,cost:f.cost,nH:f.nH},o.kind);
+      S.selected=0; commit(cur.slice());
+    }
+  });
+}
+$("extremifyBtn").onclick=extremify;
+
+/* ==========================================================================
+   ANNEAL OVER BOUNDARY SETS  (pinned n, O(log n) per move)
+   ========================================================================== */
+function annealOnce(E,kind,b,steps,rMode,rCap){
+  const n=E.n;
+  E.reset();
+  const fixedR=rMode==="fixed";
+  const maxB=Math.max(0,Math.min(n-1,(rCap||n)-1));
+  const randPos=()=>1+Math.floor(Math.random()*(n-1));
+  const seedCount=fixedR?maxB:(maxB>0?1+Math.floor(Math.random()*maxB):0);
+  { let added=0,guard=0;
+    while(added<seedCount&&guard++<seedCount*30+40){ const p=randPos(); if(!E.isOn(p)){ E.toggle(p); added++; } } }
+
+  let cur=objective(kind,E.cost(),E.nH(),n,b,E);
+  if(!isFinite(cur)) cur=-1e9;
+  let best=cur,bestB=E.boundaries();
+  const T0=0.4,T1=0.002;
+  for(let s=0;s<steps;s++){
+    const T=T0*Math.pow(T1/T0,s/steps);
+    let moved;
+    if(fixedR){
+      const bnd=E.boundaries();
+      if(!bnd.length) continue;
+      const off=bnd[Math.floor(Math.random()*bnd.length)];
+      let on=randPos(),guard=0;
+      while(E.isOn(on)&&guard++<50) on=randPos();
+      if(E.isOn(on)) continue;
+      E.toggle(off); E.toggle(on); moved=[off,on];
+    } else {
+      let p=randPos();
+      if(!E.isOn(p)&&E.count()>=maxB){
+        const bnd=E.boundaries();
+        if(!bnd.length) continue;
+        p=bnd[Math.floor(Math.random()*bnd.length)];
+      }
+      E.toggle(p); moved=[p];
+    }
+    let val=objective(kind,E.cost(),E.nH(),n,b,E);
+    if(!isFinite(val)) val=-1e9;
+    if(val>=cur||Math.random()<Math.exp((val-cur)/T)){
+      cur=val;
+      if(val>best){
+        best=val; bestB=E.boundaries();
+        if(stopSet.size){
+          const L=E.lengths(), c=violated(L);
+          if(c){ stoppedBy={conj:c,lengths:L}; break; }
+        }
+      }
+    } else {
+      for(const q of moved) E.toggle(q);
+    }
+  }
+  E.reset(bestB);
+  return {val:best,lengths:E.lengths(),cost:E.cost(),nH:E.nH(),n};
+}
+
+function searchN(nSpec,kind,b,restarts,rMode,rVal,done){
+  const fastKind=!!FAST_KIND[kind];
+  const fixedN=nSpec.mode==="fixed";
+  const E0=fixedN?makeEvaluator(nSpec.value):null;
+  let best=null,i=0;
+  runChunks(()=>{
+    if(i>=restarts||stoppedBy) return false;
+    const n=fixedN?nSpec.value:Math.max(2,2+Math.floor(Math.random()*(nSpec.value-1)));
+    const E=fixedN?E0:makeEvaluator(n);
+    const stepCap=fastKind?30000:3000;
+    const steps=Math.max(400,Math.min(stepCap,n*40));
+    const r=annealOnce(E,kind,b,steps,rMode,Math.min(rVal,n));
+    if(!best||r.val>best.val) best=r;
+    i++;
+    status("restart "+i+"/"+restarts+(best?" · best <b>"+fmt(best.val,4)+"</b> · n="+best.n+" · r="+best.lengths.length:""));
+    return true;
+  },()=>done(best));
+}
+function reportStop(){
+  if(!stoppedBy) return false;
+  landOnCounterexample(stoppedBy.conj,stoppedBy.lengths,"during the boundary anneal");
+  return true;
+}
+
+$("searchBtn").onclick=()=>{
+  const o=readSearchOpts();
+  searchN({mode:o.nMode,value:o.nVal},o.kind,o.b,Math.min(o.iter,4000),o.rMode,o.rVal,best=>{
+    if(reportStop()) return;
+    if(best){
+      addResult(best,o.kind); pushHall({label:"anneal "+METRIC_LABEL[o.kind],
+        score:fmt(best.val,3),n:best.n,runs:best.lengths}); setWorst(best.lengths);
+      status("done · best <b>"+fmt(best.val,4)+"</b> · n="+best.n+" · r="+best.lengths.length);
+    }
+  });
+};
+
+$("sweepBtn").onclick=()=>{
+  const o=readSearchOpts();
+  const ns=$("sweepIn").value.split(/[^0-9]+/).map(Number).filter(x=>x>=2).map(x=>Math.min(65536,Math.round(x)));
+  if(!ns.length) return;
+  searchAbort=false; let idx=0;
+  (function next(){
+    if(idx>=ns.length||searchAbort){ status("sweep finished."); return; }
+    const n=ns[idx++];
+    searchN({mode:"fixed",value:n},o.kind,o.b,Math.min(o.iter,400),o.rMode,o.rVal,best=>{
+      if(reportStop()) return;
+      if(best){ addResult(best,o.kind); pushHall({label:"sweep "+METRIC_LABEL[o.kind],
+        score:fmt(best.val,3),n:best.n,runs:best.lengths}); setWorst(best.lengths); }
+      setTimeout(next,0);
+    });
+  })();
+};
+
+$("exhaustBtn").onclick=()=>{
+  const o=readSearchOpts();
+  const n=o.nVal;
+  if(n>22||n<2){ status('<span class="hit">exhaustive needs 2 ≤ n ≤ 22</span> (2^(n−1) boundary sets).'); return; }
+  const rVal=Math.min(n,o.rVal);
+  const E=makeEvaluator(n), total=Math.pow(2,n-1);
+  let best=null,mask=0,prevGray=0;
+  runChunks(()=>{
+    if(mask>=total) return false;
+    const gray=mask^(mask>>1), diff=gray^prevGray;
+    if(diff){ let p=0,d=diff; while(!(d&1)){ d>>>=1; p++; } E.toggle(p+1); }
+    prevGray=gray;
+    if(o.rMode!=="fixed"||E.count()===rVal-1){
+      let val=objective(o.kind,E.cost(),E.nH(),n,o.b,E);
+      if(!isFinite(val)) val=-1e9;
+      if(!best||val>best.val) best={val,lengths:E.lengths(),cost:E.cost(),nH:E.nH(),n};
+    }
+    mask++;
+    if((mask&1023)===0) status("exhaustive n = <b>"+n+"</b> · "+fmtInt(mask)+"/"+fmtInt(total));
+    return true;
+  },finished=>{
+    if(!finished){ return; }
+    if(best){
+      addResult(best,o.kind,true);
+      pushHall({label:"exhaustive "+METRIC_LABEL[o.kind],score:fmt(best.val,3),n:best.n,runs:best.lengths});
+      setWorst(best.lengths);
+      status("exhaustive n = <b>"+n+"</b> · proved max <b>"+fmt(best.val,4)+"</b>");
+    } else status('<span class="hit">no boundary set matched runs = fixed '+rVal+" for n = "+n+".</span>");
+  });
+};
+
+/* ==========================================================================
+   MODE SWITCHING, PRESENT, EXPORT
+   ========================================================================== */
+function setMode(m){
+  S.mode=m;
+  $("mode1").hidden=m!==1;
+  $("mode2").hidden=m!==2;
+  document.querySelectorAll(".mode[data-mode]").forEach(b=>b.classList.toggle("is-active",+b.dataset.mode===m));
+  render();
+}
+document.querySelectorAll(".mode[data-mode]").forEach(b=>{ b.onclick=()=>setMode(+b.dataset.mode); });
+$("m3send1").onclick=()=>setMode(1);
+
+function togglePresent(){ document.body.classList.toggle("present"); if(S.mode!==1) setMode(1); else render(); }
+$("presentBtn").onclick=togglePresent;
+$("exitPresent").onclick=togglePresent;
+
+/* ---- SVG export -------------------------------------------------------
+   Browsers accept rgba() in presentation attributes and a <style> block with
+   class selectors; SVG 1.1 renderers (Inkscape, librsvg) accept neither, so
+   the export flattens everything to plain presentation attributes with hex
+   colours plus separate *-opacity, and drops the interactive furniture.
+   ---------------------------------------------------------------------- */
+const EXPORT_STYLE={
+  "node-rect": {stroke:"none","stroke-width":"2"},
+  "edge":      {fill:"none",stroke:"#EAF2FF","stroke-opacity":".5","stroke-width":"1.2"},
+  "axis":      {stroke:"#0DEDF7","stroke-opacity":".3","stroke-width":"1"},
+  "axis-text": {fill:"#EAF2FF","fill-opacity":".5","font-family":"IBM Plex Mono, monospace","font-size":"11px"},
+  "lvl-d":     {fill:"#B5FF00","fill-opacity":".8","font-family":"IBM Plex Mono, monospace","font-size":"10px"},
+  "lvl-b":     {fill:"#EAF2FF","fill-opacity":".42","font-family":"IBM Plex Mono, monospace","font-size":"10px"},
+  "n-label":   {fill:"#001C6B","font-family":"IBM Plex Mono, monospace","font-weight":"600"},
+  "n-skip":    {fill:"none",stroke:"#0DEDF7","stroke-opacity":".35","stroke-width":"1"},
+  "n-hidden":  {fill:"none",stroke:"#0DEDF7","stroke-opacity":".35","stroke-width":".8",opacity:".3"},
+  "n-merge":   {fill:"#B5FF00"},
+  "n-live":    {fill:"#FFFF00",stroke:"#FFFF00","stroke-width":"1.6"},
+  "n-run":     {fill:"#0DEDF7"},
+  "alt":       {fill:"#FF5FD1"},
+  "is-selected":{fill:"#FFFF00"}
+};
+/* base classes first, modifiers (alt / is-selected) last so they win */
+const EXPORT_ORDER=Object.keys(EXPORT_STYLE);
+const DROP_CLASS=["handle","leaf-hit","guide","grip","bnd"];
+const RGBA=/^\s*rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)\s*$/;
+function hexOf(v){
+  const m=RGBA.exec(v||"");
+  if(!m) return null;
+  const h=n=>Math.max(0,Math.min(255,Math.round(+n))).toString(16).padStart(2,"0");
+  return {hex:"#"+h(m[1])+h(m[2])+h(m[3]), a:m[4]===undefined?1:parseFloat(m[4])};
+}
+function flattenForExport(root){
+  root.querySelectorAll("style").forEach(e=>e.remove());
+  root.querySelectorAll("[data-role]").forEach(e=>e.remove());
+  DROP_CLASS.forEach(c=>root.querySelectorAll("."+c).forEach(e=>e.remove()));
+  root.querySelectorAll("*").forEach(el=>{
+    const cls=(el.getAttribute("class")||"").split(/\s+/).filter(Boolean);
+    for(const key of EXPORT_ORDER){
+      if(cls.indexOf(key)<0) continue;
+      const st=EXPORT_STYLE[key];
+      for(const k in st) if(!(k==="fill"&&el.hasAttribute("fill")&&key==="node-rect")) el.setAttribute(k,st[k]);
+    }
+    /* rgba() written straight onto fill/stroke is the part Inkscape drops */
+    for(const attr of ["fill","stroke"]){
+      const c=hexOf(el.getAttribute(attr));
+      if(!c) continue;
+      el.setAttribute(attr,c.hex);
+      if(c.a<1){
+        const prev=parseFloat(el.getAttribute(attr+"-opacity"));
+        el.setAttribute(attr+"-opacity",String(c.a*(Number.isFinite(prev)?prev:1)));
+      }
+    }
+    el.removeAttribute("class");
+    [...el.attributes].forEach(at=>{ if(at.name.indexOf("data-")===0) el.removeAttribute(at.name); });
+  });
+  ["id","tabindex","role","aria-label"].forEach(a=>root.removeAttribute(a));
+  return root;
+}
+$("svgBtn").onclick=()=>{
+  const clone=flattenForExport($("stage").cloneNode(true));
+  clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const vb=(clone.getAttribute("viewBox")||"").split(/\s+/);
+  if(vb.length===4){ clone.setAttribute("width",vb[2]); clone.setAttribute("height",vb[3]); }
+  const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+clone.outerHTML],
+                      {type:"image/svg+xml"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="sortedcheck-n"+S.n+"-r"+S.runs.length+".svg";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+
+/* generator note in mode 3 */
+function buildM3Controls(){
+  $("m3gen").innerHTML=GENERATORS.map(g=>'<option value="'+g.id+'">'+g.label+"</option>").join("");
+  const roll=()=>{
+    const g=GENERATORS.find(x=>x.id===$("m3gen").value);
+    const n=Math.max(2,Math.round(+$("m3n").value||800));
+    const r=Math.max(1,Math.round(+$("m3r").value||16));
+    let out; try{ out=g.make(n,r); }catch(e){ out=[n]; }
+    $("m3genNote").textContent=GEN_NOTES[g.id]||"";
+    S.selected=0; commit(out);
+  };
+  $("m3gen").onchange=roll;
+  $("m3roll").onclick=roll;
+  $("m3genNote").textContent=GEN_NOTES.random;
+}
+
+/* ==========================================================================
+   SELF TEST
+   ========================================================================== */
+function selfTest(){
+  const t=[];
+  const A=canonicalArray([15,15,17,17]);
+  t.push(["slide n=64 plain = 384", plainCost(64)===384]);
+  t.push(["slide sorted-check = 216", simulateExact(A).cost===216]);
+  t.push(["slide nH = 127.8", Math.abs(64*entropy([15,15,17,17])-127.8)<0.05]);
+  t.push(["canonical array has the requested runs", runsOf(A).lengths.join()==="15,15,17,17"]);
+  t.push(["straddle model tight on canonical", straddleCost(64,runsOf(A).boundaries)===simulateExact(A).cost]);
+
+  /* the three worked subdivision examples */
+  t.push(["subdivide [7,2,4,10,9] (n=32)", subdivide([7,2,4,10,9]).join()==="4,2,1,1,1,1,2,1,1,2,4,2,1,1,8"]);
+  t.push(["subdivide [1,62,1] (n=64)", subdivide([1,62,1]).join()==="1,1,2,4,8,16,16,8,4,2,1,1"]);
+  t.push(["subdivide [8,2,2,8,5] (n=25)", subdivide([8,2,2,8,5]).join()==="6,1,1,1,1,2,6,1,1,1,4"]);
+
+  let idOK=true, pow2OK=true, subIdem=true, sortOK=true, boundOK=true, evalOK=true, chargeOK=true, exOK=true;
+  for(let i=0;i<250;i++){
+    const n=2+Math.floor(Math.random()*60);
+    const X=Array.from({length:n},()=>Math.floor(Math.random()*10));
+    const s=simulateExact(X);
+    if(s.sorted.join()!==X.slice().sort((a,b)=>a-b).join()) sortOK=false;
+    const r=runsOf(X);
+    if(s.cost>straddleCost(n,r.boundaries)) boundOK=false;
+    const nodes=buildNodes(n);
+    const ch=computeCharge(nodes,n,r.boundaries,r.lengths);
+    if(Math.abs(ch.greenTotal+ch.redTotal-straddleCost(n,r.boundaries))>1e-6) chargeOK=false;
+    /* excess average depth dominates the average excess */
+    const f=facts(r.lengths);
+    if(f.exDepth < (f.cost-f.nH)/f.n - 1e-9) exOK=false;
+  }
+  for(let i=0;i<250;i++){
+    const pw=i%2===0;
+    const n=pw?(1<<(2+Math.floor(Math.random()*8))):2+Math.floor(Math.random()*500);
+    const r=1+Math.floor(Math.random()*Math.min(n,20));
+    const L=randomComposition(n,r);
+    const cost=straddleCost(n,boundsOf(L));
+    if(costFromSubdivision(L)!==cost) idOK=false;
+    if(pw&&Math.abs(n*entropyS(L)-cost)>1e-6) pow2OK=false;
+    if(subdivide(subdivide(L)).join()!==subdivide(L).join()) subIdem=false;
+  }
+  for(let i=0;i<40;i++){
+    const n=2+Math.floor(Math.random()*60), E=makeEvaluator(n), B=[];
+    for(let p=1;p<n;p++) if(Math.random()<0.3) B.push(p);
+    E.reset(B);
+    if(E.cost()!==straddleCost(n,B)) evalOK=false;
+    const L=[]; let prev=0; for(const x of B){ L.push(x-prev); prev=x; } L.push(n-prev);
+    if(Math.abs(E.nH()-n*entropy(L))>1e-6) evalOK=false;
+  }
+  /* the proof's three steps */
+  let act2=true, lvlOK=true, sumOK=true, tgtOK=true, lvlSizeOK=true, greenLvlOK=true;
+  for(let i=0;i<200;i++){
+    const n=2+Math.floor(Math.random()*400);
+    const L=randomComposition(n,1+Math.floor(Math.random()*Math.min(n,14)));
+    for(const v of buildNodes(n)) if(v.size>levelSizeBound(n,v.depth)) lvlSizeOK=false;
+    const ch=computeCharge(buildNodes(n),n,boundsOf(L),L);
+    for(const r of ch.perRun){
+      for(const lv of r.levels){
+        if(lv.nodes>2) act2=false;
+        if(lv.charged>lv.bound+1e-9) lvlOK=false;
+        if(lv.green&&Math.abs(lv.bound-r.l)>1e-9) greenLvlOK=false;   // min = L on green levels
+      }
+      if(r.charged>r.sumBound+1e-9) sumOK=false;
+      if(r.sumBound>r.target+1e-9||r.charged>r.target+1e-9) tgtOK=false;
+    }
+  }
+  t.push(["level d subproblem size \u2264 \u2308n/2^d\u2309 (200 random)", lvlSizeOK]);
+  t.push(["\u2264 2 active nodes per level per run (200 random)", act2]);
+  t.push(["level charge \u2264 min{L, 2n/2^d} (200 random)", lvlOK]);
+  t.push(["min{L, 2n/2^d} = L on all green levels (200 random)", greenLvlOK]);
+  t.push(["charged \u2264 \u03a3 min{L, 2n/2^d} (200 random)", sumOK]);
+  t.push(["charged \u2264 L\u00b7lg(n/L) + 3L (200 random)", tgtOK]);
+  t.push(["mergesortCheck sorts (250 random)", sortOK]);
+  t.push(["exact cost ≤ straddle bound (250 random)", boundOK]);
+  t.push(["charging identity green+red = cost (250 random)", chargeOK]);
+  t.push(["cost \u2264 nH + 3n on every random profile", (()=>{
+    for(let i=0;i<200;i++){
+      const n=2+Math.floor(Math.random()*500);
+      const L=randomComposition(n,1+Math.floor(Math.random()*Math.min(n,16)));
+      const f=facts(L); if(f.cost>f.nH+3*f.n+1e-6) return false;
+    } return true; })()]);
+  t.push(["excess avg depth ≥ (cost−nH)/n (250 random)", exOK]);
+  t.push(["cost = Σ l_j·depth_j over the subdivision (250 random)", idOK]);
+  t.push(["cost = n·H_S when n = 2^k (random)", pow2OK]);
+  t.push(["subdivision is idempotent (250 random)", subIdem]);
+  t.push(["incremental evaluator = reference (40 random)", evalOK]);
+
+  const bad=t.filter(x=>!x[1]);
+  $("selftest").innerHTML = bad.length
+    ? '<span class="fail">✗ '+bad.length+" self-test failure(s): "+bad.map(x=>x[0]).join("; ")+"</span>"
+    : '<span class="ok">✓ '+t.length+" self-tests pass</span> <span class='dim'>· model checked against the slide figures and the three worked subdivisions</span>";
+}
+
+/* ========================== BOOT ========================== */
+buildTools();
+buildM3Controls();
+attachEditor($("stage"));
+attachEditor($("stage3"));
+renderHall();
+commit([15,15,17,17],{history:false});
+setMode(1);
+selfTest();
+</script>
+</body>
+</html>
