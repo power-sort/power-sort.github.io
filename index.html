@@ -53,7 +53,7 @@
 <section class="act act-hero" id="hero">
   <div class="act-head">
     <h1 class="page-title">Powersort</h1>
-    <p class="tagline">Nearly-optimal run-adaptive stable sorting &mdash; now powering Python&nbsp;3.11+</p>
+    <p class="tagline">Nearly-optimal run-adaptive stable sorting &mdash; powering Python&nbsp;3.11+, Chrome V8 149+, &hellip;</p>
     <span class="eyebrow">watch it work</span>
     <h2 class="act-title">Every array hides a<br><em>perfectly balanced</em> tree.</h2>
     <p class="lede">
@@ -494,6 +494,26 @@ print(data)       <span class="code-comment"># [1, 1, 2, 3, 4, 5, 5, 6, 9]</span
           </p>
         </div>
       </div>
+
+      <div class="impl-item">
+        <span class="impl-lang assemblyscript">Torque</span>
+        <div>
+          <h3>
+            <a href="https://github.com/v8/v8/blob/main/third_party/v8/builtins/array-sort.tq#L1290"
+              target="_blank" rel="noopener">
+              V8 (Chrome, Node.js JavaScript Engine) (<code>array-sort.tq</code>)
+            </a>
+          </h3>
+          <p>
+            Google's V8 JavaScript engine is used in Chromium/Chrome and Chromium-based browsers 
+            as well as in Node.js. 
+            Powersort is implemented in Torque, V8's domain-specific language for writing builtins.
+            Introduced in April 2026 via <a href="https://chromium-review.googlesource.com/c/v8/v8/+/7742184" target="_blank" rel="noopener">Chromium CL&nbsp;7742184</a> (<a href="https://github.com/v8/v8/commit/8899b945f6b95d5801e23f1021d2d576f3e73b70">GitHub</a>)
+            and deployed since <a href="https://chromiumdash.appspot.com/commit/8899b945f6b95d5801e23f1021d2d576f3e73b70">Chromium 149 / 7827</a>.
+          </p>
+        </div>
+      </div>
+
 
       <div class="impl-item">
         <span class="impl-lang c">C++</span>
