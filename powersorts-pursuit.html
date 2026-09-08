@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Powersort's Pursuit — a merge game</title>
+<meta name="description" content="Powersort's Pursuit: a game about merge trees. The input is cut into sorted runs; merge neighbouring runs by dragging one onto the other, pay the length of every block you create, and try to get as close to nH as you can.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   POWERSORT — brand tokens (Brand Guidelines v1.0)
+   dark blue #001C6B · blue #380FFF · light blue #0DEDF7
+   green #00D600 · lime #B5FF00 · yellow #FFFF00
+   type: IBM Plex Mono (headlines / data) + IBM Plex Sans (body)
+
+   The block up to "POWERSORT'S PURSUIT" is the same shared block that
+   merge-cost-lab.html carries, so this file works on its own.  Once the page
+   is linked into the site, replace it with <link rel="stylesheet" href="style.css">.
+   ============================================================ */
+:root {
+  --darkblue: #001C6B;
+  --blue: #380FFF;
+  --lightblue: #0DEDF7;
+  --green: #00D600;
+  --lime: #B5FF00;
+  --yellow: #FFFF00;
+  --ink: #EAF2FF;
+  --panel: rgba(56, 15, 255, 0.16);
+  --panel-line: rgba(13, 237, 247, 0.35);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--darkblue);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--lightblue); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.9rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid rgba(181, 255, 0, 0.25);
+  position: sticky; top: 0;
+  background: rgba(0, 28, 107, 0.92);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 0.9rem; text-decoration: none; }
+.brand-logo-tight { width: 118px; height: auto; display: block; }
+.site-nav { display: flex; gap: clamp(0.6rem, 2vw, 1.6rem); flex-wrap: wrap; align-items: baseline; }
+.site-nav a {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--lime);
+  text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px;
+}
+.site-nav a:hover { border-bottom-color: var(--lime); }
+.act { padding: clamp(1.6rem, 4vw, 2.6rem) clamp(1rem, 4vw, 3rem); }
+.act + .act { border-top: 1px solid rgba(181, 255, 0, 0.25); }
+.act-head { max-width: 900px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--lime);
+}
+h1, h2 {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  line-height: 1.08; margin: 0.5rem 0 1rem; letter-spacing: -0.015em;
+}
+h1 { font-size: clamp(1.8rem, 4.4vw, 2.9rem); }
+h1 em, h2 em { font-style: normal; color: var(--lime); }
+.lede { font-size: clamp(1rem, 1.6vw, 1.1rem); max-width: 68ch; color: var(--ink); }
+.lede strong { color: var(--lime); font-weight: 600; }
+.btn {
+  font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+  color: var(--lightblue); background: transparent;
+  border: 2px solid var(--lightblue); border-radius: 999px;
+  padding: 0.5rem 1.15rem; cursor: pointer; text-decoration: none;
+  display: inline-block; transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+}
+.btn:hover { transform: translateY(-1px); background: rgba(13, 237, 247, 0.12); }
+.btn-lime { color: var(--darkblue); background: var(--lime); border-color: var(--lime); }
+.btn-lime:hover { background: var(--yellow); border-color: var(--yellow); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.ctl { display: flex; flex-direction: column; gap: 0.3rem; }
+.ctl > span {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em;
+  color: var(--lime); text-transform: uppercase;
+}
+.ctl select, .ctl input {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--ink);
+  background: rgba(0, 0, 0, 0.25); border: 1.5px solid var(--panel-line);
+  border-radius: 8px; padding: 0.42rem 0.6rem;
+}
+.panel {
+  border: 1px solid var(--panel-line); border-radius: 14px;
+  background: var(--panel); padding: 1rem; min-width: 0;
+}
+.panel-title {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--lime); margin-bottom: 0.7rem;
+}
+.site-footer {
+  border-top: 1px solid rgba(181, 255, 0, 0.25);
+  padding: 1.6rem clamp(1rem, 4vw, 3rem) 2.4rem;
+  display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+}
+.site-footer p { font-family: var(--mono); font-size: 0.85rem; margin: 0; color: var(--lightblue); }
+.code-comment { color: #8FB3FF; }
+.code-keyword { color: var(--lime); font-weight: 600; }
+.code-func    { color: var(--lightblue); }
+.code-number  { color: #CFE8FF; }
+
+/* ============================================================
+   POWERSORT'S PURSUIT — page-specific
+   ============================================================ */
+.mode-nav { align-items: center; gap: clamp(.5rem, 1.6vw, 1.2rem); }
+.mode {
+  font-family: var(--mono); font-size: 0.86rem; letter-spacing: .02em;
+  color: rgba(234, 242, 255, 0.42); padding: 0.15rem 0.55rem;
+  border: 1.5px solid transparent; border-radius: 999px; white-space: nowrap; text-decoration: none;
+}
+.mode.is-active { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+@media (hover: hover) { .mode:not(.is-active):hover { color: var(--lime); } }
+
+.act-hero { padding-bottom: 0; }
+.act-hero h1 { margin-bottom: .6rem; }
+.lede .rule { font-family: var(--mono); color: var(--lightblue); white-space: nowrap; }
+
+/* ---- layout ---- */
+.lab-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 1rem; align-items: start;
+}
+@media (max-width: 1080px) { .lab-grid { grid-template-columns: 1fr; } }
+
+/* ---- stage ---- */
+.panel-stage { padding: 0.9rem 1rem 1rem; background: rgba(0, 0, 0, 0.16); }
+.stage-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: .7rem;
+}
+.level-line { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; min-width: 0; flex: 1 1 22rem; }
+.level-line .lvl {
+  font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--darkblue); background: var(--lightblue); border-radius: 999px; padding: .05rem .55rem; font-weight: 600;
+}
+.level-line .lvl.is-custom { background: rgba(13,237,247,.18); color: var(--lightblue); }
+.level-line .lname { font-family: var(--mono); font-size: 1rem; color: var(--lightblue); font-weight: 600; }
+.level-line .lhint { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.6); flex: 1 1 100%; }
+.cost-readout { text-align: right; line-height: 1.05; flex: 0 0 auto; margin-left: auto; }
+.cost-readout .cost-label {
+  display: block; font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--lime);
+}
+.cost-readout .cost-value {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem); letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  display: inline-block; transition: color 250ms ease;
+}
+.cost-readout .cost-value.is-bump { color: var(--yellow); }
+.cost-readout .cost-sub { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.62); display: block; }
+.cost-readout .cost-sub b { color: var(--lightblue); font-weight: 600; }
+
+#stage { width: 100%; height: auto; display: block; touch-action: none; overflow: visible; }
+#stage:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.stage-hint {
+  font-family: var(--mono); font-size: .72rem; color: rgba(234, 242, 255, 0.55);
+  margin-top: .5rem; line-height: 1.7;
+}
+.stage-hint kbd {
+  font-family: var(--mono); font-size: .95em; color: var(--lightblue);
+  border: 1px solid rgba(13,237,247,.3); border-radius: 4px; padding: 0 .28em;
+}
+
+/* SVG pieces -- the same vocabulary as the lab: light blue leaves, lime merges,
+   yellow for selection, hairline edges, faint axis */
+.node { cursor: default; }
+.node .vessel { stroke: transparent; stroke-width: 1.5; fill-opacity: .16; transition: stroke 160ms ease, fill-opacity 300ms ease; }
+.node.is-leaf .vessel, .node.is-leaf .fluid { fill: var(--lightblue); }
+.node.is-merge .vessel, .node.is-merge .fluid { fill: var(--lime); }
+.node .fluid { transform-box: fill-box; transform-origin: 50% 100%; }
+.node.is-spent .vessel { fill-opacity: .34; }            /* the lab's "done" tint */
+.node.is-live .vessel { stroke: #fff; }
+.node.is-live { cursor: grab; }
+.node.is-live .hit { cursor: grab; }
+.node.is-dragging { cursor: grabbing; }
+.node.is-done, .node.is-done .hit { cursor: default; }
+.node.is-dragging .hit { cursor: grabbing; }
+.node.is-dragging .fluid, .node.is-selected .fluid { fill: var(--yellow); }
+.node.is-dragging .vessel { fill-opacity: .1; }
+.node.is-target .vessel { stroke: var(--yellow); stroke-width: 2.5; }
+.node.is-target { cursor: copy; }
+.node.is-target .hit { cursor: copy; }
+.node.is-hover .vessel { stroke: var(--yellow); stroke-width: 4; }
+.node.is-dragging { opacity: .88; }
+.n-label { font-family: var(--mono); font-weight: 600; fill: var(--darkblue); pointer-events: none; transition: fill 300ms ease; }
+.node.is-spent .n-label { fill: rgba(234,242,255,.8); }
+.node.is-spent.is-merge .n-label { fill: rgba(234,242,255,.85); }
+.hit { fill: transparent; }
+.edge { stroke: rgba(234, 242, 255, .85); stroke-width: 1.6; fill: none; pointer-events: none; }
+.edge.drop { stroke-dasharray: 2 3.5; stroke: rgba(234, 242, 255, .55); }
+.edges.is-pumping .edge { stroke: var(--lime); stroke-width: 3.2; stroke-dasharray: 6 5; animation: flow 600ms linear infinite; }
+.edges.is-pumping .edge.drop { stroke: var(--lime); }
+@keyframes flow { to { stroke-dashoffset: -11; } }
+.drop-shadow { fill: none; stroke: rgba(255,255,0,.55); stroke-width: 1.5; stroke-dasharray: 3 3; pointer-events: none; }
+.axis { stroke: rgba(13, 237, 247, .3); stroke-width: 1; pointer-events: none; }
+.axis-text { font-family: var(--mono); font-size: 11px; fill: rgba(234,242,255,.5); pointer-events: none; }
+.rowline { stroke: rgba(13,237,247,.08); stroke-width: 1; pointer-events: none; }
+.ghost { fill: none; stroke: var(--green); stroke-width: 1.5; stroke-dasharray: 4 3; pointer-events: none; opacity: .85; }
+.ghost-label { font-family: var(--mono); font-size: 10px; fill: var(--green); pointer-events: none; }
+.fx { pointer-events: none; }
+.fx .drip { fill: var(--lime); }
+.fx .drip.blue { fill: var(--lightblue); }
+.plus { font-family: var(--mono); font-weight: 700; fill: var(--yellow); pointer-events: none; font-size: 15px; }
+.empty-note { font-family: var(--mono); font-size: 12px; fill: rgba(234,242,255,.45); pointer-events: none; }
+
+/* ---- tools ---- */
+.run-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; align-items: center; }
+.tool {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .02em;
+  color: var(--ink); background: rgba(0, 0, 0, .25);
+  border: 1.5px solid var(--panel-line); border-radius: 8px;
+  padding: .3rem .6rem; cursor: pointer;
+}
+.tool:hover { border-color: var(--lime); color: var(--lime); }
+.tool[disabled] { opacity: .4; cursor: not-allowed; }
+.tool[disabled]:hover { border-color: var(--panel-line); color: var(--ink); }
+.tool .k { color: rgba(234,242,255,.45); margin-left: .35rem; }
+.tool.is-on { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.tool.is-on:hover { color: var(--darkblue); }
+.tool-sep { width: 1px; height: 1.4rem; background: rgba(13,237,247,.25); margin: .1rem .4rem; }
+.tool-right { margin-left: auto; display: flex; gap: .4rem; }
+
+/* result banner */
+.result {
+  margin-top: .9rem; padding: .8rem 1rem; border-radius: 12px;
+  border: 1px solid var(--panel-line); background: var(--panel);
+  display: grid; grid-template-columns: auto 1fr; gap: .2rem 1rem; align-items: baseline;
+  font-family: var(--mono); font-size: .82rem; line-height: 1.5;
+}
+.result[hidden] { display: none; }
+.result .big { font-size: 1.7rem; font-weight: 700; color: var(--lime); grid-row: span 2; align-self: center; letter-spacing: -.02em; }
+.result .verdict { color: var(--ink); }
+.result .verdict b { color: var(--yellow); font-weight: 600; }
+.result .detail { color: rgba(234,242,255,.65); font-size: .74rem; }
+.result.is-best { border-color: var(--yellow); }
+.result .badge {
+  font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle;
+  background: var(--yellow); color: var(--darkblue); border-radius: 999px; padding: 0 .45rem; margin-left: .35rem; font-weight: 600;
+}
+.result .badge.opt { background: var(--green); }
+
+/* ---- side panel ---- */
+.panel-side { display: flex; flex-direction: column; gap: 1.1rem; }
+.input-summary { font-family: var(--mono); font-size: .8rem; color: var(--lightblue); margin: 0 0 .6rem; }
+.input-summary b { color: var(--lime); font-weight: 600; }
+.side-io { display: flex; flex-direction: column; gap: .6rem; }
+.side-io .ctl select, .side-io .ctl input { width: 100%; }
+.gen-row { display: grid; grid-template-columns: 1fr 5rem 5rem; gap: .5rem; align-items: end; }
+.gen-row .ctl input { min-width: 0; }
+.side-btns { display: flex; gap: .4rem; flex-wrap: wrap; }
+.side-btns .btn { font-size: .82rem; padding: .38rem .9rem; }
+.metrics { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem; }
+.metrics td { padding: .22rem 0; border-bottom: 1px solid rgba(13, 237, 247, .12); }
+.metrics td:last-child { text-align: right; color: var(--lightblue); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.metrics tr.hi td:last-child { color: var(--lime); }
+.metrics tr.opt td { color: var(--green); }
+.metrics tr.opt td:last-child { color: var(--green); }
+.metrics td .unit { color: rgba(234,242,255,.45); font-weight: 400; }
+#ruler { width: 100%; height: auto; display: block; margin-top: .2rem; }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-family: var(--mono); font-size: .72rem; color: rgba(234,242,255,.7); }
+.legend span { display: flex; align-items: center; gap: .35rem; }
+.legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend i.hollow { border: 1.5px solid #fff; background: rgba(181,255,0,.16) !important; }
+.legend i.dim { opacity: .4; }
+
+/* leaderboard */
+.board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.board-head .link, .io-head .link {
+  font-family: var(--mono); font-size: .72rem; background: none; border: none;
+  color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0;
+}
+.player-row { display: flex; gap: .5rem; align-items: end; margin-bottom: .6rem; }
+.player-row .ctl { flex: 1; }
+.player-row .ctl input { width: 100%; }
+.board { display: flex; flex-direction: column; gap: .25rem; }
+.board-row {
+  display: grid; grid-template-columns: 1.6rem 4.2rem minmax(0, 1fr) auto; gap: .5rem; align-items: center;
+  font-family: var(--mono); font-size: .76rem; padding: .32rem .45rem;
+  border: 1.5px solid rgba(13, 237, 247, .18); border-radius: 8px; background: rgba(0,0,0,.18);
+  cursor: pointer; color: rgba(234,242,255,.85); text-align: left; width: 100%;
+}
+.board-row:hover { border-color: var(--lime); }
+.board-row.is-viewing { border-color: var(--yellow); }
+.board-row .rank { color: rgba(234,242,255,.45); }
+.board-row .cost { color: var(--lime); font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.board-row .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-row .who small { color: rgba(234,242,255,.45); }
+.board-row .star { color: var(--green); font-weight: 700; }
+.board-row .replay {
+  font-family: var(--mono); font-size: .72rem; background: none; border: 1px solid rgba(13,237,247,.3);
+  color: var(--lightblue); border-radius: 6px; padding: 0 .4rem; cursor: pointer; line-height: 1.5;
+}
+.board-row .replay:hover { border-color: var(--lime); color: var(--lime); }
+.board-empty { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.45); }
+.board-note { font-family: var(--mono); font-size: .68rem; color: rgba(234,242,255,.45); margin: .5rem 0 0; }
+
+/* import / export */
+.io-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+details.io summary { font-family: var(--mono); font-size: .78rem; color: var(--lime); cursor: pointer; }
+.io-body { margin-top: .6rem; display: flex; flex-direction: column; gap: .5rem; }
+.io-body textarea {
+  width: 100%; min-height: 8.5rem; resize: vertical; font-family: var(--mono); font-size: .74rem; line-height: 1.5;
+  color: #DDEBFF; background: #001050; border: 1px solid rgba(13, 237, 247, 0.22); border-radius: 10px; padding: .6rem .7rem;
+}
+.io-note { font-family: var(--mono); font-size: .7rem; color: rgba(234,242,255,.55); margin: 0; line-height: 1.6; }
+.io-note code { color: var(--lightblue); }
+.io-msg { font-family: var(--mono); font-size: .74rem; color: var(--yellow); min-height: 1.2em; margin: 0; }
+.io-msg.ok { color: var(--green); }
+
+/* secret */
+.secret-pill {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  background: var(--green); color: var(--darkblue); border-radius: 999px; padding: .05rem .5rem; font-weight: 700;
+  border: none; cursor: pointer;
+}
+[data-secret] { display: none; }
+body.is-secret [data-secret] { display: revert; }
+body.is-secret .metrics tr[data-secret] { display: table-row; }
+body.is-secret .tool[data-secret] { display: inline-block; }
+
+/* footer */
+.selftest { font-family: var(--mono); font-size: .8rem; }
+.selftest .ok { color: var(--lime); }
+.selftest .fail { color: var(--yellow); }
+.selftest ul { margin: .5rem 0 0; padding-left: 1.1rem; color: rgba(234,242,255,.75); font-size: .76rem; }
+.selftest summary { cursor: pointer; color: var(--lightblue); }
+.site-footer .dim { color: rgba(234,242,255,.5); }
+
+@media (prefers-reduced-motion: reduce) {
+  .edges.is-pumping .edge { animation: none; }
+  .cost-readout .cost-value, .node .vessel, .n-label { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html" aria-label="Powersort home"><svg class="brand-logo-tight" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Powersort"> <g transform="translate(-603.26978,-337.98157)"> <path fill="#b5ff00" d="m 664.42969,659.43359 12.99609,-11.63281 c 8.72656,9.50391 19.39453,14.73438 34.32422,14.73438 13.57812,0 22.88672,-4.45704 22.88672,-14.34375 0,-8.53516 -6.79297,-10.85938 -15.32422,-12.02735 l -15.90234,-2.51953 c -15.70704,-2.32812 -33.35157,-7.94922 -33.35157,-28.50781 0,-20.36328 17.0625,-31.22266 42.66016,-31.22266 18.61719,0 32,5.82031 41.11328,15.70703 L 742,602.03125 c -5.23438,-6.00781 -14.34375,-12.01953 -30.05469,-12.01953 -13.76953,0 -21.14062,4.65625 -21.14062,13.3789 0,8.53516 6.98047,10.85938 15.32031,12.02344 l 15.90234,2.52344 c 15.90235,2.32812 33.35547,7.75781 33.35547,28.30859 0,20.16797 -16.67578,32.38672 -44.01953,32.38672 -21.52734,0 -37.42969,-7.5625 -46.93359,-19.19922" /> <path fill="#b5ff00" d="m 774.24609,626.27344 c 0,-32 18.03516,-52.35938 47.51172,-52.35938 29.47656,0 47.50781,20.35938 47.50781,52.35938 0,32 -18.03125,52.35937 -47.50781,52.35937 -29.47656,0 -47.51172,-20.35937 -47.51172,-52.35937 m 72.91407,7.5625 v -15.1211 c 0,-18.61718 -10.08204,-28.12109 -25.40235,-28.12109 -15.32422,0 -25.40625,9.50391 -25.40625,28.12109 v 15.1211 c 0,18.61718 10.08203,28.12109 25.40625,28.12109 15.32031,0 25.40235,-9.50391 25.40235,-28.12109" /> <path fill="#b5ff00" d="m 881.77344,659.24219 h 22.50781 v -65.9336 h -22.50781 v -17.0664 h 43.64453 v 26.5664 h 1.16406 c 3.87891,-13.96484 12.60547,-26.5664 32.96484,-26.5664 h 7.96485 v 20.16797 h -15.71875 c -17.25781,0 -26.375,11.4414 -26.375,25.40625 v 37.42578 h 32.20312 v 17.0664 h -75.84765 z m 0,0" /> <path fill="#b5ff00" d="m 1040.1172,676.30859 c -17.457,0 -25.5977,-10.47265 -25.5977,-25.40625 v -57.59375 h -26.77341 v -17.0664 h 17.85161 c 7.371,0 10.2773,-2.51953 10.2773,-10.27735 v -21.0664 h 19.7813 v 31.34375 h 38.6015 v 17.0664 h -38.6015 v 65.9336 h 38.6015 v 17.0664 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,659.24219 h 93.6172 v 17.0664 h -93.6172 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,617.74219 h 56.9609 v 17.0664 h -56.9609 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,576.24219 h 20.3047 v 17.0664 h -20.3047 z m 0,0" /> <path fill="#b5ff00" d="m 1255.5703,583.23047 -38.3125,-38.3125 -12.0703,12.0664 -26.2461,26.2461 12.0664,12.0664 17.7149,-17.71093 v 98.57031 h 17.0664 v -98.57031 l 17.7148,17.71093 z m 0,0" /> <path fill="#0dedf7" d="M 669.53125,520.46875 V 403.375 h 55.35547 c 21.80859,0 35.5664,15.26953 35.5664,37.41016 0,22.14843 -13.75781,37.41406 -35.5664,37.41406 h -29.85938 v 42.26953 z m 25.49609,-64.41797 h 26.84375 c 7.55078,0 12.24219,-4.02344 12.24219,-11.57031 v -7.38672 c 0,-7.54688 -4.69141,-11.57031 -12.24219,-11.57031 h -26.84375 z m 0,0" /> <path fill="#0dedf7" d="m 770.01953,461.92578 c 0,-39.75781 20.46484,-60.5625 51.5,-60.5625 31.03516,0 51.5,20.80469 51.5,60.5625 0,39.75781 -20.46484,60.55859 -51.5,60.55859 -31.03516,0 -51.5,-20.80078 -51.5,-60.55859 m 75.99219,8.71875 v -17.44531 c 0,-18.61719 -9.22656,-29.1875 -24.49219,-29.1875 -15.26562,0 -24.49219,10.57031 -24.49219,29.1875 v 17.44531 c 0,18.625 9.22657,29.19141 24.49219,29.19141 15.26563,0 24.49219,-10.56641 24.49219,-29.19141" /> <path fill="#0dedf7" d="M 903.89062,520.46875 877.38281,403.375 h 25.16406 l 11.07422,56.20312 6.20703,32.53907 h 0.5 l 7.38282,-32.53907 12.91797,-56.20312 h 27.84375 l 13.08984,56.20312 7.21094,32.53907 h 0.5039 l 6.20703,-32.53907 11.23833,-56.20312 h 24.1562 l -27.1758,117.09375 h -29.02341 l -14.76172,-63.41016 -5.70313,-25.66406 h -0.5039 l -5.8711,25.66406 -14.76172,63.41016 z m 0,0" /> <path fill="#0dedf7" d="M 1043.6367,520.46875 V 403.375 h 79.6836 v 22.65234 h -54.1875 v 23.98828 h 46.4688 v 22.47657 h -46.4688 v 25.33203 h 54.1875 v 22.64453 z m 0,0" /> <path fill="#0dedf7" d="m 1165.9297,520.46875 h -25.4961 V 403.375 h 55.5234 c 21.6407,0 35.3985,15.10156 35.3985,37.41016 0,15.77343 -7.0469,28.35156 -21.3086,33.71875 l 22.9844,45.96484 h -28.3477 l -20.4688,-42.94141 h -18.2851 z m 26.8398,-64.41797 c 7.5508,0 12.2461,-4.02344 12.2461,-11.57031 v -7.38672 c 0,-7.54688 -4.6953,-11.57031 -12.2461,-11.57031 h -26.8398 v 30.52734 z m 0,0" /> </g> </svg></a>
+  <nav class="site-nav mode-nav" aria-label="Workshop pages">
+    <a class="mode is-active" href="powersorts-pursuit.html">pursuit</a>
+    <a class="mode" href="merge-policy-workshop.html">write a policy</a>
+    <a class="mode" href="merge-cost-lab.html">merge cost lab</a>
+    <a href="index.html">back to site</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow" id="eyebrow">powersort's pursuit · a merge game</span>
+    <h1>Merge the runs.<br><em>Pay as little as you can.</em></h1>
+    <p class="lede">
+      The input is already cut into sorted <strong>runs</strong>. Merge two neighbours by dragging one onto the
+      other; the result is a new block, and every merge <strong>costs the length of the block it creates</strong>.
+      Keep merging until a single block is left — the total you paid is your score. Lower is better.
+      <span class="rule">nH</span> is a floor no merge tree can beat, and <span class="rule">n(H+2)</span> is
+      what a good merge policy guarantees; where do you land?
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="lab-grid">
+
+    <!-- ============ stage ============ -->
+    <div class="panel panel-stage">
+      <div class="stage-head">
+        <div class="level-line">
+          <span class="lvl" id="lvl">level 1</span>
+          <span class="lname" id="lname">first steps</span>
+          <button class="secret-pill" id="secretPill" data-secret type="button" title="hide OPT again">opt</button>
+          <span class="lhint" id="lhint"></span>
+        </div>
+        <div class="cost-readout">
+          <span class="cost-label" id="costLabel">merge cost so far</span>
+          <span class="cost-value" id="costBig">0</span>
+          <span class="cost-sub" id="costSub">&nbsp;</span>
+        </div>
+      </div>
+
+      <svg id="stage" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMid meet" tabindex="0" role="application"
+           aria-label="The merge tree you are building. The bottom row is the input: each bar is one run. Drag a block with a white frame onto its left or right neighbour to merge the two.">
+        <g id="ghosts"></g>
+        <g id="edges"></g>
+        <g id="nodes"></g>
+        <g id="fx" class="fx"></g>
+        <g id="axis"></g>
+      </svg>
+
+      <p class="stage-hint">
+        drag a framed block onto a highlighted neighbour · or click a block, then click a neighbour ·
+        <kbd>←</kbd><kbd>→</kbd> select &nbsp;<kbd>shift</kbd>+<kbd>←</kbd><kbd>→</kbd> merge that way
+        &nbsp;<kbd>u</kbd> undo &nbsp;<kbd>y</kbd> redo &nbsp;<kbd>r</kbd> start over
+      </p>
+
+      <div class="run-tools">
+        <button class="tool" id="btnUndo" type="button">undo<span class="k">u</span></button>
+        <button class="tool" id="btnRedo" type="button">redo<span class="k">y</span></button>
+        <button class="tool" id="btnReset" type="button">start over<span class="k">r</span></button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="btnReplay" type="button" title="replay this tree from the start">replay ▶</button>
+        <button class="tool" id="btnGhost" data-secret type="button" title="overlay the optimal merge tree">ghost OPT</button>
+        <div class="tool-right">
+          <button class="tool" id="btnSound" type="button" aria-pressed="true" title="sound on / off">🔊 sound</button>
+        </div>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <span class="big" id="resBig">—</span>
+        <span class="verdict" id="resVerdict"></span>
+        <span class="detail" id="resDetail"></span>
+      </div>
+    </div>
+
+    <!-- ============ side ============ -->
+    <aside class="panel panel-side">
+      <div>
+        <div class="panel-title">input</div>
+        <p class="input-summary" id="inputSummary"></p>
+        <div class="side-io">
+          <label class="ctl"><span>level</span><select id="preset"></select></label>
+          <label class="ctl"><span>run lengths</span>
+            <input type="text" id="runtext" spellcheck="false" autocomplete="off" placeholder="5, 3, 3, 14, 1, 2"></label>
+          <div class="gen-row">
+            <label class="ctl"><span>random input</span><select id="gen"></select></label>
+            <label class="ctl"><span>n</span><input type="number" id="genN" value="60" min="2" step="1"></label>
+            <label class="ctl"><span>runs</span><input type="number" id="genR" value="8" min="2" step="1"></label>
+          </div>
+          <div class="side-btns">
+            <button class="btn btn-lime" id="btnGen" type="button">generate</button>
+            <button class="btn" id="btnLink" type="button" title="copy a link that opens this page with this input">copy link</button>
+          </div>
+          <p class="io-msg" id="linkMsg"></p>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-title">cost</div>
+        <table class="metrics"><tbody id="metrics"></tbody></table>
+        <svg id="ruler" viewBox="0 0 300 62" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+      </div>
+
+      <div>
+        <div class="board-head">
+          <div class="panel-title" style="margin:0">leaderboard</div>
+          <button class="link" id="btnClearBoard" type="button">clear</button>
+        </div>
+        <div class="player-row">
+          <label class="ctl"><span>player</span><input type="text" id="player" maxlength="24" placeholder="your name" autocomplete="off"></label>
+        </div>
+        <div class="board" id="board"></div>
+        <p class="board-note">one board per input, kept in this browser · click a row to see that tree, ▶ to watch it being built</p>
+      </div>
+
+      <div>
+        <details class="io" id="io">
+          <summary>import / export a merge tree</summary>
+          <div class="io-body">
+            <textarea id="ioText" spellcheck="false" aria-label="merge tree as text"></textarea>
+            <div class="side-btns">
+              <button class="btn" id="btnImport" type="button">import</button>
+              <button class="btn" id="btnCopy" type="button">copy</button>
+              <button class="btn" id="btnDownload" type="button">download .py</button>
+              <label class="btn" for="fileIn" style="cursor:pointer">load file…</label>
+              <input type="file" id="fileIn" accept=".py,.txt,.json" hidden>
+            </div>
+            <p class="io-msg" id="ioMsg"></p>
+            <p class="io-note">
+              The export is valid Python: <code>runs</code> is the input, <code>merges</code> lists the merges in
+              play order as positions — <code>k</code> means “merge blocks <code>k</code> and <code>k+1</code>,
+              counting all current blocks from the left”, exactly what a <code>policy(runs)</code> in the
+              workshop page returns. Import also accepts spans <code>(i, j)</code>, a bare list of positions
+              for the current input, JSON, or a tree literal like <code>((5 3) (3 14))</code>.
+            </p>
+          </div>
+        </details>
+      </div>
+
+      <div>
+        <div class="panel-title">legend</div>
+        <div class="legend">
+          <span><i class="hollow" style="background:var(--lightblue)"></i> block you can still merge</span>
+          <span><i style="background:var(--lightblue)"></i> input run</span>
+          <span><i style="background:var(--lime)"></i> merge</span>
+          <span><i style="background:var(--yellow)"></i> picked up / possible partner</span>
+          <span><i class="dim" style="background:var(--lime)"></i> already merged away</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="selftest" id="selftest">checking…</div>
+  <p style="margin-left:auto">powersort's pursuit · <span class="dim">before you write a policy, play one</span></p>
+</footer>
+
+<script>
+"use strict";
+
+/* ==========================================================================
+   MERGE TREES  --  the same two helpers the lab and the workshop use.
+     leaf(i, len)   the i-th input run
+     merge(a, b)    one merge of two adjacent trees
+   The merge cost is the sum of the lengths of all internal nodes.
+   A node also carries h, its height: 0 for a run, 1 + max(children) otherwise,
+   which is the row the game draws it in.
+   ========================================================================== */
+function leaf(i, len) { return { lo: i, hi: i, len, left: null, right: null, h: 0 }; }
+function merge(a, b) { return { lo: a.lo, hi: b.hi, len: a.len + b.len, left: a, right: b, h: Math.max(a.h, b.h) + 1 }; }
+function mergeCost(t) { return t.left === null ? 0 : t.len + mergeCost(t.left) + mergeCost(t.right); }
+const idOf = t => t.lo + ':' + t.hi;
+const sum = a => a.reduce((x, y) => x + y, 0);
+
+/* Positions, the workshop's "style A": position k merges the blocks currently at
+   k and k+1, counting all blocks from the left.  Any prefix of a full merge
+   sequence is a valid game in progress, so this returns a forest. */
+function buildForest(runs, positions) {
+  const blocks = runs.map((len, i) => leaf(i, len));
+  positions.forEach((k, step) => {
+    if (!Number.isInteger(k) || k < 0 || k + 1 >= blocks.length)
+      throw new Error(`merge ${step + 1}: position ${k} is out of range (there are ${blocks.length} blocks, so 0 … ${blocks.length - 2})`);
+    blocks.splice(k, 2, merge(blocks[k], blocks[k + 1]));
+  });
+  return blocks;
+}
+
+/* Spans, the workshop's "style B": (i, j) merges the two blocks that together
+   cover runs i..j.  Order-free; sorting by width puts children before parents. */
+function spansToPositions(r, spans) {
+  const blocks = []; for (let i = 0; i < r; i++) blocks.push([i, i]);
+  const out = [];
+  const sorted = spans.slice().sort((a, b) => (a[1] - a[0]) - (b[1] - b[0]));
+  for (const [lo, hi] of sorted) {
+    let k = -1;
+    for (let i = 0; i + 1 < blocks.length; i++)
+      if (blocks[i][0] === lo && blocks[i + 1][1] === hi) { k = i; break; }
+    if (k < 0) throw new Error(`span (${lo}, ${hi}) does not match two adjacent blocks`);
+    blocks.splice(k, 2, [lo, hi]);
+    out.push(k);
+  }
+  return out;
+}
+
+/* Tree literals: a run is its length, a merge is "(left right)".  This is the
+   human-readable form of the export and is accepted on import. */
+function treeLiteral(t) { return t.left === null ? String(t.len) : `(${treeLiteral(t.left)} ${treeLiteral(t.right)})`; }
+function forestLiteral(forest) { return forest.map(treeLiteral).join(' '); }
+
+function parseTreeLiteral(text) {
+  const toks = text.match(/\(|\)|\d+/g) || [];
+  let p = 0;
+  const runs = [], spans = [];
+  function node() {
+    if (p >= toks.length) throw new Error('tree literal ends too early');
+    const t = toks[p++];
+    if (t === '(') {
+      const a = node(), b = node();
+      if (toks[p++] !== ')') throw new Error('each "(" must hold exactly two parts and a closing ")"');
+      spans.push([a[0], b[1]]);
+      return [a[0], b[1]];
+    }
+    if (t === ')') throw new Error('unexpected ")"');
+    const v = parseInt(t, 10);
+    if (!(v >= 1)) throw new Error('run lengths must be positive');
+    runs.push(v);
+    return [runs.length - 1, runs.length - 1];
+  }
+  while (p < toks.length) node();          // several trees = a forest = game in progress
+  return { runs, positions: spansToPositions(runs.length, spans) };
+}
+
+/* ==========================================================================
+   OPT  --  the cheapest tree of all, by dynamic programming (Knuth's
+   monotonicity keeps it quadratic).  Hidden from players unless unlocked.
+   ========================================================================== */
+function optimal(runs) {
+  const r = runs.length;
+  if (r === 1) return leaf(0, runs[0]);
+  const end = [0];
+  runs.forEach(l => end.push(end[end.length - 1] + l));
+  const cost = [], cut = [];
+  for (let i = 0; i < r; i++) { cost.push(new Float64Array(r)); cut.push(new Int32Array(r)); }
+  for (let i = 0; i < r; i++) cut[i][i] = i;
+  for (let width = 2; width <= r; width++)
+    for (let i = 0; i + width <= r; i++) {
+      const j = i + width - 1;
+      const from = Math.max(i, cut[i][j - 1]), to = Math.min(j - 1, cut[i + 1][j]);
+      let best = Infinity, bestK = from;
+      for (let k = from; k <= to; k++) {
+        const c = cost[i][k] + cost[k + 1][j];
+        if (c < best) { best = c; bestK = k; }
+      }
+      cost[i][j] = best + (end[j + 1] - end[i]);
+      cut[i][j] = bestK;
+    }
+  const build = (i, j) => i === j ? leaf(i, runs[i]) : merge(build(i, cut[i][j]), build(cut[i][j] + 1, j));
+  return build(0, r - 1);
+}
+
+function entropy(runs) {                      // H in bits per element
+  const n = sum(runs);
+  return runs.reduce((a, l) => a + (l / n) * Math.log2(n / l), 0);
+}
+
+/* ==========================================================================
+   LEVELS  --  presets of growing difficulty.  Hints give away no method.
+   ========================================================================== */
+function rtim(n) { if (n <= 3) return [n]; const h = n >> 1; return rtim(h).concat(rtim(h - 1), [(n & 1) + 1]); }
+
+const PRESETS = [
+  { id: 'steps',    name: 'first steps',         runs: [4, 4, 4, 4],
+    hint: 'Four equal runs, three merges. There is more than one way to finish — and they do not all cost the same.' },
+  { id: 'odd',      name: 'odd one out',         runs: [6, 2, 9],
+    hint: 'A short run between two long ones. It has to join one of them first — which?' },
+  { id: 'paper',    name: 'the paper’s example', runs: [5, 3, 3, 14, 1, 2],
+    hint: 'The worked example from the Powersort paper. Can you beat n(H+2)? Can you reach nH?' },
+  { id: 'stairs',   name: 'staircase',           runs: [1, 2, 4, 8, 16, 32],
+    hint: 'Every run doubles the last. Balanced trees are not always the answer.' },
+  { id: 'ramp',     name: 'the ramp',            runs: [1, 2, 3, 4, 5, 6, 7, 8],
+    hint: 'Gently growing runs. Where should the small ones end up?' },
+  { id: 'spike',    name: 'the spike',           runs: [1, 1, 1, 1, 40, 1, 1, 1, 1],
+    hint: 'One giant, eight dwarfs. Every merge that touches the giant costs at least 41.' },
+  { id: 'hills',    name: 'two hills',           runs: [1, 4, 16, 4, 1, 1, 4, 16, 4, 1],
+    hint: 'Two symmetric hills. Think about the valley in the middle.' },
+  { id: 'twelve',   name: 'a dozen',             runs: [7, 12, 3, 22, 5, 9, 14, 2, 8, 30, 4, 6],
+    hint: 'No structure to lean on. Eleven merges; keep an eye on the running total.' },
+  { id: 'sixteen',  name: 'sixteen',             runs: [3, 40, 2, 5, 60, 1, 4, 7, 35, 2, 3, 50, 6, 2, 9, 45],
+    hint: 'Long runs and short runs, mixed. The short ones are cheap to move — the long ones are not.' },
+  { id: 'marathon', name: 'marathon',            runs: rtim(40).map(x => 5 * x),
+    hint: 'A recursively built sequence of ' + rtim(40).length + ' runs that trips up a well-known merge rule. Pace yourself.' }
+];
+
+/* random inputs, the lab's generic generators (nothing here names a method) */
+function rescale(parts, n) {
+  const r = parts.length, s = sum(parts) || r;
+  let out = parts.map(x => Math.max(1, Math.round(x / s * n)));
+  let diff = n - sum(out);
+  for (let g = 0; diff !== 0 && g < 4 * r + 8; g++) {
+    const i = g % r;
+    if (diff > 0) { out[i]++; diff--; } else if (out[i] > 1) { out[i]--; diff++; }
+  }
+  return out;
+}
+function randomComposition(n, r) {
+  r = Math.max(1, Math.min(r, n));
+  const cuts = new Set();
+  while (cuts.size < r - 1) cuts.add(1 + Math.floor(Math.random() * (n - 1)));
+  const c = [...cuts].sort((a, b) => a - b);
+  const out = []; let prev = 0;
+  for (const x of c) { out.push(x - prev); prev = x; }
+  out.push(n - prev);
+  return out;
+}
+const GENERATORS = [
+  { id: 'random',    label: 'random composition',    make: (n, r) => randomComposition(n, r) },
+  { id: 'geometric', label: 'geometric run lengths', make: (n, r) => rescale(Array.from({ length: r }, () => 1 - Math.log(1 - Math.random())), n) },
+  { id: 'equal',     label: 'equal runs',            make: (n, r) => rescale(Array(r).fill(1), n) },
+  { id: 'ramp',      label: 'ramp 1, 2, 3, …, r',    make: (n, r) => rescale(Array.from({ length: r }, (_, i) => i + 1), n) },
+  { id: 'spike',     label: 'one huge run + tiny runs', make: (n, r) => rescale([Math.max(1, n - r + 1)].concat(Array(Math.max(0, r - 1)).fill(1)), n) },
+  { id: 'halving',   label: 'halving 2n, n, n/2, …',  make: (n, r) => { const out = []; let x = 1;
+      for (let i = 0; i < r; i++) { out.unshift(x); x *= 2; } return rescale(out, n); } },
+  { id: 'shuffleramp', label: 'shuffled ramp',       make: (n, r) => { const a = rescale(Array.from({ length: r }, (_, i) => i + 1), n);
+      for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; } }
+];
+
+/* ==========================================================================
+   IMPORT / EXPORT
+   The export is valid Python and matches the workshop's policy(runs) output:
+       runs   = [5, 3, 3, 14, 1, 2]
+       merges = [4, 3, 0, 0, 0]      # positions, in play order
+   plus a tree literal and the numbers, as comments.
+   ========================================================================== */
+const fmt = (x, d = 2) => Number.isFinite(x) ? x.toFixed(d) : '—';
+const fmtInt = x => Math.round(x).toLocaleString('en-US');
+
+function exportText(runs, positions, { url } = {}) {
+  const forest = buildForest(runs, positions);
+  const n = sum(runs), H = entropy(runs), cost = sum(forest.map(mergeCost));
+  const done = forest.length === 1;
+  const lines = [
+    "# Powersort's Pursuit \u2014 merge tree" + (done ? '' : ' (game in progress, ' + positions.length + ' of ' + (runs.length - 1) + ' merges)'),
+    url ? '# ' + url : null,
+    'runs = [' + runs.join(', ') + ']',
+    'merges = [' + positions.join(', ') + ']' + (positions.length ? '   # position k = merge blocks k and k+1, counting all current blocks from the left' : ''),
+    'tree = "' + forestLiteral(forest) + '"',
+    `# cost = ${cost}   n = ${n}   nH = ${fmt(n * H)}   n(H+2) = ${fmt(n * (H + 2))}`
+  ];
+  return lines.filter(x => x !== null).join('\n') + '\n';
+}
+
+/* balanced-bracket slice after "name =" (a "name=1,2,3" inside a URL comment is skipped) */
+function pyList(text, name) {
+  const re = new RegExp('(^|[^\\w])' + name + '\\s*[=:]\\s*', 'gm');
+  let m;
+  while ((m = re.exec(text))) {
+    const i = m.index + m[0].length, open = text[i];
+    if (open === '"' || open === "'") { const j = text.indexOf(open, i + 1); if (j > 0) return text.slice(i + 1, j); continue; }
+    if (open !== '[' && open !== '(') continue;
+    let depth = 0;
+    for (let j = i; j < text.length; j++) {
+      if (text[j] === '[' || text[j] === '(') depth++;
+      else if (text[j] === ']' || text[j] === ')') { depth--; if (depth === 0) return text.slice(i, j + 1); }
+    }
+  }
+  return null;
+}
+const intsIn = s => (s.match(/-?\d+/g) || []).map(Number);
+
+/* Every element is a pair "(i, j)" -> spans; otherwise ints -> positions */
+function mergesFromList(listText, r) {
+  const inner = listText.trim().replace(/^[\[(]/, '').replace(/[\])]$/, '');
+  const pairs = inner.match(/[\[(]\s*-?\d+\s*,\s*-?\d+\s*[\])]/g);
+  if (pairs && intsIn(inner).length === 2 * pairs.length) {
+    const spans = pairs.map(p => intsIn(p));
+    for (const [lo, hi] of spans)
+      if (!(0 <= lo && lo < hi && hi < r)) throw new Error(`span (${lo}, ${hi}) is out of range for ${r} runs`);
+    return spansToPositions(r, spans);
+  }
+  return intsIn(inner);
+}
+
+/* Returns { runs, positions }.  currentRuns is used when the text only says
+   which merges to make. */
+function parseImport(text, currentRuns) {
+  text = text.trim();
+  if (!text) throw new Error('nothing to import');
+  let runs = null, positions = null;
+
+  const tryJSON = () => { try { return JSON.parse(text); } catch (e) { return undefined; } };
+  const j = tryJSON();
+  if (j && typeof j === 'object' && !Array.isArray(j) && (j.runs || j.merges || j.tree)) {
+    if (j.tree && !j.runs) return parseTreeLiteral(String(j.tree));
+    runs = j.runs ? j.runs.map(Number) : currentRuns.slice();
+    positions = j.merges ? mergesFromList(JSON.stringify(j.merges), runs.length) : [];
+  } else {
+    const rl = pyList(text, 'runs'), ml = pyList(text, 'merges'), tl = pyList(text, 'tree');
+    if (rl || ml) {
+      runs = rl ? intsIn(rl) : currentRuns.slice();
+      positions = ml ? mergesFromList(ml, runs.length) : [];
+    } else if (tl) {
+      return parseTreeLiteral(tl);
+    } else if (/^\(/.test(text.replace(/^\s*#.*$/gm, '').trim())) {
+      return parseTreeLiteral(text.replace(/^\s*#.*$/gm, ''));
+    } else {
+      /* a bare list of numbers: the merges for the current input */
+      runs = currentRuns.slice();
+      positions = mergesFromList(text, runs.length);
+    }
+  }
+  if (!runs.length || runs.some(x => !(Number.isInteger(x) && x >= 1))) throw new Error('run lengths must be positive integers');
+  if (positions.length > runs.length - 1) throw new Error(`${positions.length} merges, but ${runs.length} runs allow only ${runs.length - 1}`);
+  buildForest(runs, positions);                 // validates, throws with a plain message
+  return { runs, positions };
+}
+
+/* ==========================================================================
+   URL  --  ?runs=5,3,3,14,1,2  opens the page on that input;
+            &merges=4,3,0,0,0  or  &tree=((5 3) ...)  also loads a tree.
+   ========================================================================== */
+function readURL() {
+  const q = new URLSearchParams(location.search);
+  const out = { secret: q.has('opt') || location.hash === '#opt' };
+  const rs = q.get('runs');
+  if (rs) {
+    const runs = intsIn(rs).filter(x => x >= 1);
+    if (runs.length) {
+      out.runs = runs;
+      try {
+        if (q.get('tree')) out.positions = parseTreeLiteral(q.get('tree')).positions;
+        else if (q.get('merges')) out.positions = mergesFromList(q.get('merges'), runs.length);
+        if (out.positions) buildForest(runs, out.positions);
+      } catch (e) { out.positions = null; out.warn = e.message; }
+    }
+  } else if (q.get('tree')) {
+    try { Object.assign(out, parseTreeLiteral(q.get('tree'))); } catch (e) { out.warn = e.message; }
+  }
+  return out;
+}
+function pageURL(runs, positions) {
+  const u = new URL(location.href);
+  u.search = ''; u.hash = '';
+  u.searchParams.set('runs', runs.join(','));
+  if (positions && positions.length) u.searchParams.set('merges', positions.join(','));
+  return u.toString().replace(/%2C/g, ',');
+}
+function syncURL(runs) {
+  try { history.replaceState(null, '', pageURL(runs, null)); } catch (e) { /* file:// may refuse */ }
+}
+
+/* ==========================================================================
+   SOUND  --  a synthesised pop (pitch falls with the size of the merge) and a
+   splash of filtered noise.  Nothing is loaded from the network.
+   ========================================================================== */
+let actx = null;
+function audio() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function pop(size) {                             // size: share of n in the new block, 0..1
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    const f0 = 880 - 560 * Math.min(1, Math.max(0, size));
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.28, t + 0.13);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.45, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + 0.2);
+
+    const len = Math.floor(c.sampleRate * 0.13);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+    const s = c.createBufferSource(); s.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.9;
+    const g2 = c.createGain(); g2.gain.value = 0.16;
+    s.connect(bp).connect(g2).connect(c.destination);
+    s.start(t + 0.01);
+  } catch (e) { /* audio is optional */ }
+}
+function fanfare(best) {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    const notes = best ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25, 783.99];
+    notes.forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      const t0 = t + i * 0.11;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.42);
+      o.connect(g).connect(c.destination);
+      o.start(t0); o.stop(t0 + 0.45);
+    });
+  } catch (e) { /* optional */ }
+}
+
+
+/* ==========================================================================
+   STATE
+   ========================================================================== */
+const $ = id => document.getElementById(id);
+const store = {                                  // localStorage may be blocked; the game still works without it
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+};
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const T = k => REDUCED ? 0 : k;                 // durations respect reduced motion
+
+const state = {
+  runs: PRESETS[0].runs.slice(),
+  preset: PRESETS[0].id,                        // null when the input is custom
+  merges: [],                                   // positions, in play order
+  redo: [],
+  forest: [], cost: 0, maxH: 0,
+  selected: null,                               // id of the selected live block
+  secret: false, ghost: false,
+  sound: store.get('pursuit.sound') !== 'off',
+  player: store.get('pursuit.player') || '',
+  replaying: null
+};
+
+function recompute() {
+  state.forest = buildForest(state.runs, state.merges);
+  state.cost = sum(state.forest.map(mergeCost));
+  state.maxH = state.forest.reduce((a, t) => Math.max(a, t.h), 0);
+  if (state.selected && !state.forest.some(t => idOf(t) === state.selected)) state.selected = null;
+}
+const n_ = () => sum(state.runs);
+const H_ = () => entropy(state.runs);
+const finished = () => state.forest.length === 1 && state.runs.length > 0;
+const inputKey = () => state.runs.join(',');
+
+let optCache = { key: null, tree: null };
+function optTree() {
+  const key = inputKey();
+  if (optCache.key !== key) optCache = { key, tree: optimal(state.runs) };
+  return optCache.tree;
+}
+
+/* ---- leaderboard storage: one board per input, kept in this browser ---- */
+const BOARD_KEY = 'pursuit.board.v1';
+function loadBoards() { try { return JSON.parse(store.get(BOARD_KEY) || '{}'); } catch (e) { return {}; } }
+function saveBoards(b) { store.set(BOARD_KEY, JSON.stringify(b)); }
+function board() { return (loadBoards()[inputKey()] || []).slice().sort((a, b) => a.cost - b.cost || a.t - b.t); }
+function pushBoard(entry) {
+  const all = loadBoards(), list = all[inputKey()] || [];
+  const dup = list.find(e => e.tree === entry.tree);
+  if (dup) return { entry: dup, isNew: false };
+  list.push(entry);
+  all[inputKey()] = list.slice(-200);
+  saveBoards(all);
+  return { entry, isNew: true };
+}
+
+/* ==========================================================================
+   STAGE  --  a keyed SVG scene.  Every node is a <g> that stays alive across
+   state changes, so an animation that is still running is never torn down by
+   the next move.  Coordinates: the run row has its top at y = 0; a block of
+   height h sits ROW units higher per level (negative y).  The viewBox grows
+   upwards as the tree does.
+   ========================================================================== */
+const ROW = 38, BAR = 26, PADX = 14, PADTOP = 16, AXIS = 26;
+const stage = $('stage');
+const layers = { ghosts: $('ghosts'), edges: $('edges'), nodes: $('nodes'), fx: $('fx'), axis: $('axis') };
+const dom = new Map();                          // id -> { g, nd, live }
+let W = 1200, starts = [0];
+
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const X = pos => PADX + pos / n_() * (W - 2 * PADX);
+function geom(nd) {
+  const x0 = X(starts[nd.lo]) + 0.7, x1 = X(starts[nd.hi + 1]) - 0.7;
+  return { x: x0, y: -nd.h * ROW, w: Math.max(1.4, x1 - x0), cx: (x0 + x1) / 2 };
+}
+const clipId = id => 'clip-' + id.replace(':', '-');
+const rx = () => Math.min(6, BAR / 2).toFixed(1);
+
+function measure() {
+  W = Math.round(Math.max(560, Math.min(1200, stage.clientWidth || 1200)));
+  starts = [0]; state.runs.forEach(l => starts.push(starts[starts.length - 1] + l));
+}
+function rowsNeeded() {
+  const r = state.runs.length;
+  let rows = Math.max(state.maxH + 2, Math.ceil(Math.log2(Math.max(2, r))) + 1);
+  if (state.ghost && state.secret) rows = Math.max(rows, optTree().h + 1);
+  return Math.min(rows, Math.max(2, r));
+}
+function setViewBox() {
+  const rows = rowsNeeded();
+  const top = -(rows - 1) * ROW - PADTOP;
+  stage.setAttribute('viewBox', `0 ${top} ${W} ${(rows - 1) * ROW + PADTOP + BAR + AXIS}`);
+}
+
+/* ---- one node ---- */
+function createNode(nd) {
+  const id = idOf(nd), gm = geom(nd);
+  const g = el('g', { class: 'node ' + (nd.left ? 'is-merge' : 'is-leaf'), 'data-id': id, transform: `translate(${gm.x.toFixed(2)},${gm.y.toFixed(2)})` });
+  const cp = el('clipPath', { id: clipId(id) }, g);
+  el('rect', { x: 0, y: 0, width: gm.w.toFixed(2), height: BAR, rx: rx() }, cp);
+  el('rect', { class: 'vessel', x: 0, y: 0, width: gm.w.toFixed(2), height: BAR, rx: rx() }, g);
+  const cg = el('g', { 'clip-path': `url(#${clipId(id)})` }, g);
+  const fluid = el('rect', { class: 'fluid', x: 0, y: 0, width: gm.w.toFixed(2), height: BAR }, cg);
+  fluid.style.transform = 'scaleY(1)';
+  const label = String(nd.len);
+  const t = el('text', { class: 'n-label', x: (gm.w / 2).toFixed(2), y: (BAR / 2 + 4.5).toFixed(2), 'text-anchor': 'middle', 'font-size': '13' }, g);
+  t.textContent = label;
+  t.style.display = gm.w > label.length * 7.4 + 8 ? '' : 'none';
+  el('rect', { class: 'hit', x: -2, y: -5, width: (gm.w + 4).toFixed(2), height: BAR + 10 }, g);
+  layers.nodes.appendChild(g);
+  return { g, nd, live: true, level: 1 };
+}
+function placeNode(rec) {
+  const gm = geom(rec.nd), g = rec.g;
+  g.setAttribute('transform', `translate(${gm.x.toFixed(2)},${gm.y.toFixed(2)})`);
+  g.dataset.x = gm.x; g.dataset.y = gm.y;
+  const wv = gm.w.toFixed(2);
+  g.querySelectorAll('rect:not(.hit)').forEach(r => r.setAttribute('width', wv));
+  g.querySelector('.hit').setAttribute('width', (gm.w + 4).toFixed(2));
+  const t = g.querySelector('.n-label');
+  t.setAttribute('x', (gm.w / 2).toFixed(2));
+  t.style.display = gm.w > String(rec.nd.len).length * 7.4 + 8 ? '' : 'none';
+}
+function currentLevel(rec) {
+  const f = rec.g.querySelector('.fluid');
+  try { const m = new DOMMatrix(getComputedStyle(f).transform); return Number.isFinite(m.d) ? m.d : rec.level; }
+  catch (e) { return rec.level; }
+}
+function setLevel(rec, level, { duration = 0, delay = 0, easing = 'cubic-bezier(.22,.61,.36,1)' } = {}) {
+  const f = rec.g.querySelector('.fluid');
+  const from = currentLevel(rec);
+  f.getAnimations().forEach(a => a.cancel());
+  rec.level = level;
+  if (duration <= 0 && delay <= 0) { f.style.transform = `scaleY(${level})`; return; }
+  f.style.transform = `scaleY(${from})`;
+  const a = f.animate([{ transform: `scaleY(${from})` }, { transform: `scaleY(${level})` }], { duration, delay, easing, fill: 'forwards' });
+  a.onfinish = () => { f.style.transform = `scaleY(${level})`; try { a.cancel(); } catch (e) {} };
+}
+
+/* ---- edges of one internal node: stem, bus, and one drop per child ---- */
+function edgePaths(nd) {
+  const p = geom(nd), a = geom(nd.left), b = geom(nd.right);
+  const yTop = p.y + BAR, yBus = yTop + (ROW - BAR) / 2;
+  const f = v => v.toFixed(2);
+  return {
+    stem: `M${f(p.cx)},${f(yTop)} V${f(yBus)}`,
+    bus: `M${f(a.cx)},${f(yBus)} H${f(b.cx)}`,
+    kids: [nd.left, nd.right].map(k => { const g = geom(k); return { d: `M${f(g.cx)},${f(yBus)} V${f(g.y)}`, drop: k.h < nd.h - 1 }; }),
+    /* the pump route, child -> parent, for droplets */
+    routes: [nd.left, nd.right].map(k => { const g = geom(k); return `M${f(g.cx)},${f(g.y)} V${f(yBus)} H${f(p.cx)} V${f(yTop)}`; })
+  };
+}
+function createEdges(rec) {
+  const g = el('g', { class: 'edges', 'data-id': idOf(rec.nd) });
+  layers.edges.appendChild(g);
+  rec.edges = g;
+  placeEdges(rec);
+}
+function placeEdges(rec) {
+  if (!rec.edges) return;
+  const e = edgePaths(rec.nd);
+  rec.edges.innerHTML = `<path class="edge" d="${e.stem}"/><path class="edge" d="${e.bus}"/>` +
+    e.kids.map(k => `<path class="edge${k.drop ? ' drop' : ''}" d="${k.d}"/>`).join('');
+}
+
+/* ---- effects (all fire-and-forget) ---- */
+function droplets(rec) {
+  if (REDUCED) return;
+  const e = edgePaths(rec.nd);
+  const dur = 620;
+  e.routes.forEach((d, side) => {
+    const path = el('path', { d, fill: 'none', stroke: 'none' }, layers.fx);
+    const len = path.getTotalLength();
+    const dots = [];
+    for (let i = 0; i < 5; i++) dots.push({ c: el('circle', { class: 'drip' + (side ? '' : ' blue'), r: (2.2 + Math.random() * 1.6).toFixed(1) }, layers.fx), off: i * 0.13 + Math.random() * 0.05 });
+    const t0 = performance.now();
+    (function tick(now) {
+      const u = (now - t0) / dur;
+      let alive = false;
+      for (const d of dots) {
+        const v = Math.min(1, Math.max(0, (u - d.off) / (1 - 0.6)));
+        if (v < 1) alive = true;
+        const pt = path.getPointAtLength(v * len);
+        d.c.setAttribute('cx', pt.x.toFixed(1)); d.c.setAttribute('cy', pt.y.toFixed(1));
+        d.c.style.opacity = v <= 0 || v >= 1 ? 0 : 1;
+      }
+      if (alive) requestAnimationFrame(tick); else { dots.forEach(d => d.c.remove()); path.remove(); }
+    })(t0);
+  });
+}
+function splash(x, y, big) {
+  if (REDUCED) return;
+  const colors = ['#B5FF00', '#0DEDF7', '#FFFF00', '#FFFFFF', '#B5FF00'];
+  const count = big ? 34 : 16;
+  for (let i = 0; i < count; i++) {
+    const ang = Math.random() * Math.PI * 2, sp = (big ? 70 : 42) * (0.5 + Math.random());
+    const dx = Math.cos(ang) * sp, dy = Math.sin(ang) * sp - (big ? 30 : 18);
+    const c = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: (big ? 3 : 2.4) + Math.random() * 2.2, fill: colors[i % colors.length] }, layers.fx);
+    c.style.transformBox = 'fill-box'; c.style.transformOrigin = 'center';
+    const a = c.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px) scale(.1)`, opacity: 0 }],
+      { duration: 450 + Math.random() * 350, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+    a.onfinish = () => c.remove();
+  }
+  const ring = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: 4, fill: 'none', stroke: '#FFFF00', 'stroke-width': 2 }, layers.fx);
+  ring.style.transformBox = 'fill-box'; ring.style.transformOrigin = 'center';
+  const ra = ring.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: `scale(${big ? 14 : 8})`, opacity: 0 }], { duration: 520, easing: 'ease-out', fill: 'forwards' });
+  ra.onfinish = () => ring.remove();
+}
+function floatPlus(rec) {
+  const gm = geom(rec.nd);
+  const t = el('text', { class: 'plus', x: gm.cx.toFixed(1), y: (gm.y - 6).toFixed(1), 'text-anchor': 'middle' }, layers.fx);
+  t.textContent = '+' + rec.nd.len;
+  if (REDUCED) { setTimeout(() => t.remove(), 700); return; }
+  const a = t.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: 'translate(0,-34px)', opacity: 0 }], { duration: 950, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'forwards' });
+  a.onfinish = () => t.remove();
+}
+function pumpIn(rec) {
+  setLevel(rec, 0);
+  setLevel(rec, 1, { duration: T(720), delay: T(140), easing: 'cubic-bezier(.3,.8,.4,1)' });
+  if (rec.edges) { rec.edges.classList.add('is-pumping'); setTimeout(() => rec.edges && rec.edges.classList.remove('is-pumping'), T(900)); }
+  droplets(rec);
+  const v = rec.g.querySelector('.vessel');
+  if (!REDUCED) {
+    const a = v.animate([{ stroke: '#FFFF00', strokeWidth: '3' }, { stroke: '#fff', strokeWidth: '1.5' }], { duration: 700, delay: 760, easing: 'ease-out' });
+    a.onfinish = () => {};
+  }
+}
+let costTween = null, shownCost = 0;
+function tweenCost(to) {
+  const from = shownCost, big = $('costBig');
+  if (costTween) cancelAnimationFrame(costTween);
+  if (REDUCED || Math.abs(to - from) < 1) { shownCost = to; big.textContent = fmtInt(to); return; }
+  big.classList.add('is-bump');
+  const t0 = performance.now(), dur = 620;
+  (function tick(now) {
+    const u = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - u, 3);
+    shownCost = from + (to - from) * e;
+    big.textContent = fmtInt(shownCost);
+    if (u < 1) costTween = requestAnimationFrame(tick); else { costTween = null; shownCost = to; big.classList.remove('is-bump'); }
+  })(t0);
+}
+
+/* ---- reconcile the scene with the state ---- */
+function sync({ animate = false, newId = null } = {}) {
+  measure();
+  const want = new Map();
+  for (const root of state.forest)
+    (function walk(t, live) { want.set(idOf(t), { nd: t, live }); if (t.left) { walk(t.left, false); walk(t.right, false); } })(root, true);
+
+  for (const [id, rec] of dom) {
+    if (want.has(id)) continue;
+    dom.delete(id);
+    if (rec.edges) rec.edges.remove();
+    if (animate && !REDUCED) {
+      const a = rec.g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'forwards' });
+      a.onfinish = () => rec.g.remove();
+    } else rec.g.remove();
+  }
+  for (const [id, { nd, live }] of want) {
+    let rec = dom.get(id);
+    if (!rec) {
+      rec = createNode(nd); dom.set(id, rec);
+      if (nd.left) createEdges(rec);
+      if (nd.left && animate && id === newId) pumpIn(rec);
+      else setLevel(rec, live ? 1 : 0);
+    } else {
+      rec.nd = nd;
+      if (rec.live && !live) setLevel(rec, 0, { duration: animate ? T(560) : 0, easing: 'cubic-bezier(.4,0,.6,1)' });
+      else if (!rec.live && live) setLevel(rec, 1, { duration: animate ? T(320) : 0 });
+    }
+    rec.live = live;
+    rec.g.classList.toggle('is-live', live);
+    rec.g.classList.toggle('is-spent', !live);
+    rec.g.classList.toggle('is-done', live && state.forest.length === 1);
+    placeNode(rec); placeEdges(rec);
+  }
+  drawGhosts();
+  drawAxis();
+  setViewBox();
+  updateHighlights();
+}
+
+function drawGhosts() {
+  layers.ghosts.innerHTML = '';
+  if (!(state.secret && state.ghost) || state.runs.length < 2) return;
+  const parts = [];
+  (function walk(t) {
+    if (!t.left) return;
+    const g = geom(t);
+    const mine = dom.get(idOf(t));
+    parts.push(`<rect class="ghost" x="${g.x.toFixed(2)}" y="${g.y.toFixed(2)}" width="${g.w.toFixed(2)}" height="${BAR}" rx="${rx()}"${mine ? ' opacity=".35"' : ''}/>`);
+    if (!mine && g.w > 30) parts.push(`<text class="ghost-label" x="${(g.x + 4).toFixed(2)}" y="${(g.y - 3).toFixed(2)}">${t.len}</text>`);
+    walk(t.left); walk(t.right);
+  })(optTree());
+  layers.ghosts.innerHTML = parts.join('');
+}
+function drawAxis() {
+  const r = state.runs.length, yA = BAR + 12;
+  const done = state.merges.length;
+  layers.axis.innerHTML =
+    `<line class="axis" x1="${PADX}" x2="${W - PADX}" y1="${yA}" y2="${yA}"/>` +
+    `<text class="axis-text" x="${PADX}" y="${yA + 13}">0</text>` +
+    `<text class="axis-text" x="${W - PADX}" y="${yA + 13}" text-anchor="end">n = ${fmtInt(n_())}</text>` +
+    `<text class="axis-text" x="${W / 2}" y="${yA + 13}" text-anchor="middle">${r} runs · ${done} of ${Math.max(0, r - 1)} merges${done ? ' · tree height ' + state.maxH : ''}</text>`;
+}
+
+/* highlight classes: selection, drag, partners */
+function neighbours(id) {
+  const i = state.forest.findIndex(t => idOf(t) === id);
+  return { i, left: i > 0 ? idOf(state.forest[i - 1]) : null, right: i >= 0 && i + 1 < state.forest.length ? idOf(state.forest[i + 1]) : null };
+}
+function updateHighlights() {
+  const active = drag ? drag.id : state.selected;
+  const nb = active ? neighbours(active) : { left: null, right: null };
+  for (const [id, rec] of dom) {
+    rec.g.classList.toggle('is-selected', !drag && id === state.selected);
+    rec.g.classList.toggle('is-dragging', !!drag && id === drag.id);
+    rec.g.classList.toggle('is-target', id === nb.left || id === nb.right);
+    rec.g.classList.toggle('is-hover', !!drag && id === drag.hover);
+  }
+}
+
+/* ==========================================================================
+   MOVES
+   ========================================================================== */
+function applyMerge(k, { animate = true, at = null, keepSelection = false } = {}) {
+  if (!(k >= 0 && k + 1 < state.forest.length)) return false;
+  stopReplay();
+  const a = state.forest[k], b = state.forest[k + 1];
+  const newId = a.lo + ':' + b.hi;
+  state.merges.push(k); state.redo = [];
+  state.selected = keepSelection ? newId : null;
+  recompute();
+  if (finished()) state.selected = null;
+  sync({ animate, newId });
+  const rec = dom.get(newId);
+  if (animate) {
+    const gm = geom(rec.nd);
+    const p = at || { x: gm.cx, y: gm.y + BAR / 2 };
+    splash(p.x, p.y, false);
+    floatPlus(rec);
+    pop(rec.nd.len / n_());
+  }
+  tweenCost(state.cost);
+  afterChange({ justFinished: finished(), animate });
+  return true;
+}
+function undo() {
+  if (!state.merges.length) return;
+  stopReplay();
+  state.redo.push(state.merges.pop());
+  state.selected = null;
+  recompute(); sync({ animate: true }); tweenCost(state.cost); afterChange({});
+}
+function redo() {
+  if (!state.redo.length) return;
+  stopReplay();
+  const k = state.redo.pop();
+  state.merges.push(k); state.selected = null;
+  recompute(); sync({ animate: true, newId: idOf(state.forest[k]) });
+  const rec = dom.get(idOf(state.forest[k]));
+  if (rec) { floatPlus(rec); pop(rec.nd.len / n_()); }
+  tweenCost(state.cost); afterChange({ justFinished: finished(), animate: true });
+}
+function reset() {                              // "start over" is just undo-all, so redo can bring it back
+  if (!state.merges.length) return;
+  stopReplay();
+  while (state.merges.length) state.redo.push(state.merges.pop());
+  state.selected = null;
+  recompute(); sync({ animate: true }); tweenCost(0); afterChange({});
+}
+function setRuns(runs, { preset = null, positions = null, via = null } = {}) {
+  stopReplay();
+  state.runs = runs.slice();
+  const match = PRESETS.find(x => x.runs.join(',') === runs.join(','));
+  state.preset = preset || (match ? match.id : null);
+  state.merges = positions ? positions.slice() : []; state.redo = []; state.selected = null;
+  recompute();
+  for (const rec of dom.values()) { rec.g.remove(); if (rec.edges) rec.edges.remove(); }
+  dom.clear(); layers.fx.innerHTML = '';
+  sync({ animate: false });
+  shownCost = state.cost; $('costBig').textContent = fmtInt(state.cost);
+  syncURL(state.runs);
+  afterChange(via ? { justFinished: finished(), animate: false, via } : { silent: true });
+}
+function loadTree(positions, { animate = false, via = null } = {}) {   // same input, a whole tree at once
+  stopReplay();
+  state.merges = positions.slice(); state.redo = []; state.selected = null;
+  recompute(); sync({ animate }); tweenCost(state.cost);
+  afterChange(via ? { justFinished: finished(), animate: false, via } : { silent: true });
+}
+
+/* ---- replay: build a tree from scratch, one merge every few hundred ms ---- */
+function replay(positions) {
+  stopReplay();
+  const seq = positions.slice();
+  state.merges = []; state.redo = []; state.selected = null;
+  recompute(); sync({ animate: false }); tweenCost(0); afterChange({ silent: true });
+  let i = 0;
+  const step = () => {
+    if (i >= seq.length) { state.replaying = null; syncControls(); return; }
+    const k = seq[i++];
+    state.replaying = null;                     // applyMerge stops replays; re-arm after
+    applyMerge(k, { animate: true });
+    state.replaying = setTimeout(step, T(430) || 40);
+    syncControls();
+  };
+  state.replaying = setTimeout(step, 250);
+  syncControls();
+}
+function stopReplay() { if (state.replaying) { clearTimeout(state.replaying); state.replaying = null; } }
+
+/* ==========================================================================
+   INTERACTION  --  drag a live block onto a neighbour; click-click; keyboard
+   ========================================================================== */
+let drag = null;
+function svgPoint(evt) {
+  return new DOMPoint(evt.clientX, evt.clientY).matrixTransform(stage.getScreenCTM().inverse());
+}
+function nodeAt(target) { const g = target.closest && target.closest('.node'); return g ? g.dataset.id : null; }
+
+stage.addEventListener('pointerdown', e => {
+  if (e.button !== 0 && e.pointerType === 'mouse') return;
+  const id = nodeAt(e.target);
+  const rec = id && dom.get(id);
+  if (!rec) { if (state.selected) { state.selected = null; updateHighlights(); } return; }
+  if (!rec.live) return;
+  stopReplay();
+  /* click-click: a selected block's partner was clicked */
+  if (state.selected && state.selected !== id) {
+    const nb = neighbours(state.selected);
+    if (id === nb.left) { const p = svgPoint(e); applyMerge(nb.i - 1, { at: p }); return; }
+    if (id === nb.right) { const p = svgPoint(e); applyMerge(nb.i, { at: p }); return; }
+  }
+  const p = svgPoint(e);
+  drag = { id, rec, x0: p.x, y0: p.y, bx: +rec.g.dataset.x, by: +rec.g.dataset.y, moved: false, hover: null, pointerId: e.pointerId };
+  try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+  e.preventDefault();
+});
+stage.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  const p = svgPoint(e), dx = p.x - drag.x0, dy = p.y - drag.y0;
+  if (!drag.moved) {
+    if (Math.hypot(dx, dy) * (stage.clientWidth / W) < 4) return;
+    drag.moved = true;
+    layers.nodes.appendChild(drag.rec.g);        // on top while in the air
+    const gm = geom(drag.rec.nd);
+    drag.shadow = el('rect', { class: 'drop-shadow', x: gm.x.toFixed(2), y: gm.y.toFixed(2), width: gm.w.toFixed(2), height: BAR, rx: rx() }, layers.fx);
+    updateHighlights();
+  }
+  drag.rec.g.setAttribute('transform', `translate(${(drag.bx + dx).toFixed(2)},${(drag.by + dy).toFixed(2)})`);
+  const nb = neighbours(drag.id);
+  drag.hover = dropTarget(e, nb);
+  updateHighlights();
+});
+function dropTarget(e, nb) {
+  const me = drag.rec.g.querySelector('.vessel').getBoundingClientRect();
+  for (const id of [nb.left, nb.right]) {
+    if (!id) continue;
+    const rec = dom.get(id); if (!rec) continue;
+    const b = rec.g.querySelector('.vessel').getBoundingClientRect();
+    const m = 12;
+    if (e.clientX >= b.left - m && e.clientX <= b.right + m && e.clientY >= b.top - m && e.clientY <= b.bottom + m) return id;
+    /* or: the carried bar overlaps the partner by more than a third of the narrower one */
+    const ox = Math.min(me.right, b.right) - Math.max(me.left, b.left);
+    const oy = Math.min(me.bottom, b.bottom) - Math.max(me.top, b.top);
+    if (ox > Math.min(me.width, b.width) / 3 && oy > 0) return id;
+  }
+  return null;
+}
+function endDrag(e, cancel) {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.shadow) d.shadow.remove();
+  try { stage.releasePointerCapture(d.pointerId); } catch (err) {}
+  if (!d.moved) {                                // a click: select / deselect
+    if (!cancel) state.selected = state.selected === d.id ? null : d.id;
+    updateHighlights();
+    return;
+  }
+  const nb = neighbours(d.id);
+  const target = cancel ? null : d.hover;
+  if (target) {
+    d.rec.g.setAttribute('transform', `translate(${d.bx},${d.by})`);
+    const p = svgPoint(e);
+    applyMerge(target === nb.left ? nb.i - 1 : nb.i, { at: p });
+    return;
+  }
+  /* snap back */
+  const g = d.rec.g, m = /translate\(([-\d.]+),([-\d.]+)\)/.exec(g.getAttribute('transform')) || [0, d.bx, d.by];
+  const sx = +m[1], sy = +m[2], t0 = performance.now(), dur = T(160);
+  (function tick(now) {
+    const u = dur ? Math.min(1, (now - t0) / dur) : 1, ee = 1 - Math.pow(1 - u, 2);
+    g.setAttribute('transform', `translate(${(sx + (d.bx - sx) * ee).toFixed(2)},${(sy + (d.by - sy) * ee).toFixed(2)})`);
+    if (u < 1) requestAnimationFrame(tick);
+  })(t0);
+  updateHighlights();
+}
+stage.addEventListener('pointerup', e => endDrag(e, false));
+stage.addEventListener('pointercancel', e => endDrag(e, true));
+stage.addEventListener('lostpointercapture', e => { if (drag && e.pointerId === drag.pointerId) endDrag(e, true); });
+
+/* keyboard */
+const secretBuf = [];
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  /* the secret: type o p t */
+  if (!e.ctrlKey && !e.metaKey && /^[a-z]$/.test(e.key)) {
+    secretBuf.push(e.key); if (secretBuf.length > 3) secretBuf.shift();
+    if (secretBuf.join('') === 'opt') { secretBuf.length = 0; setSecret(!state.secret); return; }
+  }
+  const mod = e.ctrlKey || e.metaKey;
+  if ((mod && e.key.toLowerCase() === 'z' && !e.shiftKey) || (!mod && e.key === 'u')) { e.preventDefault(); return undo(); }
+  if ((mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) || (!mod && e.key === 'y')) { e.preventDefault(); return redo(); }
+  if (!mod && e.key === 'r') { e.preventDefault(); return reset(); }
+  if (e.key === 'Escape') { state.selected = null; if (drag) endDrag(e, true); updateHighlights(); return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    const dir = e.key === 'ArrowLeft' ? -1 : 1;
+    const blocks = state.forest;
+    if (!blocks.length) return;
+    let i = state.selected ? blocks.findIndex(t => idOf(t) === state.selected) : -1;
+    if (e.shiftKey && i >= 0) {
+      const k = dir < 0 ? i - 1 : i;
+      if (k >= 0 && k + 1 < blocks.length) { const p = geom(blocks[k].len >= blocks[k + 1].len ? blocks[k] : blocks[k + 1]); applyMerge(k, { at: { x: p.cx, y: p.y + BAR / 2 }, keepSelection: true }); }
+      return;
+    }
+    i = i < 0 ? (dir < 0 ? blocks.length - 1 : 0) : Math.max(0, Math.min(blocks.length - 1, i + dir));
+    state.selected = idOf(blocks[i]); updateHighlights();
+  }
+});
+
+/* ==========================================================================
+   UI  --  readouts, ruler, leaderboard, result, io text
+   ========================================================================== */
+function afterChange({ justFinished = false, silent = false, animate = true, via = null } = {}) {
+  renderMetrics();
+  renderIO();
+  syncControls();
+  if (finished()) {
+    const res = recordResult(!silent && justFinished, via);
+    renderResult(res, !silent && justFinished && animate);
+  } else {
+    $('result').hidden = true;
+  }
+  renderBoard();
+}
+
+function renderMetrics() {
+  const n = n_(), H = H_(), r = state.runs.length, cost = state.cost;
+  const done = finished();
+  const opt = state.secret ? mergeCost(optTree()) : null;
+  $('costLabel').textContent = done ? 'merge cost' : 'merge cost so far';
+  $('costSub').innerHTML = `nH = <b>${fmt(n * H, 1)}</b> · n(H+2) = <b>${fmt(n * (H + 2), 1)}</b>`;
+  $('inputSummary').innerHTML = `<b>${r}</b> runs · n = <b>${fmtInt(n)}</b> · H = <b>${fmt(H, 3)}</b> bits`;
+  const rows = [
+    [done ? 'merge cost' : 'merge cost so far', fmtInt(cost), done ? 'hi' : ''],
+    ['merges made', `${state.merges.length} <span class="unit">of ${Math.max(0, r - 1)}</span>`, ''],
+    ['nH', fmt(n * H, 1), ''],
+    ['n(H+2)', fmt(n * (H + 2), 1), ''],
+  ];
+  if (done) rows.push(['above nH, per element', `${fmt((cost - n * H) / n, 3)} <span class="unit">n</span>`, '']);
+  if (state.secret) {
+    rows.push(['OPT', fmtInt(opt), 'opt']);
+    rows.push(['cost / OPT', done ? fmt(cost / opt, 3) : '—', 'opt']);
+  }
+  $('metrics').innerHTML = rows.map(([k, v, c]) => `<tr class="${c}"><td>${k}</td><td>${v}</td></tr>`).join('');
+  drawRuler(cost, n * H, opt, n, done);
+}
+
+/* the lab's cost ruler: where the cost sits between nH and n(H+2) */
+function drawRuler(cost, nH, opt, n, done) {
+  const hi = Math.max(nH + 2.6 * n, cost * 1.03, (opt || 0) + 0.4 * n, nH + 1), lo = nH;
+  const x = v => 8 + Math.max(0, Math.min(1, (v - lo) / (hi - lo))) * 284;
+  const mark = (v, color, up) => up
+    ? `<path d="M${x(v).toFixed(1)},31 l-4.5,-8 h9 z" fill="${color}"/>`
+    : `<line x1="${x(v).toFixed(1)}" x2="${x(v).toFixed(1)}" y1="34" y2="43" stroke="${color}" stroke-width="1.5"/>`;
+  const text = (v, color, label, y, anchor) =>
+    `<text x="${x(v).toFixed(1)}" y="${y}" fill="${color}" font-family="IBM Plex Mono, monospace" font-size="9" text-anchor="${anchor}">${label}</text>`;
+  const costColor = done ? '#B5FF00' : 'rgba(181,255,0,.55)';
+  const far = opt !== null && Math.abs(x(cost) - x(opt)) > 26;
+  $('ruler').innerHTML =
+    `<line x1="8" x2="292" y1="34" y2="34" stroke="rgba(13,237,247,.3)" stroke-width="1"/>` +
+    `<rect x="${x(nH).toFixed(1)}" y="31" width="${(x(nH + 2 * n) - x(nH)).toFixed(1)}" height="6" fill="rgba(181,255,0,.16)"/>` +
+    mark(nH, '#0DEDF7', false) + mark(nH + 2 * n, 'rgba(234,242,255,.45)', false) +
+    (opt !== null ? mark(opt, '#00D600', true) : '') +
+    (cost > 0 ? mark(cost, costColor, true) : '') +
+    text(nH, '#0DEDF7', 'nH', 54, 'start') +
+    text(nH + 2 * n, 'rgba(234,242,255,.55)', 'n(H+2)', 54, x(nH + 2 * n) > 250 ? 'end' : 'middle') +
+    (opt !== null && far ? text(opt, '#00D600', 'OPT', 17, x(opt) < 24 ? 'start' : 'middle') : '') +
+    (cost > 0 ? text(cost, costColor, done ? 'you' : 'so far', 17, x(cost) > 268 ? 'end' : 'middle') : '');
+}
+
+function recordResult(save, via = null) {
+  const tree = forestLiteral(state.forest);
+  const list = board();
+  const before = list.length ? list[0].cost : Infinity;
+  let entry = list.find(e => e.tree === tree), isNew = false;
+  if (!entry && save) {
+    ({ entry, isNew } = pushBoard({ cost: state.cost, merges: state.merges.slice(), tree, player: state.player.trim() || 'anonymous', t: Date.now(), via }));
+  }
+  const after = board();
+  const rank = entry ? after.findIndex(e => e.tree === entry.tree) + 1 : 0;
+  return { tree, entry, isNew, rank, best: state.cost < before, tied: state.cost === before && isNew, saved: !!entry };
+}
+function renderResult(res, celebrate) {
+  const n = n_(), H = H_(), cost = state.cost, nH = n * H, guar = n * (H + 2);
+  const opt = state.secret ? mergeCost(optTree()) : null;
+  const box = $('result');
+  box.hidden = false;
+  box.classList.toggle('is-best', res.best || res.tied);
+  $('resBig').textContent = fmtInt(cost);
+  let verdict;
+  if (opt !== null && cost === opt) verdict = 'That is the cheapest tree there is.';
+  else if (cost <= nH + 1e-9) verdict = 'Right on nH — it does not get better than this.';
+  else if (cost - nH <= 1 * n) verdict = `Within <b>n</b> of nH: a very good tree.`;
+  else if (cost - nH <= 2 * n) verdict = `Inside the n(H+2) band a good policy guarantees.`;
+  else verdict = `<b>${fmt((cost - guar) / n, 2)}·n</b> above n(H+2) — a well-designed policy would have done better.`;
+  const badge = res.isNew && res.best ? '<span class="badge">new best</span>' : res.tied ? '<span class="badge">ties the best</span>' : '';
+  const optBadge = opt !== null && cost === opt ? '<span class="badge opt">optimal</span>' : '';
+  $('resVerdict').innerHTML = verdict + badge + optBadge;
+  $('resDetail').textContent = `nH = ${fmt(nH, 1)} · you = nH + ${fmt((cost - nH) / n, 3)}·n · n(H+2) = ${fmt(guar, 1)}` +
+    (res.rank ? ` · #${res.rank} on this input’s board` : '') + (res.saved && !res.isNew ? ' · already on the board' : '');
+  if (celebrate) {
+    const root = state.forest[0], gm = geom(root);
+    splash(gm.cx, gm.y + BAR / 2, true);
+    fanfare(res.isNew && res.best);
+  }
+}
+
+function timeAgo(t) {
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  return new Date(t).toLocaleDateString();
+}
+function renderBoard() {
+  const list = board(), host = $('board');
+  const current = finished() ? forestLiteral(state.forest) : null;
+  const opt = state.secret ? mergeCost(optTree()) : null;
+  if (!list.length) { host.innerHTML = '<div class="board-empty">no finished trees for this input yet — yours will be the first</div>'; return; }
+  host.innerHTML = list.slice(0, 12).map((e, i) =>
+    `<div class="board-row${e.tree === current ? ' is-viewing' : ''}" data-i="${i}" role="button" tabindex="0">` +
+    `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${opt !== null && e.cost === opt ? ' <span class="star">★</span>' : ''}</span>` +
+    `<span class="who">${escapeHTML(e.player)} <small>· ${timeAgo(e.t)}${e.via ? ' · ' + e.via : ''}</small></span>` +
+    `<button class="replay" type="button" title="watch this tree being built" aria-label="replay">▶</button></div>`).join('');
+}
+function escapeHTML(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+$('board').addEventListener('click', e => {
+  const row = e.target.closest('.board-row'); if (!row) return;
+  const entry = board()[+row.dataset.i]; if (!entry) return;
+  if (e.target.closest('.replay')) replay(entry.merges);
+  else loadTree(entry.merges);
+  stage.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'nearest' });
+});
+$('board').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.target.click(); } });
+$('btnClearBoard').addEventListener('click', () => {
+  if (!board().length) return;
+  if (!confirm('Clear the leaderboard for this input?')) return;
+  const all = loadBoards(); delete all[inputKey()]; saveBoards(all); renderBoard();
+});
+$('player').value = state.player;
+$('player').addEventListener('input', e => { state.player = e.target.value; store.set('pursuit.player', state.player); });
+
+function renderIO() {
+  const ta = $('ioText');
+  if (document.activeElement === ta) return;
+  ta.value = exportText(state.runs, state.merges, { url: pageURL(state.runs, state.merges) });
+}
+function ioMsg(text, ok) { const m = $('ioMsg'); m.textContent = text; m.classList.toggle('ok', !!ok); if (text) setTimeout(() => { if (m.textContent === text) m.textContent = ''; }, 6000); }
+function doImport(text) {
+  try {
+    const { runs, positions } = parseImport(text, state.runs);
+    if (runs.join(',') !== inputKey()) setRuns(runs, { positions, via: 'imported' });
+    else loadTree(positions, { via: 'imported' });
+    const f = finished();
+    ioMsg(f ? `imported a complete tree, cost ${fmtInt(state.cost)}` : `imported ${positions.length} of ${runs.length - 1} merges — carry on from here`, true);
+    $('ioText').blur(); renderIO();
+  } catch (e) { ioMsg('could not import: ' + e.message, false); }
+}
+$('btnImport').addEventListener('click', () => doImport($('ioText').value));
+$('btnCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('ioText').value); ioMsg('copied', true); } catch (e) { $('ioText').select(); ioMsg('select the text and copy it yourself', false); }
+});
+$('btnDownload').addEventListener('click', () => {
+  const blob = new Blob([$('ioText').value], { type: 'text/x-python' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `merge-tree-${inputKey().replace(/,/g, '-').slice(0, 40)}.py`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('fileIn').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader(); rd.onload = () => { $('ioText').value = rd.result; doImport(rd.result); }; rd.readAsText(f);
+  e.target.value = '';
+});
+
+/* input controls */
+function buildInputControls() {
+  $('preset').innerHTML = PRESETS.map((p, i) => `<option value="${p.id}">${i + 1} · ${p.name} (${p.runs.length} runs)</option>`).join('') +
+    '<option value="">custom input</option>';
+  $('gen').innerHTML = GENERATORS.map(g => `<option value="${g.id}">${g.label}</option>`).join('');
+}
+function syncControls() {
+  const p = PRESETS.find(x => x.id === state.preset), i = PRESETS.indexOf(p);
+  $('lvl').textContent = p ? 'level ' + (i + 1) : 'custom';
+  $('lvl').classList.toggle('is-custom', !p);
+  $('lname').textContent = p ? p.name : state.runs.length + ' runs, n = ' + fmtInt(n_());
+  $('lhint').textContent = p ? p.hint : 'Your own input. Share it with the “copy link” button.';
+  $('preset').value = p ? p.id : '';
+  if (document.activeElement !== $('runtext')) $('runtext').value = state.runs.join(', ');
+  $('btnUndo').disabled = !state.merges.length;
+  $('btnRedo').disabled = !state.redo.length;
+  $('btnReset').disabled = !state.merges.length;
+  $('btnReplay').disabled = !state.merges.length || !!state.replaying;
+  $('btnGhost').classList.toggle('is-on', state.ghost);
+  $('btnSound').textContent = state.sound ? '🔊 sound' : '🔇 muted';
+  $('btnSound').setAttribute('aria-pressed', String(state.sound));
+  $('btnLink').textContent = state.merges.length ? 'copy link (with tree)' : 'copy link';
+}
+function parseRunText(v) { return v.split(/[^0-9]+/).map(Number).filter(x => Number.isInteger(x) && x >= 1); }
+
+$('preset').addEventListener('change', e => {
+  const p = PRESETS.find(x => x.id === e.target.value);
+  if (p) setRuns(p.runs, { preset: p.id }); else syncControls();
+});
+$('runtext').addEventListener('change', e => {
+  const runs = parseRunText(e.target.value);
+  if (!runs.length) { syncControls(); return; }
+  const p = PRESETS.find(x => x.runs.join(',') === runs.join(','));
+  setRuns(runs, { preset: p ? p.id : null });
+});
+$('btnGen').addEventListener('click', () => {
+  const g = GENERATORS.find(x => x.id === $('gen').value);
+  const n = Math.max(2, Math.round(+$('genN').value || 60));
+  const r = Math.max(2, Math.min(n, Math.round(+$('genR').value || 8)));
+  let runs; try { runs = g.make(n, r); } catch (e) { runs = [n]; }
+  setRuns(runs);
+});
+$('btnLink').addEventListener('click', async () => {
+  const url = pageURL(state.runs, state.merges);
+  const m = $('linkMsg');
+  try { await navigator.clipboard.writeText(url); m.textContent = 'link copied'; m.classList.add('ok'); }
+  catch (e) { m.textContent = url; m.classList.remove('ok'); }
+  setTimeout(() => { m.textContent = ''; }, 5000);
+});
+$('btnUndo').addEventListener('click', undo);
+$('btnRedo').addEventListener('click', redo);
+$('btnReset').addEventListener('click', reset);
+$('btnReplay').addEventListener('click', () => replay(state.merges));
+$('btnGhost').addEventListener('click', () => { state.ghost = !state.ghost; sync(); syncControls(); });
+$('btnSound').addEventListener('click', () => {
+  state.sound = !state.sound; store.set('pursuit.sound', state.sound ? 'on' : 'off'); syncControls();
+  if (state.sound) pop(0.3);
+});
+
+/* the secret: OPT for comparison.  ?opt in the URL, typing "opt", or five clicks on the eyebrow */
+function setSecret(on) {
+  state.secret = on;
+  document.body.classList.toggle('is-secret', on);
+  if (!on) state.ghost = false;
+  sync(); renderMetrics(); renderBoard(); syncControls();
+  if (finished()) renderResult(recordResult(false), false);
+}
+$('secretPill').addEventListener('click', () => setSecret(false));
+let eyebrowClicks = 0, eyebrowTimer = null;
+$('eyebrow').addEventListener('click', () => {
+  eyebrowClicks++; clearTimeout(eyebrowTimer); eyebrowTimer = setTimeout(() => { eyebrowClicks = 0; }, 1500);
+  if (eyebrowClicks >= 5) { eyebrowClicks = 0; setSecret(!state.secret); }
+});
+
+/* resize: re-place everything, keep animations running */
+let resizeTimer = null;
+addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => sync(), 80); });
+
+/* ==========================================================================
+   SELF TESTS  --  shown in the footer, as in the lab
+   ========================================================================== */
+function runSelfTests() {
+  const results = [];
+  const test = (name, fn) => { try { const r = fn(); results.push({ name, ok: r === true, msg: r === true ? '' : String(r) }); } catch (e) { results.push({ name, ok: false, msg: e.message }); } };
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+  test('OPT agrees with brute force on 200 small inputs', () => {
+    const brute = (runs) => {
+      const memo = new Map();
+      const c = (i, j) => { if (i === j) return 0; const key = i + ':' + j; if (memo.has(key)) return memo.get(key);
+        let best = Infinity; for (let k = i; k < j; k++) best = Math.min(best, c(i, k) + c(k + 1, j));
+        const v = best + sum(runs.slice(i, j + 1)); memo.set(key, v); return v; };
+      return c(0, runs.length - 1);
+    };
+    for (let t = 0; t < 200; t++) {
+      const runs = Array.from({ length: rnd(1, 8) }, () => rnd(1, 30));
+      const a = mergeCost(optimal(runs)), b = brute(runs);
+      if (a !== b) return `${runs}: DP ${a} vs brute ${b}`;
+    }
+    return true;
+  });
+  test('positions -> spans -> tree literal -> positions round-trips (300 random trees)', () => {
+    for (let t = 0; t < 300; t++) {
+      const runs = Array.from({ length: rnd(1, 12) }, () => rnd(1, 40));
+      const pos = []; let m = runs.length;
+      while (m > 1) { pos.push(rnd(0, m - 2)); m--; }
+      const tree = buildForest(runs, pos)[0];
+      const lit = treeLiteral(tree);
+      const back = parseTreeLiteral(lit);
+      if (back.runs.join(',') !== runs.join(',')) return 'runs differ for ' + lit;
+      const t2 = buildForest(back.runs, back.positions)[0];
+      if (treeLiteral(t2) !== lit) return 'tree differs: ' + lit + ' vs ' + treeLiteral(t2);
+      if (mergeCost(t2) !== mergeCost(tree)) return 'cost differs';
+    }
+    return true;
+  });
+  test('export text imports back to the same tree (positions, partial games, spans, JSON, bare list)', () => {
+    const runs = [5, 3, 3, 14, 1, 2], pos = [4, 3, 0, 0, 0];
+    const txt = exportText(runs, pos, { url: 'x' });
+    const a = parseImport(txt, [1]);
+    if (a.runs.join() !== runs.join() || a.positions.join() !== pos.join()) return 'python round trip';
+    const b = parseImport(exportText(runs, pos.slice(0, 2)), [1]);
+    if (b.positions.length !== 2) return 'partial round trip';
+    const c = parseImport('runs = [5, 3, 3, 14, 1, 2]\nmerges = [(4, 5), (3, 5), (0, 1), (0, 2), (0, 5)]', [1]);
+    if (treeLiteral(buildForest(c.runs, c.positions)[0]) !== treeLiteral(buildForest(runs, pos)[0])) return 'spans';
+    const d = parseImport('{"runs":[5,3,3,14,1,2],"merges":[4,3,0,0,0]}', [1]);
+    if (d.positions.join() !== pos.join()) return 'json';
+    const e = parseImport('[4, 3, 0, 0, 0]', runs);
+    if (e.positions.join() !== pos.join() || e.runs.join() !== runs.join()) return 'bare list';
+    const f = parseImport('((5 3) (3 (14 (1 2))))', [1]);
+    if (f.runs.join() !== runs.join()) return 'tree literal';
+    return true;
+  });
+  test('invalid imports are refused with a message', () => {
+    for (const bad of ['merges = [7]', 'runs = [1, 2]\nmerges = [0, 0]', '((1 2 3))', 'runs = [0, 2]'])
+      try { parseImport(bad, [2, 2, 2]); return 'accepted: ' + bad; } catch (e) { /* good */ }
+    return true;
+  });
+  test('entropy of r equal runs is log2 r; cost of every tree is ≥ nH', () => {
+    if (Math.abs(entropy([7, 7, 7, 7]) - 2) > 1e-9) return 'H(4 equal) != 2';
+    for (let t = 0; t < 200; t++) {
+      const runs = Array.from({ length: rnd(2, 10) }, () => rnd(1, 50));
+      const pos = []; let m = runs.length; while (m > 1) { pos.push(rnd(0, m - 2)); m--; }
+      const c = mergeCost(buildForest(runs, pos)[0]);
+      if (c < sum(runs) * entropy(runs) - 1e-6) return `${runs}: cost ${c} below nH`;
+    }
+    return true;
+  });
+  test('URL round trip', () => {
+    const u = new URL(pageURL([5, 3, 3, 14, 1, 2], [4, 3, 0, 0, 0]));
+    return u.searchParams.get('runs') === '5,3,3,14,1,2' && u.searchParams.get('merges') === '4,3,0,0,0' || 'params: ' + u.search;
+  });
+
+  const fails = results.filter(r => !r.ok);
+  $('selftest').innerHTML = `<details><summary>${fails.length ? `<span class="fail">${fails.length} of ${results.length} self-tests fail</span>` : `<span class="ok">${results.length}/${results.length} self-tests pass</span>`}</summary><ul>` +
+    results.map(r => `<li><span class="${r.ok ? 'ok' : 'fail'}">${r.ok ? '✓' : '✗'}</span> ${r.name}${r.msg ? ' — ' + escapeHTML(r.msg) : ''}</li>`).join('') + '</ul></details>';
+  return fails.length === 0;
+}
+
+/* ==========================================================================
+   INIT
+   ========================================================================== */
+buildInputControls();
+(function init() {
+  const q = readURL();
+  if (q.secret) { state.secret = true; document.body.classList.add('is-secret'); }
+  if (q.runs) {
+    const p = PRESETS.find(x => x.runs.join(',') === q.runs.join(','));
+    setRuns(q.runs, { preset: p ? p.id : null, positions: q.positions || null, via: q.positions ? 'from link' : null });
+    if (q.warn) ioMsg('link carried a tree that could not be read: ' + q.warn, false);
+  } else {
+    setRuns(PRESETS[0].runs, { preset: PRESETS[0].id });
+  }
+  runSelfTests();
+})();
+
+</script>
+</body>
+</html>
