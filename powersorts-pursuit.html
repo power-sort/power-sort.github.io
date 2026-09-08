@@ -224,6 +224,13 @@ h1 em, h2 em { font-style: normal; color: var(--lime); }
 .fx .drip { fill: var(--lime); }
 .fx .drip.blue { fill: var(--lightblue); }
 .plus { font-family: var(--mono); font-weight: 700; fill: var(--yellow); pointer-events: none; font-size: 15px; }
+/* the helper ruler: the unit interval over the input, halves strongest, then quarters, eighths, … */
+.hruler { pointer-events: none; }
+.hruler .base { stroke: rgba(234,242,255,.45); stroke-width: 1; }
+.hruler .tick { stroke: var(--ink); fill: none; }
+.hruler text { font-family: var(--mono); font-size: 9px; fill: rgba(234,242,255,.5); }
+.trophy { font-size: 44px; pointer-events: none; }
+.confetti { pointer-events: none; }
 .empty-note { font-family: var(--mono); font-size: 12px; fill: rgba(234,242,255,.45); pointer-events: none; }
 
 /* ---- tools ---- */
@@ -247,14 +254,20 @@ h1 em, h2 em { font-style: normal; color: var(--lime); }
 .result {
   margin-top: .9rem; padding: .8rem 1rem; border-radius: 12px;
   border: 1px solid var(--panel-line); background: var(--panel);
-  display: grid; grid-template-columns: auto 1fr; gap: .2rem 1rem; align-items: baseline;
+  display: grid; grid-template-columns: auto 1fr auto; gap: .2rem 1rem; align-items: baseline;
   font-family: var(--mono); font-size: .82rem; line-height: 1.5;
 }
+.result .next { grid-column: 3; grid-row: 1 / span 2; align-self: center; display: flex; flex-direction: column; gap: .3rem; align-items: flex-end; }
+.result .next:empty { display: none; }
+.result .next .btn { white-space: nowrap; }
+.result .next .done-note { font-size: .7rem; color: rgba(234,242,255,.6); text-align: right; }
+.result.is-opt { border-color: var(--green); }
+.result.is-opt .big { color: var(--green); }
 .result[hidden] { display: none; }
-.result .big { font-size: 1.7rem; font-weight: 700; color: var(--lime); grid-row: span 2; align-self: center; letter-spacing: -.02em; }
-.result .verdict { color: var(--ink); }
+.result .big { font-size: 1.7rem; font-weight: 700; color: var(--lime); grid-column: 1; grid-row: 1 / span 2; align-self: center; letter-spacing: -.02em; }
+.result .verdict { color: var(--ink); grid-column: 2; }
 .result .verdict b { color: var(--yellow); font-weight: 600; }
-.result .detail { color: rgba(234,242,255,.65); font-size: .74rem; }
+.result .detail { color: rgba(234,242,255,.65); font-size: .74rem; grid-column: 2; }
 .result.is-best { border-color: var(--yellow); }
 .result .badge {
   font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle;
@@ -404,6 +417,7 @@ body.is-secret .tool[data-secret] { display: inline-block; }
       <svg id="stage" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMid meet" tabindex="0" role="application"
            aria-label="The merge tree you are building. The bottom row is the input: each bar is one run. Drag a block with a white frame onto its left or right neighbour to merge the two.">
         <g id="ghosts"></g>
+        <g id="hruler" class="hruler"></g>
         <g id="edges"></g>
         <g id="nodes"></g>
         <g id="fx" class="fx"></g>
@@ -422,6 +436,7 @@ body.is-secret .tool[data-secret] { display: inline-block; }
         <button class="tool" id="btnReset" type="button">start over<span class="k">r</span></button>
         <span class="tool-sep"></span>
         <button class="tool" id="btnReplay" type="button" title="replay this tree from the start">replay ▶</button>
+        <button class="tool" id="btnRuler" type="button" aria-pressed="false" title="show a unit-interval ruler with halves, quarters, eighths, … above the tree">ruler</button>
         <button class="tool" id="btnGhost" data-secret type="button" title="overlay the optimal merge tree">ghost OPT</button>
         <div class="tool-right">
           <button class="tool" id="btnSound" type="button" aria-pressed="true" title="sound on / off">🔊 sound</button>
@@ -432,6 +447,7 @@ body.is-secret .tool[data-secret] { display: inline-block; }
         <span class="big" id="resBig">—</span>
         <span class="verdict" id="resVerdict"></span>
         <span class="detail" id="resDetail"></span>
+        <span class="next" id="resNext"></span>
       </div>
     </div>
 
@@ -642,16 +658,28 @@ const PRESETS = [
     hint: 'The worked example from the Powersort paper. Can you beat n(H+2)? Can you reach nH?' },
   { id: 'stairs',   name: 'staircase',           runs: [1, 2, 4, 8, 16, 32],
     hint: 'Every run doubles the last. Balanced trees are not always the answer.' },
+  { id: 'alt',      name: 'alternating',         runs: [8, 1, 8, 1, 8, 1, 8, 1],
+    hint: 'Big, small, big, small. Does a small run join the block to its left, to its right — or another small run?' },
   { id: 'ramp',     name: 'the ramp',            runs: [1, 2, 3, 4, 5, 6, 7, 8],
     hint: 'Gently growing runs. Where should the small ones end up?' },
+  { id: 'valley',   name: 'the valley',          runs: [16, 8, 4, 2, 1, 2, 4, 8, 16],
+    hint: 'Runs shrink towards the middle and grow again. Start at the bottom of the valley?' },
   { id: 'spike',    name: 'the spike',           runs: [1, 1, 1, 1, 40, 1, 1, 1, 1],
     hint: 'One giant, eight dwarfs. Every merge that touches the giant costs at least 41.' },
+  { id: 'fib',      name: 'fibonacci',           runs: [1, 1, 2, 3, 5, 8, 13, 21, 34],
+    hint: 'Each run is the sum of the two before it. That is a strong hint about who should meet whom.' },
   { id: 'hills',    name: 'two hills',           runs: [1, 4, 16, 4, 1, 1, 4, 16, 4, 1],
     hint: 'Two symmetric hills. Think about the valley in the middle.' },
+  { id: 'primes',   name: 'primes',              runs: [2, 3, 5, 7, 11, 13, 17, 19, 23, 29],
+    hint: 'Slowly growing, no pattern to exploit. Ten runs, nine merges.' },
   { id: 'twelve',   name: 'a dozen',             runs: [7, 12, 3, 22, 5, 9, 14, 2, 8, 30, 4, 6],
     hint: 'No structure to lean on. Eleven merges; keep an eye on the running total.' },
+  { id: 'twins',    name: 'twin spikes',         runs: [1, 1, 1, 20, 1, 1, 1, 1, 20, 1, 1, 1],
+    hint: 'Two giants with dwarfs around and between them. Which dwarfs belong to which giant?' },
   { id: 'sixteen',  name: 'sixteen',             runs: [3, 40, 2, 5, 60, 1, 4, 7, 35, 2, 3, 50, 6, 2, 9, 45],
     hint: 'Long runs and short runs, mixed. The short ones are cheap to move — the long ones are not.' },
+  { id: 'twenty',   name: 'twenty',              runs: [9, 4, 17, 2, 6, 11, 3, 8, 25, 5, 7, 2, 14, 6, 10, 3, 19, 4, 8, 12],
+    hint: 'A random input with twenty runs. Nineteen merges: try to make a plan before the first one.' },
   { id: 'marathon', name: 'marathon',            runs: rtim(40).map(x => 5 * x),
     hint: 'A recursively built sequence of ' + rtim(40).length + ' runs that trips up a well-known merge rule. Pace yourself.' }
 ];
@@ -848,11 +876,11 @@ function pop(size) {                             // size: share of n in the new 
     s.start(t + 0.01);
   } catch (e) { /* audio is optional */ }
 }
-function fanfare(best) {
+function fanfare(best, opt) {
   if (!state.sound) return;
   try {
     const c = audio(), t = c.currentTime;
-    const notes = best ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25, 783.99];
+    const notes = opt ? [523.25, 659.25, 783.99, 1046.5, 1318.5] : best ? [523.25, 659.25, 783.99, 1046.5] : [523.25, 659.25, 783.99];
     notes.forEach((f, i) => {
       const o = c.createOscillator(), g = c.createGain();
       o.type = 'triangle'; o.frequency.value = f;
@@ -862,6 +890,62 @@ function fanfare(best) {
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.42);
       o.connect(g).connect(c.destination);
       o.start(t0); o.stop(t0 + 0.45);
+    });
+  } catch (e) { /* optional */ }
+}
+
+/* "Ta-daa!" plus a cheering crowd for an optimal tree.  Still all synthesised:
+   a short pickup note, a sustained major chord with a little vibrato, and a
+   swell of band-passed noise with a crowd-like flutter. */
+function tadaa() {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    const out = c.createGain(); out.gain.value = 0.9; out.connect(c.destination);
+    const brass = (f, t0, dur, peak) => {
+      const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.value = f;
+      const vib = c.createOscillator(), vg = c.createGain();
+      vib.frequency.value = 5.5; vg.gain.value = f * 0.006; vib.connect(vg).connect(o.frequency);
+      lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t0); lp.frequency.linearRampToValueAtTime(2600, t0 + 0.12);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(peak, t0 + 0.04);
+      g.gain.setValueAtTime(peak, t0 + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(lp).connect(g).connect(out);
+      o.start(t0); vib.start(t0); o.stop(t0 + dur + 0.05); vib.stop(t0 + dur + 0.05);
+    };
+    brass(392.0, t, 0.18, 0.11);                                  // ta  (G4)
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => brass(f, t + 0.2, 1.5, i === 3 ? 0.06 : 0.085));   // daa (C major)
+    /* the crowd */
+    const len = Math.floor(c.sampleRate * 2.4);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    let flutter = 0;
+    for (let i = 0; i < len; i++) {
+      if ((i & 255) === 0) flutter = 0.55 + Math.random() * 0.45;   // voices coming and going
+      d[i] = (Math.random() * 2 - 1) * flutter;
+    }
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.7;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.55);
+    g.gain.setValueAtTime(0.16, t + 1.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.5);
+    src.connect(hp).connect(bp).connect(g).connect(out);
+    src.start(t + 0.15);
+    /* a couple of whistles in the crowd */
+    [0.45, 0.9].forEach((dt, i) => {
+      const o = c.createOscillator(), wg = c.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1800 + i * 300, t + dt);
+      o.frequency.exponentialRampToValueAtTime(2600 + i * 200, t + dt + 0.25);
+      o.frequency.exponentialRampToValueAtTime(1900, t + dt + 0.5);
+      wg.gain.setValueAtTime(0.0001, t + dt);
+      wg.gain.exponentialRampToValueAtTime(0.03, t + dt + 0.08);
+      wg.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.5);
+      o.connect(wg).connect(out); o.start(t + dt); o.stop(t + dt + 0.55);
     });
   } catch (e) { /* optional */ }
 }
@@ -886,6 +970,7 @@ const state = {
   forest: [], cost: 0, maxH: 0,
   selected: null,                               // id of the selected live block
   secret: false, ghost: false,
+  ruler: store.get('pursuit.ruler') === 'on',
   sound: store.get('pursuit.sound') !== 'off',
   player: store.get('pursuit.player') || '',
   replaying: null
@@ -933,7 +1018,7 @@ function pushBoard(entry) {
    ========================================================================== */
 const ROW = 38, BAR = 26, PADX = 14, PADTOP = 16, AXIS = 26;
 const stage = $('stage');
-const layers = { ghosts: $('ghosts'), edges: $('edges'), nodes: $('nodes'), fx: $('fx'), axis: $('axis') };
+const layers = { ghosts: $('ghosts'), hruler: $('hruler'), edges: $('edges'), nodes: $('nodes'), fx: $('fx'), axis: $('axis') };
 const dom = new Map();                          // id -> { g, nd, live }
 let W = 1200, starts = [0];
 
@@ -960,7 +1045,9 @@ function rowsNeeded() {
   const r = state.runs.length;
   let rows = Math.max(state.maxH + 2, Math.ceil(Math.log2(Math.max(2, r))) + 1);
   if (state.ghost && state.secret) rows = Math.max(rows, optTree().h + 1);
-  return Math.min(rows, Math.max(2, r));
+  rows = Math.min(rows, Math.max(2, r));
+  if (state.ruler) rows = Math.max(rows, state.maxH + 2);   // the ruler lives in the row above the tallest block
+  return rows;
 }
 function setViewBox() {
   const rows = rowsNeeded();
@@ -1082,6 +1169,36 @@ function splash(x, y, big) {
   const ra = ring.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: `scale(${big ? 14 : 8})`, opacity: 0 }], { duration: 520, easing: 'ease-out', fill: 'forwards' });
   ra.onfinish = () => ring.remove();
 }
+function trophy(rec) {
+  const gm = geom(rec.nd);
+  const vb0 = stage.viewBox.baseVal;
+  const t = el('text', { class: 'trophy', x: gm.cx.toFixed(1), y: Math.max(gm.y - 14, vb0.y + 42).toFixed(1), 'text-anchor': 'middle' }, layers.fx);
+  t.textContent = '\u{1F3C6}';
+  t.style.transformBox = 'fill-box'; t.style.transformOrigin = '50% 100%';
+  if (REDUCED) { setTimeout(() => t.remove(), 3000); return; }
+  const a = t.animate([
+    { transform: 'scale(0) translate(0,10px)', opacity: 0, offset: 0 },
+    { transform: 'scale(1.3) translate(0,-6px)', opacity: 1, offset: .45 },
+    { transform: 'scale(1) translate(0,0)', opacity: 1, offset: .65 },
+    { transform: 'scale(1) translate(0,0)', opacity: 1, offset: .88 },
+    { transform: 'scale(.9) translate(0,-20px)', opacity: 0, offset: 1 }
+  ], { duration: 3400, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'forwards' });
+  a.onfinish = () => t.remove();
+  /* confetti from the top of the stage */
+  const vb = stage.viewBox.baseVal, colors = ['#B5FF00', '#0DEDF7', '#FFFF00', '#00D600', '#FFFFFF'];
+  for (let i = 0; i < 70; i++) {
+    const x = PADX + Math.random() * (W - 2 * PADX), y0 = vb.y + 2;
+    const r = el('rect', { class: 'confetti', x: x.toFixed(1), y: y0.toFixed(1), width: (4 + Math.random() * 4).toFixed(1), height: (2.5 + Math.random() * 2).toFixed(1), fill: colors[i % colors.length], rx: 1 }, layers.fx);
+    r.style.transformBox = 'fill-box'; r.style.transformOrigin = 'center';
+    const drift = (Math.random() - .5) * 90, fall = vb.height + 20, rot = (Math.random() - .5) * 900;
+    const c = r.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity: 0 },
+      { transform: `translate(${(drift * .3).toFixed(1)}px,${(fall * .1).toFixed(1)}px) rotate(${(rot * .1).toFixed(0)}deg)`, opacity: 1, offset: .1 },
+      { transform: `translate(${drift.toFixed(1)}px,${fall.toFixed(1)}px) rotate(${rot.toFixed(0)}deg)`, opacity: .9 }
+    ], { duration: 1600 + Math.random() * 1400, delay: Math.random() * 700, easing: 'cubic-bezier(.3,.2,.7,1)', fill: 'forwards' });
+    c.onfinish = () => r.remove();
+  }
+}
 function floatPlus(rec) {
   const gm = geom(rec.nd);
   const t = el('text', { class: 'plus', x: gm.cx.toFixed(1), y: (gm.y - 6).toFixed(1), 'text-anchor': 'middle' }, layers.fx);
@@ -1151,6 +1268,7 @@ function sync({ animate = false, newId = null } = {}) {
     placeNode(rec); placeEdges(rec);
   }
   drawGhosts();
+  drawHelperRuler();
   drawAxis();
   setViewBox();
   updateHighlights();
@@ -1169,6 +1287,33 @@ function drawGhosts() {
     walk(t.left); walk(t.right);
   })(optTree());
   layers.ghosts.innerHTML = parts.join('');
+}
+/* The helper ruler: the input as the unit interval, drawn in the row above the
+   tallest block.  The ends and the half are the longest and strongest ticks;
+   quarters, eighths, … get shorter and fainter until they would crowd.  No
+   powers are computed here -- that is the player's job. */
+function drawHelperRuler() {
+  layers.hruler.innerHTML = '';
+  if (!state.ruler || state.runs.length < 2) return;
+  const n = n_(), yTop = -(state.maxH + 1) * ROW, yBase = yTop + 3;
+  const parts = [`<line class="base" x1="${X(0).toFixed(2)}" x2="${X(n).toFixed(2)}" y1="${yBase}" y2="${yBase}"/>`];
+  const lens = [BAR - 2, BAR - 2, 17, 13, 10, 7.5, 5.5, 4.5, 3.5, 3, 2.5, 2];
+  const alphas = [.95, .95, .78, .62, .5, .4, .32, .26, .22, .2, .18, .16];
+  const widths = [1.8, 1.8, 1.5, 1.25, 1.05, .9, .8, .75, .7, .65, .6, .6];
+  const step = i => Math.min(i, lens.length - 1);
+  parts.push(`<line class="tick" x1="${X(0).toFixed(2)}" x2="${X(0).toFixed(2)}" y1="${yBase}" y2="${(yBase + lens[0]).toFixed(1)}" stroke-width="${widths[0]}" stroke-opacity="${alphas[0]}"/>`);
+  parts.push(`<line class="tick" x1="${X(n).toFixed(2)}" x2="${X(n).toFixed(2)}" y1="${yBase}" y2="${(yBase + lens[0]).toFixed(1)}" stroke-width="${widths[0]}" stroke-opacity="${alphas[0]}"/>`);
+  for (let l = 1, seg = 2; l <= 12; l++, seg *= 2) {
+    const px = (X(n) - X(0)) / seg;
+    if (px < 5) break;
+    const i = step(l);
+    const d = [];
+    for (let k = 1; k < seg; k += 2) { const x = X(n * k / seg).toFixed(2); d.push(`M${x},${yBase}V${(yBase + lens[i]).toFixed(1)}`); }
+    parts.push(`<path class="tick" d="${d.join('')}" stroke-width="${widths[i]}" stroke-opacity="${alphas[i]}"/>`);
+  }
+  parts.push(`<text x="${(X(0) - 3).toFixed(1)}" y="${yBase + 4}" text-anchor="end">0</text>`);
+  parts.push(`<text x="${(X(n) + 3).toFixed(1)}" y="${yBase + 4}">1</text>`);
+  layers.hruler.innerHTML = parts.join('');
 }
 function drawAxis() {
   const r = state.runs.length, yA = BAR + 12;
@@ -1478,32 +1623,46 @@ function recordResult(save, via = null) {
   }
   const after = board();
   const rank = entry ? after.findIndex(e => e.tree === entry.tree) + 1 : 0;
-  return { tree, entry, isNew, rank, best: state.cost < before, tied: state.cost === before && isNew, saved: !!entry };
+  return { tree, entry, isNew, rank, best: state.cost < before, tied: state.cost === before && isNew, saved: !!entry, opt: state.cost === mergeCost(optTree()) };
 }
 function renderResult(res, celebrate) {
   const n = n_(), H = H_(), cost = state.cost, nH = n * H, guar = n * (H + 2);
-  const opt = state.secret ? mergeCost(optTree()) : null;
+  const isOpt = res.opt;                          // optimality is revealed only when it is reached
   const box = $('result');
   box.hidden = false;
-  box.classList.toggle('is-best', res.best || res.tied);
+  box.classList.toggle('is-best', (res.best || res.tied) && !isOpt);
+  box.classList.toggle('is-opt', isOpt);
   $('resBig').textContent = fmtInt(cost);
   let verdict;
-  if (opt !== null && cost === opt) verdict = 'That is the cheapest tree there is.';
-  else if (cost <= nH + 1e-9) verdict = 'Right on nH — it does not get better than this.';
+  if (isOpt) verdict = 'That is the cheapest tree there is — no merge tree does better on this input.';
   else if (cost - nH <= 1 * n) verdict = `Within <b>n</b> of nH: a very good tree.`;
   else if (cost - nH <= 2 * n) verdict = `Inside the n(H+2) band a good policy guarantees.`;
   else verdict = `<b>${fmt((cost - guar) / n, 2)}·n</b> above n(H+2) — a well-designed policy would have done better.`;
   const badge = res.isNew && res.best ? '<span class="badge">new best</span>' : res.tied ? '<span class="badge">ties the best</span>' : '';
-  const optBadge = opt !== null && cost === opt ? '<span class="badge opt">optimal</span>' : '';
-  $('resVerdict').innerHTML = verdict + badge + optBadge;
+  const optBadge = isOpt ? '<span class="badge opt">optimal</span>' : '';
+  $('resVerdict').innerHTML = verdict + optBadge + badge;
   $('resDetail').textContent = `nH = ${fmt(nH, 1)} · you = nH + ${fmt((cost - nH) / n, 3)}·n · n(H+2) = ${fmt(guar, 1)}` +
     (res.rank ? ` · #${res.rank} on this input’s board` : '') + (res.saved && !res.isNew ? ' · already on the board' : '');
+  /* numbered levels: move on once the level is solved optimally */
+  const i = PRESETS.findIndex(x => x.id === state.preset);
+  let next = '';
+  if (isOpt && i >= 0) {
+    if (i + 1 < PRESETS.length) next = `<button class="btn btn-lime" id="btnNext" type="button">next level: ${escapeHTML(PRESETS[i + 1].name)} →</button>`;
+    else next = `<span class="done-note">all ${PRESETS.length} levels solved optimally —<br>try a random input.</span>`;
+  }
+  $('resNext').innerHTML = next;
   if (celebrate) {
     const root = state.forest[0], gm = geom(root);
     splash(gm.cx, gm.y + BAR / 2, true);
-    fanfare(res.isNew && res.best);
+    if (isOpt) tadaa(); else fanfare(res.isNew && res.best, false);
+    if (isOpt) setTimeout(() => { const rec = dom.get(idOf(state.forest[0])); if (rec && finished()) trophy(rec); }, T(350));
   }
 }
+document.addEventListener('click', e => {
+  if (!e.target.closest('#btnNext')) return;
+  const i = PRESETS.findIndex(x => x.id === state.preset);
+  if (i >= 0 && i + 1 < PRESETS.length) { const p = PRESETS[i + 1]; setRuns(p.runs, { preset: p.id }); stage.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'nearest' }); }
+});
 
 function timeAgo(t) {
   const s = (Date.now() - t) / 1000;
@@ -1515,11 +1674,11 @@ function timeAgo(t) {
 function renderBoard() {
   const list = board(), host = $('board');
   const current = finished() ? forestLiteral(state.forest) : null;
-  const opt = state.secret ? mergeCost(optTree()) : null;
+  const opt = mergeCost(optTree());               // ★ marks optimal trees: reached is revealed
   if (!list.length) { host.innerHTML = '<div class="board-empty">no finished trees for this input yet — yours will be the first</div>'; return; }
   host.innerHTML = list.slice(0, 12).map((e, i) =>
     `<div class="board-row${e.tree === current ? ' is-viewing' : ''}" data-i="${i}" role="button" tabindex="0">` +
-    `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${opt !== null && e.cost === opt ? ' <span class="star">★</span>' : ''}</span>` +
+    `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${e.cost === opt ? ' <span class="star" title="optimal">★</span>' : ''}</span>` +
     `<span class="who">${escapeHTML(e.player)} <small>· ${timeAgo(e.t)}${e.via ? ' · ' + e.via : ''}</small></span>` +
     `<button class="replay" type="button" title="watch this tree being built" aria-label="replay">▶</button></div>`).join('');
 }
@@ -1591,6 +1750,8 @@ function syncControls() {
   $('btnReset').disabled = !state.merges.length;
   $('btnReplay').disabled = !state.merges.length || !!state.replaying;
   $('btnGhost').classList.toggle('is-on', state.ghost);
+  $('btnRuler').classList.toggle('is-on', state.ruler);
+  $('btnRuler').setAttribute('aria-pressed', String(state.ruler));
   $('btnSound').textContent = state.sound ? '🔊 sound' : '🔇 muted';
   $('btnSound').setAttribute('aria-pressed', String(state.sound));
   $('btnLink').textContent = state.merges.length ? 'copy link (with tree)' : 'copy link';
@@ -1625,6 +1786,7 @@ $('btnUndo').addEventListener('click', undo);
 $('btnRedo').addEventListener('click', redo);
 $('btnReset').addEventListener('click', reset);
 $('btnReplay').addEventListener('click', () => replay(state.merges));
+$('btnRuler').addEventListener('click', () => { state.ruler = !state.ruler; store.set('pursuit.ruler', state.ruler ? 'on' : 'off'); sync(); syncControls(); });
 $('btnGhost').addEventListener('click', () => { state.ghost = !state.ghost; sync(); syncControls(); });
 $('btnSound').addEventListener('click', () => {
   state.sound = !state.sound; store.set('pursuit.sound', state.sound ? 'on' : 'off'); syncControls();
