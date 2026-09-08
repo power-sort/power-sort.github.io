@@ -209,7 +209,11 @@ h1 em, h2 em { font-style: normal; color: var(--lime); }
 .panel-code b { color: var(--lightblue); font-weight: 700; }
 .cl { display: block; padding: 0 0.4rem; border-radius: 5px; white-space: pre; }
 .cl.active { background: var(--lime); color: var(--darkblue); }
-.cl.active b { color: var(--blue); }
+.cl.active b,
+.cl.active .code-keyword,
+.cl.active .code-func,
+.cl.active .code-number,
+.cl.active .code-comment { color: var(--darkblue); }
 
 /* run stack panel — grows upward: first pushed run sits at the bottom */
 .stack-box {

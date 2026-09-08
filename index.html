@@ -249,7 +249,7 @@
   <div class="playground-grid">
     <aside class="panel panel-code" aria-label="Powersort pseudocode">
       <div class="panel-title">powersort</div>
-      <pre id="codeBox"><code><span class="cl" id="cl1"> 1  <b>def</b> powersort(a):</span><span class="cl" id="cl2"> 2    n = len(a); i = 0</span><span class="cl" id="cl3"> 3    runs = []</span><span class="cl" id="cl4"> 4    j = extend_run(a, i)</span><span class="cl" id="cl5"> 5    runs.append((i, j-i, 0)); i = j</span><span class="cl" id="cl6"> 6    <b>while</b> i &lt; n:</span><span class="cl" id="cl7"> 7      j = extend_run(a, i)</span><span class="cl" id="cl8"> 8      p = power(runs[-1], (i, j-i), n)</span><span class="cl" id="cl9"> 9      <b>while</b> p &lt;= runs[-1][2]:</span><span class="cl" id="cl10">10        merge_topmost_2(a, runs)</span><span class="cl" id="cl11">11      runs.append((i, j-i, p)); i = j</span><span class="cl" id="cl12">12    <b>while</b> len(runs) &gt;= 2:</span><span class="cl" id="cl13">13      merge_topmost_2(a, runs)</span></code></pre>      <p class="panel-note">complete code: <a href="https://tiny.cc/timsort" target="_blank" rel="noopener">tiny.cc/timsort</a></p>
+      <pre id="codeBox"><code><span class="cl" id="cl1"> 1  <span class="code-keyword">def</span> <span class="code-func">powersort</span>(a):</span><span class="cl" id="cl2"> 2    n = len(a); i = <span class="code-number">0</span></span><span class="cl" id="cl3"> 3    runs = []</span><span class="cl" id="cl4"> 4    j = extend_run(a, i)</span><span class="cl" id="cl5"> 5    runs.append((i, j-i, <span class="code-number">0</span>)); i = j</span><span class="cl" id="cl6"> 6    <span class="code-keyword">while</span> i &lt; n:</span><span class="cl" id="cl7"> 7      j = extend_run(a, i)</span><span class="cl" id="cl8"> 8      p = power(runs[-<span class="code-number">1</span>], (i, j-i), n)</span><span class="cl" id="cl9"> 9      <span class="code-keyword">while</span> p &lt;= runs[-<span class="code-number">1</span>][<span class="code-number">2</span>]:</span><span class="cl" id="cl10">10        merge_topmost_2(a, runs)</span><span class="cl" id="cl11">11      runs.append((i, j-i, p)); i = j</span><span class="cl" id="cl12">12    <span class="code-keyword">while</span> len(runs) &gt;= <span class="code-number">2</span>:</span><span class="cl" id="cl13">13      merge_topmost_2(a, runs)</span></code></pre>      <p class="panel-note">complete code: <a href="https://tiny.cc/timsort" target="_blank" rel="noopener">tiny.cc/timsort</a></p>
     </aside>
 
     <div class="panel panel-stage">
@@ -1019,6 +1019,29 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
       <div class="pub-list">
         <div class="pub-entry">
           <div class="pub-title">
+            Powersort's Pursuit
+          </div>
+          <div class="pub-authors">Sebastian&nbsp;Wild</div>
+          <div class="pub-venue">
+            A merge game, right here on this site: merge runs by hand, pay the length of every
+            block you create, and see how close to <em>n</em>&nbsp;<em>H</em> you can get.
+            It grew out of &mdash; and owes its thanks to &mdash; <strong>Tony&nbsp;McCabe</strong>'s
+            original <em>Powersort Game</em>, still well worth a look for its global leaderboard.
+          </div>
+          <div class="pub-links">
+            <a class="btn btn-primary"
+               href="powersorts-pursuit.html">
+              Play Powersort's Pursuit ↗
+            </a>
+            <a class="btn btn-outline"
+               href="https://www.wild-inter.net/posts/powersort-game"
+               target="_blank" rel="noopener">
+              Play the Original by Tony McCabe ↗
+            </a>
+          </div>
+        </div>
+        <div class="pub-entry">
+          <div class="pub-title">
             Powersort Competition
           </div>
           <div class="pub-authors">University of Liverpool</div>
@@ -1048,23 +1071,6 @@ For helper functions, see <a href="https://tiny.cc/timsort" target="_blank" rel=
                href="https://moritz-gross.github.io/posts/powersort/"
                target="_blank" rel="noopener">
               Read Blog Post ↗
-            </a>
-          </div>
-        </div>
-
-        <div class="pub-entry">
-          <div class="pub-title">
-            The Powersort Game
-          </div>
-          <div class="pub-authors">Tony&nbsp;McCabe</div>
-          <div class="pub-venue">
-            Interactive game to test how well you can find good merge policies.
-          </div>
-          <div class="pub-links">
-            <a class="btn btn-primary"
-               href="https://www.wild-inter.net/posts/powersort-game"
-               target="_blank" rel="noopener">
-              Play the Game ↗
             </a>
           </div>
         </div>
