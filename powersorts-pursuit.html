@@ -17,7 +17,7 @@
    type: IBM Plex Mono (headlines / data) + IBM Plex Sans (body)
 
    The block up to "POWERSORT'S PURSUIT" is the same shared block that
-   byo-merge-policy.html carries, so this file works on its own.  Once the page
+   merge-cost-lab.html carries, so this file works on its own.  Once the page
    is linked into the site, replace it with <link rel="stylesheet" href="style.css">.
    ============================================================ */
 :root {
@@ -229,9 +229,56 @@ h1 em, h2 em { font-style: normal; color: var(--lime); }
 .hruler .base { stroke: rgba(234,242,255,.45); stroke-width: 1; }
 .hruler .tick { stroke: var(--ink); fill: none; }
 .hruler text { font-family: var(--mono); font-size: 9px; fill: rgba(234,242,255,.5); }
-.trophy { font-size: 44px; pointer-events: none; }
 .confetti { pointer-events: none; }
 .empty-note { font-family: var(--mono); font-size: 12px; fill: rgba(234,242,255,.45); pointer-events: none; }
+
+/* ---- finish pop-up over the tree ---- */
+.stage-wrap { position: relative; }
+.popup { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
+.popup[hidden] { display: none; }
+.popup-card {
+  pointer-events: auto; cursor: pointer; position: relative;
+  width: min(92%, 400px); padding: 1rem 1.1rem 1rem; text-align: center;
+  background: rgba(0, 12, 64, 0.94); border: 2px solid var(--lime); border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+  font-family: var(--mono); color: var(--ink);
+  animation: popin 420ms cubic-bezier(.2,.9,.3,1.2) both;
+}
+.popup-card.is-opt { border-color: var(--green); }
+.popup-card:hover { border-color: var(--yellow); }
+.popup-card:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
+@keyframes popin { from { transform: scale(.7) translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.popup-x {
+  position: absolute; top: .3rem; right: .45rem; background: none; border: none; color: rgba(234,242,255,.55);
+  font-size: 1.25rem; line-height: 1; cursor: pointer; padding: .2rem .4rem;
+}
+.popup-x:hover { color: var(--yellow); }
+.popup-emblems { display: flex; justify-content: center; align-items: center; gap: 1.2rem; min-height: 0; margin-bottom: .2rem; }
+.popup-emblems:empty { display: none; }
+.emblem-trophy { font-size: 3.2rem; line-height: 1.1; display: inline-block; animation: trophy 1400ms cubic-bezier(.22,.61,.36,1) both; }
+@keyframes trophy { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 55% { transform: scale(1.25) rotate(6deg); opacity: 1; } 75% { transform: scale(.95) rotate(-3deg); } 100% { transform: none; opacity: 1; } }
+.emblem-arm { width: 3.4rem; height: 3.4rem; color: var(--lime); display: inline-block; transform-origin: 30% 80%; animation: flex 1600ms ease-in-out both; }
+.emblem-arm svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+@keyframes flex { 0% { transform: scale(0) rotate(30deg); opacity: 0; } 30% { transform: scale(1.15) rotate(-8deg); opacity: 1; } 45% { transform: scale(1) rotate(4deg); } 60% { transform: scale(1.12) rotate(-6deg); } 75% { transform: scale(1) rotate(2deg); } 100% { transform: none; } }
+.popup-title { font-size: 1.05rem; font-weight: 700; color: var(--lime); letter-spacing: -.01em; line-height: 1.3; }
+.popup-card.is-opt .popup-title { color: var(--green); }
+.popup-cost { font-size: .8rem; color: var(--lightblue); margin-top: .25rem; }
+.popup-cost b { font-size: 1.15rem; color: var(--lightblue); }
+.popup-sub { font-size: .78rem; color: rgba(234,242,255,.78); margin-top: .35rem; line-height: 1.5; }
+.popup-sub .ps { color: var(--lime); }
+.popup-action {
+  margin-top: .8rem; display: inline-block; font-size: .86rem; font-weight: 600;
+  color: var(--darkblue); background: var(--lime); border-radius: 999px; padding: .45rem 1.1rem;
+}
+.popup-card.is-opt .popup-action { background: var(--green); }
+.popup-card:hover .popup-action { background: var(--yellow); }
+.popup-hint { display: block; font-size: .66rem; color: rgba(0,28,107,.7); font-weight: 400; margin-top: .25rem; }
+.badge-arm { width: .95em; height: .95em; vertical-align: -.15em; display: inline-block; margin-right: .2em; }
+.badge-arm svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+.result .badge.ps { background: var(--lime); }
+.board-row .arm { color: var(--lime); width: .95em; height: .95em; display: inline-block; vertical-align: -.12em; margin-left: .15em; }
+.board-row .arm svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+@media (prefers-reduced-motion: reduce) { .popup-card, .emblem-trophy, .emblem-arm { animation: none; } }
 
 /* ---- tools ---- */
 .run-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; align-items: center; }
@@ -362,6 +409,13 @@ body.is-secret .tool[data-secret] { display: inline-block; }
 .selftest summary { cursor: pointer; color: var(--lightblue); }
 .site-footer .dim { color: rgba(234,242,255,.5); }
 
+@media (max-width: 640px) {
+  .result { grid-template-columns: auto 1fr; }
+  .result .next { grid-column: 1 / -1; grid-row: auto; align-items: stretch; }
+  .result .next .btn { white-space: normal; text-align: center; }
+  .result .next .done-note { text-align: left; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .edges.is-pumping .edge { animation: none; }
   .cost-readout .cost-value, .node .vessel, .n-label { transition: none; }
@@ -374,7 +428,8 @@ body.is-secret .tool[data-secret] { display: inline-block; }
   <a class="brand" href="index.html" aria-label="Powersort home"><svg class="brand-logo-tight" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Powersort"> <g transform="translate(-603.26978,-337.98157)"> <path fill="#b5ff00" d="m 664.42969,659.43359 12.99609,-11.63281 c 8.72656,9.50391 19.39453,14.73438 34.32422,14.73438 13.57812,0 22.88672,-4.45704 22.88672,-14.34375 0,-8.53516 -6.79297,-10.85938 -15.32422,-12.02735 l -15.90234,-2.51953 c -15.70704,-2.32812 -33.35157,-7.94922 -33.35157,-28.50781 0,-20.36328 17.0625,-31.22266 42.66016,-31.22266 18.61719,0 32,5.82031 41.11328,15.70703 L 742,602.03125 c -5.23438,-6.00781 -14.34375,-12.01953 -30.05469,-12.01953 -13.76953,0 -21.14062,4.65625 -21.14062,13.3789 0,8.53516 6.98047,10.85938 15.32031,12.02344 l 15.90234,2.52344 c 15.90235,2.32812 33.35547,7.75781 33.35547,28.30859 0,20.16797 -16.67578,32.38672 -44.01953,32.38672 -21.52734,0 -37.42969,-7.5625 -46.93359,-19.19922" /> <path fill="#b5ff00" d="m 774.24609,626.27344 c 0,-32 18.03516,-52.35938 47.51172,-52.35938 29.47656,0 47.50781,20.35938 47.50781,52.35938 0,32 -18.03125,52.35937 -47.50781,52.35937 -29.47656,0 -47.51172,-20.35937 -47.51172,-52.35937 m 72.91407,7.5625 v -15.1211 c 0,-18.61718 -10.08204,-28.12109 -25.40235,-28.12109 -15.32422,0 -25.40625,9.50391 -25.40625,28.12109 v 15.1211 c 0,18.61718 10.08203,28.12109 25.40625,28.12109 15.32031,0 25.40235,-9.50391 25.40235,-28.12109" /> <path fill="#b5ff00" d="m 881.77344,659.24219 h 22.50781 v -65.9336 h -22.50781 v -17.0664 h 43.64453 v 26.5664 h 1.16406 c 3.87891,-13.96484 12.60547,-26.5664 32.96484,-26.5664 h 7.96485 v 20.16797 h -15.71875 c -17.25781,0 -26.375,11.4414 -26.375,25.40625 v 37.42578 h 32.20312 v 17.0664 h -75.84765 z m 0,0" /> <path fill="#b5ff00" d="m 1040.1172,676.30859 c -17.457,0 -25.5977,-10.47265 -25.5977,-25.40625 v -57.59375 h -26.77341 v -17.0664 h 17.85161 c 7.371,0 10.2773,-2.51953 10.2773,-10.27735 v -21.0664 h 19.7813 v 31.34375 h 38.6015 v 17.0664 h -38.6015 v 65.9336 h 38.6015 v 17.0664 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,659.24219 h 93.6172 v 17.0664 h -93.6172 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,617.74219 h 56.9609 v 17.0664 h -56.9609 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,576.24219 h 20.3047 v 17.0664 h -20.3047 z m 0,0" /> <path fill="#b5ff00" d="m 1255.5703,583.23047 -38.3125,-38.3125 -12.0703,12.0664 -26.2461,26.2461 12.0664,12.0664 17.7149,-17.71093 v 98.57031 h 17.0664 v -98.57031 l 17.7148,17.71093 z m 0,0" /> <path fill="#0dedf7" d="M 669.53125,520.46875 V 403.375 h 55.35547 c 21.80859,0 35.5664,15.26953 35.5664,37.41016 0,22.14843 -13.75781,37.41406 -35.5664,37.41406 h -29.85938 v 42.26953 z m 25.49609,-64.41797 h 26.84375 c 7.55078,0 12.24219,-4.02344 12.24219,-11.57031 v -7.38672 c 0,-7.54688 -4.69141,-11.57031 -12.24219,-11.57031 h -26.84375 z m 0,0" /> <path fill="#0dedf7" d="m 770.01953,461.92578 c 0,-39.75781 20.46484,-60.5625 51.5,-60.5625 31.03516,0 51.5,20.80469 51.5,60.5625 0,39.75781 -20.46484,60.55859 -51.5,60.55859 -31.03516,0 -51.5,-20.80078 -51.5,-60.55859 m 75.99219,8.71875 v -17.44531 c 0,-18.61719 -9.22656,-29.1875 -24.49219,-29.1875 -15.26562,0 -24.49219,10.57031 -24.49219,29.1875 v 17.44531 c 0,18.625 9.22657,29.19141 24.49219,29.19141 15.26563,0 24.49219,-10.56641 24.49219,-29.19141" /> <path fill="#0dedf7" d="M 903.89062,520.46875 877.38281,403.375 h 25.16406 l 11.07422,56.20312 6.20703,32.53907 h 0.5 l 7.38282,-32.53907 12.91797,-56.20312 h 27.84375 l 13.08984,56.20312 7.21094,32.53907 h 0.5039 l 6.20703,-32.53907 11.23833,-56.20312 h 24.1562 l -27.1758,117.09375 h -29.02341 l -14.76172,-63.41016 -5.70313,-25.66406 h -0.5039 l -5.8711,25.66406 -14.76172,63.41016 z m 0,0" /> <path fill="#0dedf7" d="M 1043.6367,520.46875 V 403.375 h 79.6836 v 22.65234 h -54.1875 v 23.98828 h 46.4688 v 22.47657 h -46.4688 v 25.33203 h 54.1875 v 22.64453 z m 0,0" /> <path fill="#0dedf7" d="m 1165.9297,520.46875 h -25.4961 V 403.375 h 55.5234 c 21.6407,0 35.3985,15.10156 35.3985,37.41016 0,15.77343 -7.0469,28.35156 -21.3086,33.71875 l 22.9844,45.96484 h -28.3477 l -20.4688,-42.94141 h -18.2851 z m 26.8398,-64.41797 c 7.5508,0 12.2461,-4.02344 12.2461,-11.57031 v -7.38672 c 0,-7.54688 -4.6953,-11.57031 -12.2461,-11.57031 h -26.8398 v 30.52734 z m 0,0" /> </g> </svg></a>
   <nav class="site-nav mode-nav" aria-label="Workshop pages">
     <a class="mode is-active" href="powersorts-pursuit.html">pursuit</a>
-    <a class="mode" href="byo-merge-policy.html">write a policy</a>
+    <a class="mode" href="merge-policy-workshop.html">write a policy</a>
+    <a class="mode" href="merge-cost-lab.html">merge cost lab</a>
     <a href="index.html">back to site</a>
   </nav>
 </header>
@@ -414,6 +469,7 @@ body.is-secret .tool[data-secret] { display: inline-block; }
         </div>
       </div>
 
+      <div class="stage-wrap">
       <svg id="stage" viewBox="0 0 1200 200" preserveAspectRatio="xMidYMid meet" tabindex="0" role="application"
            aria-label="The merge tree you are building. The bottom row is the input: each bar is one run. Drag a block with a white frame onto its left or right neighbour to merge the two.">
         <g id="ghosts"></g>
@@ -423,6 +479,17 @@ body.is-secret .tool[data-secret] { display: inline-block; }
         <g id="fx" class="fx"></g>
         <g id="axis"></g>
       </svg>
+      <div class="popup" id="popup" hidden>
+        <div class="popup-card" id="popupCard" role="button" tabindex="0">
+          <button class="popup-x" id="popupX" type="button" aria-label="close">×</button>
+          <div class="popup-emblems" id="popupEmblems"></div>
+          <div class="popup-title" id="popupTitle"></div>
+          <div class="popup-cost" id="popupCost"></div>
+          <div class="popup-sub" id="popupSub"></div>
+          <div class="popup-action" id="popupAction"></div>
+        </div>
+      </div>
+      </div>
 
       <p class="stage-hint">
         drag a framed block onto a highlighted neighbour · or click a block, then click a neighbour ·
@@ -637,6 +704,40 @@ function optimal(runs) {
     }
   const build = (i, j) => i === j ? leaf(i, runs[i]) : merge(build(i, cut[i][j]), build(cut[i][j] + 1, j));
   return build(0, r - 1);
+}
+
+/* Powersort itself, for the Easter egg: the tree Powersort's merge policy
+   builds for these runs.  nodePower is the bit-fiddling from the CPython
+   implementation: with the array as the unit interval, the power of the
+   boundary between two runs is the depth of the first dyadic split that
+   separates their midpoints.  Powersort keeps runs on a stack, each with the
+   power of the boundary to its right, and merges the top with the current run
+   as long as that power is larger than the next boundary's.  Ties are not
+   merged early, so among equal powers the leftmost boundary ends up as the
+   shallower node. */
+function nodePower(s1, n1, n2, n) {
+  let a = 2 * s1 + n1, b = a + n1 + n2, l = 0;
+  for (;;) {
+    l++;
+    if (a >= n) { a -= n; b -= n; }
+    else if (b >= n) break;
+    a <<= 1; b <<= 1;
+  }
+  return l;
+}
+function powersortTree(runs) {
+  const n = sum(runs);
+  const X = [], P = [];                            // stack of trees and of their right-boundary powers
+  let cur = leaf(0, runs[0]), start = 0;
+  for (let i = 1; i < runs.length; i++) {
+    const p = nodePower(start, runs[i - 1], runs[i], n);
+    while (P.length && P[P.length - 1] > p) { P.pop(); cur = merge(X.pop(), cur); }
+    X.push(cur); P.push(p);
+    start += runs[i - 1];
+    cur = leaf(i, runs[i]);
+  }
+  while (X.length) cur = merge(X.pop(), cur);
+  return cur;
 }
 
 function entropy(runs) {                      // H in bits per element
@@ -894,6 +995,22 @@ function fanfare(best, opt) {
   } catch (e) { /* optional */ }
 }
 
+/* a short "hnng!" for flexing the strong arm */
+function flexSound() {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    [[196, 0, 0.22, 0.12], [261.63, 0.16, 0.5, 0.14]].forEach(([f, dt, dur, peak]) => {
+      const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(f * 0.9, t + dt); o.frequency.exponentialRampToValueAtTime(f, t + dt + 0.08);
+      lp.type = 'lowpass'; lp.frequency.value = 900;
+      g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(peak, t + dt + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dt + dur);
+      o.connect(lp).connect(g).connect(c.destination); o.start(t + dt); o.stop(t + dt + dur + 0.05);
+    });
+  } catch (e) { /* optional */ }
+}
+
 /* "Ta-daa!" plus a cheering crowd for an optimal tree.  Still all synthesised:
    a short pickup note, a sustained major chord with a little vibrato, and a
    swell of band-passed noise with a crowd-like flutter. */
@@ -987,7 +1104,14 @@ const H_ = () => entropy(state.runs);
 const finished = () => state.forest.length === 1 && state.runs.length > 0;
 const inputKey = () => state.runs.join(',');
 
-let optCache = { key: null, tree: null };
+let optCache = { key: null, tree: null }, psCache = { key: null, lit: null };
+function powersortLiteral() {
+  const key = inputKey();
+  if (psCache.key !== key) psCache = { key, lit: treeLiteral(powersortTree(state.runs)) };
+  return psCache.lit;
+}
+/* the strong arm from powersort's early logo, inlined by build.py (fill follows the text colour) */
+const ARM_SVG = '<svg viewBox="0 0 512.002 512.002" aria-hidden="true" fill="currentColor"><path d="M429.733,343.339c4.738-72.763-16.131-145.064-34.625-193.154c-18.377-47.789-37.568-80.907-41.595-87.659 c-1.259-5.35-6.337-21.041-23.657-28.491c-3.877-2.517-23.569-14.974-47.256-24.098c-36.823-14.185-64.138-13.18-81.175,2.994 c-22.839,21.681-33.39,40.966-31.36,57.319c0.977,7.862,4.589,13.242,7.793,16.573c-0.186,1.672-0.155,3.581,0.26,5.7 c1.806,9.243,10.159,18.228,24.824,26.701c29.883,17.266,52.746,6.345,67.876-0.881c1.434-0.685,2.825-1.35,4.177-1.969 c2.26-1.035,3.26-0.574,3.688-0.378c2.499,1.152,4.887,5.396,6.115,8.674c-2.539,14.487-16.283,97.845-6.866,153.449 c-25.652-8.512-49.277-6.322-66.813-1.787c-20.467,5.295-35.851,14.417-42.806,19.066c-14.267-5.817-31.49-6.985-50.397-3.455 c-0.01-0.092-0.015-0.151-0.017-0.174c-0.381-4.145-3.86-7.317-8.023-7.317H82.578c-4.451,0-8.057,3.606-8.057,8.057v182.048 c0,4.451,3.606,8.057,8.057,8.057s8.057-3.606,8.057-8.057v-173.99h12.056c1.651,12.88,6.043,41.329,15.879,74.716 c15.143,51.401,36.242,91.86,62.854,120.603H82.578c-4.451,0-8.057,3.606-8.057,8.057c0,4.451,3.606,8.057,8.057,8.057h118.755 c3.369,0,6.381-2.096,7.553-5.254c1.172-3.159,0.256-6.712-2.298-8.91c-0.077-0.067-0.151-0.136-0.229-0.203 c16.282-6.622,30.434-15.486,42.205-26.443c3.148,0.202,6.191,0.289,9.085,0.289c13.965,0,24.462-1.984,26.643-2.43 c4.069-0.553,8.314-1.259,12.667-2.162c34.724-7.196,60.487-23.621,74.929-47.667c19.866,2.958,51.902-0.128,62.286-29.639 C440.717,370.989,436.663,355.056,429.733,343.339z M418.975,384.234c-9.587,27.236-47.807,18.525-49.413,18.146 c-3.621-0.873-7.379,0.855-9.071,4.181c-27.861,54.794-112.887,47.95-113.739,47.872c-0.883-0.083-1.763-0.014-2.607,0.19 c-12.708-1.411-26.582-5.176-37.976-13.723c-3.559-2.671-8.612-1.95-11.28,1.609c-2.671,3.559-1.95,8.611,1.609,11.28 c9.483,7.115,20.141,11.52,30.683,14.156c-9.772,7.084-21.018,12.879-33.607,17.306 c-49.688-53.612-67.911-141.339-73.519-177.321c13.378-2.596,30.751-3.48,45.541,3.916c2.768,1.384,6.098,1.052,8.548-0.844 c0.165-0.129,16.941-12.966,41.569-19.21c24.477-6.206,47.738-3.984,69.419,6.57c0.298,0.171,0.605,0.324,0.922,0.457 c6.618,3.3,13.09,7.371,19.401,12.23c1.464,1.128,3.194,1.674,4.909,1.674c2.415,0,4.804-1.081,6.39-3.142 c2.715-3.526,2.057-8.585-1.469-11.3c-6.456-4.971-12.904-9.065-19.289-12.434c-14.027-54.965,4.817-159.23,5.014-160.298 c0.219-1.195,0.165-2.424-0.157-3.595c-0.433-1.574-4.546-15.522-15.35-20.558c-3.734-1.74-9.753-3.096-17.222,0.328 c-1.426,0.653-2.894,1.355-4.409,2.079c-14.22,6.791-30.335,14.486-52.868,1.469c-15.669-9.052-17.476-15.403-17.109-16.817 c1.136-1.758,1.548-3.897,1.132-5.966c-0.463-2.299-1.904-4.282-3.949-5.433c-0.042-0.023-4.271-2.753-5.02-8.79 c-0.769-6.189,1.648-20.09,26.463-43.646c24.986-23.728,87.21,8.756,109.076,23.27c0.447,0.298,0.922,0.549,1.418,0.752 c12.631,5.149,14.842,17.593,14.92,18.051c0.159,1.074,0.534,2.105,1.1,3.03c0.807,1.316,76.889,127.027,75.263,256.257 c-0.378-0.277-0.752-0.541-1.117-0.791c-3.678-2.504-8.69-1.551-11.194,2.126c-2.504,3.678-1.552,8.69,2.126,11.194 C404.362,338.678,428.964,355.837,418.975,384.234z"/><path d="M294.474,349.802c-43.914,43.329-119.853,26.859-120.617,26.687c-4.334-0.982-8.649,1.738-9.633,6.075 c-0.986,4.339,1.733,8.656,6.073,9.641c1.472,0.335,17.156,3.769,38.561,3.769c28.848,0,68.087-6.237,96.934-34.7 c3.167-3.125,3.201-8.227,0.076-11.394C302.743,346.712,297.643,346.676,294.474,349.802z"/><path d="M333.317,145.422c-4.131,1.648-6.143,6.334-4.499,10.466c0.241,0.605,23.924,61.309,11.079,131.941 c-0.796,4.378,2.108,8.572,6.486,9.369c0.488,0.089,0.972,0.131,1.451,0.131c3.819,0,7.211-2.727,7.918-6.617 c13.703-75.36-10.915-138.166-11.97-140.802C342.132,145.782,337.446,143.777,333.317,145.422z"/></svg>';
 function optTree() {
   const key = inputKey();
   if (optCache.key !== key) optCache = { key, tree: optimal(state.runs) };
@@ -1169,22 +1293,8 @@ function splash(x, y, big) {
   const ra = ring.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: `scale(${big ? 14 : 8})`, opacity: 0 }], { duration: 520, easing: 'ease-out', fill: 'forwards' });
   ra.onfinish = () => ring.remove();
 }
-function trophy(rec) {
-  const gm = geom(rec.nd);
-  const vb0 = stage.viewBox.baseVal;
-  const t = el('text', { class: 'trophy', x: gm.cx.toFixed(1), y: Math.max(gm.y - 14, vb0.y + 42).toFixed(1), 'text-anchor': 'middle' }, layers.fx);
-  t.textContent = '\u{1F3C6}';
-  t.style.transformBox = 'fill-box'; t.style.transformOrigin = '50% 100%';
-  if (REDUCED) { setTimeout(() => t.remove(), 3000); return; }
-  const a = t.animate([
-    { transform: 'scale(0) translate(0,10px)', opacity: 0, offset: 0 },
-    { transform: 'scale(1.3) translate(0,-6px)', opacity: 1, offset: .45 },
-    { transform: 'scale(1) translate(0,0)', opacity: 1, offset: .65 },
-    { transform: 'scale(1) translate(0,0)', opacity: 1, offset: .88 },
-    { transform: 'scale(.9) translate(0,-20px)', opacity: 0, offset: 1 }
-  ], { duration: 3400, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'forwards' });
-  a.onfinish = () => t.remove();
-  /* confetti from the top of the stage */
+function confetti() {
+  if (REDUCED) return;
   const vb = stage.viewBox.baseVal, colors = ['#B5FF00', '#0DEDF7', '#FFFF00', '#00D600', '#FFFFFF'];
   for (let i = 0; i < 70; i++) {
     const x = PADX + Math.random() * (W - 2 * PADX), y0 = vb.y + 2;
@@ -1535,7 +1645,7 @@ document.addEventListener('keydown', e => {
   if ((mod && e.key.toLowerCase() === 'z' && !e.shiftKey) || (!mod && e.key === 'u')) { e.preventDefault(); return undo(); }
   if ((mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) || (!mod && e.key === 'y')) { e.preventDefault(); return redo(); }
   if (!mod && e.key === 'r') { e.preventDefault(); return reset(); }
-  if (e.key === 'Escape') { state.selected = null; if (drag) endDrag(e, true); updateHighlights(); return; }
+  if (e.key === 'Escape') { hidePopup(); state.selected = null; if (drag) endDrag(e, true); updateHighlights(); return; }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault();
     const dir = e.key === 'ArrowLeft' ? -1 : 1;
@@ -1562,8 +1672,10 @@ function afterChange({ justFinished = false, silent = false, animate = true, via
   if (finished()) {
     const res = recordResult(!silent && justFinished, via);
     renderResult(res, !silent && justFinished && animate);
+    if (!(justFinished && animate && !silent)) hidePopup();
   } else {
     $('result').hidden = true;
+    hidePopup();
   }
   renderBoard();
 }
@@ -1623,7 +1735,7 @@ function recordResult(save, via = null) {
   }
   const after = board();
   const rank = entry ? after.findIndex(e => e.tree === entry.tree) + 1 : 0;
-  return { tree, entry, isNew, rank, best: state.cost < before, tied: state.cost === before && isNew, saved: !!entry, opt: state.cost === mergeCost(optTree()) };
+  return { tree, entry, isNew, rank, best: state.cost < before, tied: state.cost === before && isNew, saved: !!entry, opt: state.cost === mergeCost(optTree()), ps: tree === powersortLiteral() };
 }
 function renderResult(res, celebrate) {
   const n = n_(), H = H_(), cost = state.cost, nH = n * H, guar = n * (H + 2);
@@ -1640,7 +1752,8 @@ function renderResult(res, celebrate) {
   else verdict = `<b>${fmt((cost - guar) / n, 2)}·n</b> above n(H+2) — a well-designed policy would have done better.`;
   const badge = res.isNew && res.best ? '<span class="badge">new best</span>' : res.tied ? '<span class="badge">ties the best</span>' : '';
   const optBadge = isOpt ? '<span class="badge opt">optimal</span>' : '';
-  $('resVerdict').innerHTML = verdict + optBadge + badge;
+  const psBadge = res.ps ? `<span class="badge ps" title="Powersort would have built exactly this tree"><span class="badge-arm">${ARM_SVG}</span>powersort’s pick</span>` : '';
+  $('resVerdict').innerHTML = verdict + optBadge + psBadge + badge;
   $('resDetail').textContent = `nH = ${fmt(nH, 1)} · you = nH + ${fmt((cost - nH) / n, 3)}·n · n(H+2) = ${fmt(guar, 1)}` +
     (res.rank ? ` · #${res.rank} on this input’s board` : '') + (res.saved && !res.isNew ? ' · already on the board' : '');
   /* numbered levels: move on once the level is solved optimally */
@@ -1654,10 +1767,47 @@ function renderResult(res, celebrate) {
   if (celebrate) {
     const root = state.forest[0], gm = geom(root);
     splash(gm.cx, gm.y + BAR / 2, true);
-    if (isOpt) tadaa(); else fanfare(res.isNew && res.best, false);
-    if (isOpt) setTimeout(() => { const rec = dom.get(idOf(state.forest[0])); if (rec && finished()) trophy(rec); }, T(350));
+    if (isOpt) { tadaa(); setTimeout(() => { if (finished()) confetti(); }, T(350)); }
+    else if (res.ps) flexSound();
+    else fanfare(res.isNew && res.best, false);
+    clearTimeout(popupTimer);
+    popupTimer = setTimeout(() => { if (finished()) showPopup(res); }, T(1000));
   }
 }
+
+/* ---- the pop-up over the tree: the whole card is the next step ---- */
+let popupTimer = null, popupAction = null;
+function popupPlan(res) {
+  const i = PRESETS.findIndex(x => x.id === state.preset);
+  if (res.opt) {
+    if (i >= 0 && i + 1 < PRESETS.length) { const p = PRESETS[i + 1]; return { label: `next level: ${p.name} →`, hint: 'level ' + (i + 2) + ' of ' + PRESETS.length, run: () => setRuns(p.runs, { preset: p.id }) }; }
+    const n = n_(), r = Math.max(2, Math.min(n, state.runs.length));
+    return { label: i >= 0 ? 'all levels solved — random input →' : 'another random input →', hint: `random composition with n = ${fmtInt(n)}, ${r} runs`, run: () => setRuns(randomComposition(n, r)) };
+  }
+  return { label: 'try again ↺', hint: 'the tree stays on the leaderboard', run: () => reset() };
+}
+function showPopup(res) {
+  const n = n_(), nH = n * H_(), cost = state.cost;
+  const card = $('popupCard');
+  card.classList.toggle('is-opt', res.opt);
+  $('popupEmblems').innerHTML = (res.opt ? '<span class="emblem-trophy" aria-label="trophy">\u{1F3C6}</span>' : '') +
+    (res.ps ? `<span class="emblem-arm" title="Powersort’s pick">${ARM_SVG}</span>` : '');
+  $('popupTitle').textContent = res.opt ? 'Well done — you found the optimal tree!' : 'Well done!';
+  $('popupCost').innerHTML = `cost <b>${fmtInt(cost)}</b> · nH + ${fmt((cost - nH) / n, 3)}·n`;
+  $('popupSub').innerHTML = (res.opt ? '' : 'Every merge is paid for … but you can do better.') +
+    (res.ps ? `${res.opt ? '' : '<br>'}<span class="ps">Powersort would have built exactly this tree.</span>` : '');
+  const plan = popupPlan(res);
+  popupAction = plan.run;
+  $('popupAction').innerHTML = escapeHTML(plan.label) + `<span class="popup-hint">${escapeHTML(plan.hint)} · × keeps the tree</span>`;
+  $('popup').hidden = false;
+  card.focus({ preventScroll: true });
+}
+function hidePopup() { clearTimeout(popupTimer); $('popup').hidden = true; popupAction = null; }
+$('popupCard').addEventListener('click', e => {
+  if (e.target.closest('.popup-x')) { hidePopup(); return; }
+  const run = popupAction; hidePopup(); if (run) run();
+});
+$('popupCard').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('popupCard').click(); } });
 document.addEventListener('click', e => {
   if (!e.target.closest('#btnNext')) return;
   const i = PRESETS.findIndex(x => x.id === state.preset);
@@ -1674,11 +1824,11 @@ function timeAgo(t) {
 function renderBoard() {
   const list = board(), host = $('board');
   const current = finished() ? forestLiteral(state.forest) : null;
-  const opt = mergeCost(optTree());               // ★ marks optimal trees: reached is revealed
+  const opt = mergeCost(optTree()), ps = powersortLiteral();   // ★ optimal, arm = Powersort's own tree; both only once reached
   if (!list.length) { host.innerHTML = '<div class="board-empty">no finished trees for this input yet — yours will be the first</div>'; return; }
   host.innerHTML = list.slice(0, 12).map((e, i) =>
     `<div class="board-row${e.tree === current ? ' is-viewing' : ''}" data-i="${i}" role="button" tabindex="0">` +
-    `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${e.cost === opt ? ' <span class="star" title="optimal">★</span>' : ''}</span>` +
+    `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${e.cost === opt ? ' <span class="star" title="optimal">★</span>' : ''}${e.tree === ps ? `<span class="arm" title="Powersort’s pick">${ARM_SVG}</span>` : ''}</span>` +
     `<span class="who">${escapeHTML(e.player)} <small>· ${timeAgo(e.t)}${e.via ? ' · ' + e.via : ''}</small></span>` +
     `<button class="replay" type="button" title="watch this tree being built" aria-label="replay">▶</button></div>`).join('');
 }
@@ -1879,6 +2029,19 @@ function runSelfTests() {
       const pos = []; let m = runs.length; while (m > 1) { pos.push(rnd(0, m - 2)); m--; }
       const c = mergeCost(buildForest(runs, pos)[0]);
       if (c < sum(runs) * entropy(runs) - 1e-6) return `${runs}: cost ${c} below nH`;
+    }
+    return true;
+  });
+  test('Powersort tree: cost ≤ n(H+2) and root at the leftmost lowest-power boundary (300 inputs)', () => {
+    for (let t = 0; t < 300; t++) {
+      const runs = Array.from({ length: rnd(1, 12) }, () => rnd(1, 40)), n = sum(runs);
+      const tree = powersortTree(runs);
+      if (mergeCost(tree) > n * (entropy(runs) + 2) + 1e-9) return `${runs}: cost ${mergeCost(tree)} above n(H+2)`;
+      const starts = [0]; runs.forEach(l => starts.push(starts[starts.length - 1] + l));
+      const pw = runs.slice(0, -1).map((_, i) => nodePower(starts[i], runs[i], runs[i + 1], n));
+      const rec = (i, j) => { if (i === j) return leaf(i, runs[i]); let k = i, best = Infinity;
+        for (let b = i; b < j; b++) if (pw[b] < best) { best = pw[b]; k = b; } return merge(rec(i, k), rec(k + 1, j)); };
+      if (treeLiteral(rec(0, runs.length - 1)) !== treeLiteral(tree)) return `${runs}: stack and recursive trees differ`;
     }
     return true;
   });
