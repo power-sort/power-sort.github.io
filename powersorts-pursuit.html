@@ -347,6 +347,21 @@ h1 em, h2 em { font-style: normal; color: var(--lime); }
 .legend i.dim { opacity: .4; }
 
 /* leaderboard */
+.board-tabs { display: flex; gap: .25rem; margin-left: auto; }
+.board-tabs .tab {
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .02em; color: rgba(234,242,255,.6);
+  background: none; border: 1.5px solid rgba(13,237,247,.25); border-radius: 999px; padding: .1rem .55rem; cursor: pointer;
+}
+.board-tabs .tab.is-on { color: var(--darkblue); background: var(--lightblue); border-color: var(--lightblue); font-weight: 600; }
+.board-tabs .tab:hover:not(.is-on) { border-color: var(--lime); color: var(--lime); }
+.board-status { font-family: var(--mono); font-size: .7rem; color: rgba(234,242,255,.55); margin: 0 0 .5rem; min-height: 1.2em; }
+.board-status b { color: var(--lightblue); font-weight: 600; }
+.board-status.is-err { color: var(--yellow); }
+.board-row.is-other { cursor: default; }
+.board-row.is-other:hover { border-color: rgba(13,237,247,.18); }
+.board-row .you { color: var(--yellow); font-weight: 600; }
+.board-note .link { font-family: var(--mono); font-size: .68rem; background: none; border: none; color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0; }
+.board-note .flag { color: var(--lime); }
 .board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
 .board-head .link, .io-head .link {
   font-family: var(--mono); font-size: .72rem; background: none; border: none;
@@ -549,13 +564,17 @@ body.is-secret .tool[data-secret] { display: inline-block; }
       <div>
         <div class="board-head">
           <div class="panel-title" style="margin:0">leaderboard</div>
-          <button class="link" id="btnClearBoard" type="button">clear</button>
+          <div class="board-tabs" id="boardTabs" role="tablist">
+            <button class="tab" data-view="global" role="tab" type="button">global</button>
+            <button class="tab" data-view="local" role="tab" type="button">this browser</button>
+          </div>
         </div>
+        <p class="board-status" id="boardStatus"></p>
         <div class="player-row">
           <label class="ctl"><span>player</span><input type="text" id="player" maxlength="24" placeholder="your name" autocomplete="off"></label>
         </div>
         <div class="board" id="board"></div>
-        <p class="board-note">one board per input, kept in this browser · click a row to see that tree, ▶ to watch it being built</p>
+        <p class="board-note" id="boardNote"></p>
       </div>
 
       <div>
@@ -614,6 +633,7 @@ body.is-secret .tool[data-secret] { display: inline-block; }
    A node also carries h, its height: 0 for a run, 1 + max(children) otherwise,
    which is the row the game draws it in.
    ========================================================================== */
+/* @shared-begin  (build.py copies this block into worker/src/merge-tree.js) */
 function leaf(i, len) { return { lo: i, hi: i, len, left: null, right: null, h: 0 }; }
 function merge(a, b) { return { lo: a.lo, hi: b.hi, len: a.len + b.len, left: a, right: b, h: Math.max(a.h, b.h) + 1 }; }
 function mergeCost(t) { return t.left === null ? 0 : t.len + mergeCost(t.left) + mergeCost(t.right); }
@@ -633,6 +653,27 @@ function buildForest(runs, positions) {
   return blocks;
 }
 
+/* Tree literals: a run is its length, a merge is "(left right)".  This is the
+   human-readable form of the export and is accepted on import. */
+function treeLiteral(t) { return t.left === null ? String(t.len) : `(${treeLiteral(t.left)} ${treeLiteral(t.right)})`; }
+function forestLiteral(forest) { return forest.map(treeLiteral).join(' '); }
+
+/* A short, stable fingerprint of a tree literal (cyrb53).  The server stores
+   it so identical trees are entered once and so the page can recognise its
+   own trees on the global board without anyone's tree being sent back. */
+function treeHash(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+}
+/* @shared-end */
+
 /* Spans, the workshop's "style B": (i, j) merges the two blocks that together
    cover runs i..j.  Order-free; sorting by width puts children before parents. */
 function spansToPositions(r, spans) {
@@ -649,11 +690,6 @@ function spansToPositions(r, spans) {
   }
   return out;
 }
-
-/* Tree literals: a run is its length, a merge is "(left right)".  This is the
-   human-readable form of the export and is accepted on import. */
-function treeLiteral(t) { return t.left === null ? String(t.len) : `(${treeLiteral(t.left)} ${treeLiteral(t.right)})`; }
-function forestLiteral(forest) { return forest.map(treeLiteral).join(' '); }
 
 function parseTreeLiteral(text) {
   const toks = text.match(/\(|\)|\d+/g) || [];
@@ -915,6 +951,9 @@ function parseImport(text, currentRuns) {
 function readURL() {
   const q = new URLSearchParams(location.search);
   const out = { secret: q.has('opt') || location.hash === '#opt' };
+  out.board = (q.get('board') || '').toLowerCase() || null;
+  out.gate = q.has('gate') ? !/^(0|off|no|false)$/i.test(q.get('gate') || '') : null;
+  out.api = q.get('api') || null;
   const rs = q.get('runs');
   if (rs) {
     const runs = intsIn(rs).filter(x => x >= 1);
@@ -931,15 +970,16 @@ function readURL() {
   }
   return out;
 }
-function pageURL(runs, positions) {
+function pageURL(runs, positions, extra) {
   const u = new URL(location.href);
   u.search = ''; u.hash = '';
   u.searchParams.set('runs', runs.join(','));
   if (positions && positions.length) u.searchParams.set('merges', positions.join(','));
+  for (const k in (extra || {})) if (extra[k] !== null && extra[k] !== undefined) u.searchParams.set(k, extra[k]);
   return u.toString().replace(/%2C/g, ',');
 }
-function syncURL(runs) {
-  try { history.replaceState(null, '', pageURL(runs, null)); } catch (e) { /* file:// may refuse */ }
+function syncURL(runs, extra) {
+  try { history.replaceState(null, '', pageURL(runs, null, extra)); } catch (e) { /* file:// may refuse */ }
 }
 
 /* ==========================================================================
@@ -1069,6 +1109,15 @@ function tadaa() {
 
 
 /* ==========================================================================
+   CONFIGURATION — the global leaderboard
+   Paste the URL of your deployed Cloudflare Worker here (leaderboard-readme.md
+   walks through it), for example
+       const BOARD_URL = 'https://pursuit-board.wild-inter.workers.dev';
+   With an empty string the page runs with the browser-local board only.
+   ========================================================================== */
+const BOARD_URL = 'https://pursuit-board.wild-inter-net.workers.dev/';
+
+/* ==========================================================================
    STATE
    ========================================================================== */
 const $ = id => document.getElementById(id);
@@ -1089,10 +1138,20 @@ const state = {
   secret: false, ghost: false,
   ruler: store.get('pursuit.ruler') === 'on',
   sound: store.get('pursuit.sound') !== 'off',
+  /* the global board: ?board=<id> picks a board (default "public"), ?board=local switches it off,
+     ?gate=0 lets players pick any level, ?api=<url> points at another Worker (testing) */
+  boardId: 'public', boardMode: 'global', gateParam: null, api: BOARD_URL, view: 'global',
+  global: { key: null, entries: [], total: 0, status: 'idle', msg: '' },
   player: store.get('pursuit.player') || '',
   replaying: null
 };
 
+/* board-related URL parameters that every generated link should carry along */
+function urlExtra() {
+  return { board: state.boardId !== 'public' || state.boardMode === 'local' ? (state.boardMode === 'local' ? 'local' : state.boardId) : null,
+           gate: state.gateParam === null ? null : (state.gateParam ? '1' : '0'),
+           api: state.api && state.api !== BOARD_URL ? state.api : null };
+}
 function recompute() {
   state.forest = buildForest(state.runs, state.merges);
   state.cost = sum(state.forest.map(mergeCost));
@@ -1105,6 +1164,16 @@ const finished = () => state.forest.length === 1 && state.runs.length > 0;
 const inputKey = () => state.runs.join(',');
 
 let optCache = { key: null, tree: null }, psCache = { key: null, lit: null };
+const PRESET_OPT = PRESETS.map(p => mergeCost(optimal(p.runs)));
+/* solved = some finished tree in this browser (any past attempt) was optimal */
+function presetSolved(i) { return (loadBoards()[PRESETS[i].runs.join(',')] || []).some(e => e.cost === PRESET_OPT[i]); }
+/* the level gate: only on the global board, off in the secret mode, ?gate=0 or ?gate=1 override */
+function gateOn() {
+  if (state.secret) return false;
+  if (state.gateParam !== null) return state.gateParam;
+  return state.boardMode === 'global' && state.global.status !== 'error';   // an unreachable board must not lock players out
+}
+function presetLocked(i) { return gateOn() && i > 0 && !presetSolved(i - 1); }
 function powersortLiteral() {
   const key = inputKey();
   if (psCache.key !== key) psCache = { key, lit: treeLiteral(powersortTree(state.runs)) };
@@ -1511,8 +1580,9 @@ function setRuns(runs, { preset = null, positions = null, via = null } = {}) {
   dom.clear(); layers.fx.innerHTML = '';
   sync({ animate: false });
   shownCost = state.cost; $('costBig').textContent = fmtInt(state.cost);
-  syncURL(state.runs);
+  syncURL(state.runs, urlExtra());
   afterChange(via ? { justFinished: finished(), animate: false, via } : { silent: true });
+  fetchGlobal();
 }
 function loadTree(positions, { animate = false, via = null } = {}) {   // same input, a whole tree at once
   stopReplay();
@@ -1731,8 +1801,9 @@ function recordResult(save, via = null) {
   const before = list.length ? list[0].cost : Infinity;
   let entry = list.find(e => e.tree === tree), isNew = false;
   if (!entry && save) {
-    ({ entry, isNew } = pushBoard({ cost: state.cost, merges: state.merges.slice(), tree, player: state.player.trim() || 'anonymous', t: Date.now(), via }));
+    ({ entry, isNew } = pushBoard({ cost: state.cost, merges: state.merges.slice(), tree, hash: treeHash(tree), player: state.player.trim() || 'anonymous', t: Date.now(), via }));
   }
+  if (isNew) submitGlobal(entry);
   const after = board();
   const rank = entry ? after.findIndex(e => e.tree === entry.tree) + 1 : 0;
   return { tree, entry, isNew, rank, best: state.cost < before, tied: state.cost === before && isNew, saved: !!entry, opt: state.cost === mergeCost(optTree()), ps: tree === powersortLiteral() };
@@ -1822,37 +1893,119 @@ function timeAgo(t) {
   return new Date(t).toLocaleDateString();
 }
 function renderBoard() {
-  const list = board(), host = $('board');
+  const host = $('board'), status = $('boardStatus'), note = $('boardNote');
+  const globalOn = state.boardMode === 'global';
+  $('boardTabs').hidden = !globalOn;
+  if (!globalOn) state.view = 'local';
+  $('boardTabs').querySelectorAll('.tab').forEach(t => t.classList.toggle('is-on', t.dataset.view === state.view));
   const current = finished() ? forestLiteral(state.forest) : null;
-  const opt = mergeCost(optTree()), ps = powersortLiteral();   // ★ optimal, arm = Powersort's own tree; both only once reached
-  if (!list.length) { host.innerHTML = '<div class="board-empty">no finished trees for this input yet — yours will be the first</div>'; return; }
-  host.innerHTML = list.slice(0, 12).map((e, i) =>
-    `<div class="board-row${e.tree === current ? ' is-viewing' : ''}" data-i="${i}" role="button" tabindex="0">` +
-    `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${e.cost === opt ? ' <span class="star" title="optimal">★</span>' : ''}${e.tree === ps ? `<span class="arm" title="Powersort’s pick">${ARM_SVG}</span>` : ''}</span>` +
-    `<span class="who">${escapeHTML(e.player)} <small>· ${timeAgo(e.t)}${e.via ? ' · ' + e.via : ''}</small></span>` +
-    `<button class="replay" type="button" title="watch this tree being built" aria-label="replay">▶</button></div>`).join('');
+  const opt = mergeCost(optTree()), ps = powersortLiteral(), psHash = treeHash(ps);   // ★ optimal, arm = Powersort's own tree; both only once reached
+  const marks = (cost, hash) => (cost === opt ? ' <span class="star" title="optimal">★</span>' : '') +
+    (hash === psHash ? `<span class="arm" title="Powersort’s pick">${ARM_SVG}</span>` : '');
+  status.classList.remove('is-err');
+
+  if (state.view === 'global') {
+    const g = state.global;
+    if (g.status === 'loading') status.textContent = 'loading the ' + state.boardId + ' board …';
+    else if (g.status === 'error') { status.textContent = 'global board unavailable (' + g.msg + ') — the “this browser” tab still works'; status.classList.add('is-err'); }
+    else status.innerHTML = `<b>${state.boardId}</b> board · ${g.total} ${g.total === 1 ? 'tree' : 'trees'} for this input`;
+    const mine = localHashes();
+    if (!g.entries.length) { host.innerHTML = `<div class="board-empty">${g.status === 'ok' ? 'nobody has finished this input on the ' + state.boardId + ' board yet' : ''}</div>`; }
+    else host.innerHTML = g.entries.slice(0, 15).map((e, i) => {
+      const me = mine.get(e.hash);
+      return `<div class="board-row ${me ? 'is-you' : 'is-other'}${me && me.tree === current ? ' is-viewing' : ''}" data-hash="${e.hash}" ${me ? 'role="button" tabindex="0"' : ''}>` +
+        `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${marks(e.cost, e.hash)}</span>` +
+        `<span class="who">${escapeHTML(e.player)}${me ? ' <span class="you">you</span>' : ''} <small>· ${timeAgo(e.created)}</small></span>` +
+        (me ? `<button class="replay" type="button" title="watch this tree being built" aria-label="replay">▶</button>` : '<span></span>') + '</div>';
+    }).join('');
+    note.innerHTML = 'others’ trees stay secret — only scores are public · your own rows open your tree' +
+      (gateOn() ? ' · <span class="flag">levels unlock one by one: solve a level optimally to open the next</span>' : '');
+  } else {
+    const list = board();
+    status.textContent = globalOn ? 'trees finished in this browser' : (state.api ? 'global board switched off for this link' : 'no global board configured — trees are kept in this browser');
+    if (!list.length) host.innerHTML = '<div class="board-empty">no finished trees for this input yet — yours will be the first</div>';
+    else host.innerHTML = list.slice(0, 12).map((e, i) =>
+      `<div class="board-row${e.tree === current ? ' is-viewing' : ''}" data-i="${i}" role="button" tabindex="0">` +
+      `<span class="rank">${i + 1}</span><span class="cost">${fmtInt(e.cost)}${marks(e.cost, e.hash || treeHash(e.tree))}</span>` +
+      `<span class="who">${escapeHTML(e.player)} <small>· ${timeAgo(e.t)}${e.via ? ' · ' + e.via : ''}</small></span>` +
+      `<button class="replay" type="button" title="watch this tree being built" aria-label="replay">▶</button></div>`).join('');
+    note.innerHTML = 'one board per input, kept in this browser · click a row to see that tree, ▶ to watch it being built · ' +
+      `<button class="link" id="btnClearBoard" type="button">clear this browser’s board for this input</button>`;
+  }
 }
 function escapeHTML(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 $('board').addEventListener('click', e => {
   const row = e.target.closest('.board-row'); if (!row) return;
-  const entry = board()[+row.dataset.i]; if (!entry) return;
+  let entry;
+  if (row.dataset.hash !== undefined) {
+    entry = localHashes().get(row.dataset.hash);
+    if (!entry) { $('boardStatus').textContent = 'that tree belongs to another player — only the score is public'; return; }
+  } else entry = board()[+row.dataset.i];
+  if (!entry) return;
   if (e.target.closest('.replay')) replay(entry.merges);
   else loadTree(entry.merges);
   stage.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'nearest' });
 });
 $('board').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.target.click(); } });
-$('btnClearBoard').addEventListener('click', () => {
+$('boardNote').addEventListener('click', e => {
+  if (!e.target.closest('#btnClearBoard')) return;
   if (!board().length) return;
-  if (!confirm('Clear the leaderboard for this input?')) return;
-  const all = loadBoards(); delete all[inputKey()]; saveBoards(all); renderBoard();
+  if (!confirm('Clear this browser’s leaderboard for this input? (The global board is not affected.)')) return;
+  const all = loadBoards(); delete all[inputKey()]; saveBoards(all); renderBoard(); syncControls();
 });
 $('player').value = state.player;
 $('player').addEventListener('input', e => { state.player = e.target.value; store.set('pursuit.player', state.player); });
 
+/* ==========================================================================
+   GLOBAL BOARD  --  talks to the Worker; other players' trees never arrive here
+   ========================================================================== */
+function apiURL(path, params) {
+  const u = new URL(path, state.api.replace(/\/?$/, '/'));
+  for (const k in params) u.searchParams.set(k, params[k]);
+  return u.toString();
+}
+async function fetchGlobal() {
+  if (state.boardMode !== 'global') return;
+  const key = inputKey();
+  state.global = { key, entries: [], total: 0, status: 'loading', msg: '' };
+  renderBoard();
+  try {
+    const r = await fetch(apiURL('board', { b: state.boardId, input: key }));
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('HTTP ' + r.status));
+    const data = await r.json();
+    if (inputKey() !== key) return;                 // the input changed meanwhile
+    state.global = { key, entries: data.entries || [], total: data.total || 0, status: 'ok', msg: '' };
+  } catch (e) {
+    if (inputKey() !== key) return;
+    state.global = { key, entries: [], total: 0, status: 'error', msg: e.message };
+  }
+  renderBoard(); syncControls();
+}
+async function submitGlobal(entry) {
+  if (state.boardMode !== 'global') return;
+  try {
+    const r = await fetch(apiURL('submit', {}), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board: state.boardId, runs: state.runs, merges: entry.merges, player: state.player.trim() || 'anonymous' }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    if (data.isNew) $('boardStatus').textContent = `sent to the ${state.boardId} board · #${data.rank} of ${data.total}`;
+  } catch (e) {
+    state.global.status = 'error'; state.global.msg = e.message;
+  }
+  fetchGlobal();
+}
+function localHashes() {
+  const m = new Map();
+  for (const e of board()) m.set(e.hash || (e.hash = treeHash(e.tree)), e);
+  return m;
+}
+function setView(v) { state.view = v; renderBoard(); }
+$('boardTabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) setView(t.dataset.view); });
+
 function renderIO() {
   const ta = $('ioText');
   if (document.activeElement === ta) return;
-  ta.value = exportText(state.runs, state.merges, { url: pageURL(state.runs, state.merges) });
+  ta.value = exportText(state.runs, state.merges, { url: pageURL(state.runs, state.merges, urlExtra()) });
 }
 function ioMsg(text, ok) { const m = $('ioMsg'); m.textContent = text; m.classList.toggle('ok', !!ok); if (text) setTimeout(() => { if (m.textContent === text) m.textContent = ''; }, 6000); }
 function doImport(text) {
@@ -1883,9 +2036,15 @@ $('fileIn').addEventListener('change', e => {
 
 /* input controls */
 function buildInputControls() {
-  $('preset').innerHTML = PRESETS.map((p, i) => `<option value="${p.id}">${i + 1} · ${p.name} (${p.runs.length} runs)</option>`).join('') +
-    '<option value="">custom input</option>';
+  renderPresetOptions();
   $('gen').innerHTML = GENERATORS.map(g => `<option value="${g.id}">${g.label}</option>`).join('');
+}
+function renderPresetOptions() {
+  const html = PRESETS.map((p, i) => {
+    const solved = presetSolved(i), locked = presetLocked(i) && p.id !== state.preset;
+    return `<option value="${p.id}"${locked ? ' disabled' : ''}>${i + 1} · ${p.name} (${p.runs.length} runs)${solved ? ' ✓' : locked ? ' 🔒' : ''}</option>`;
+  }).join('') + '<option value="">custom input</option>';
+  if ($('preset').innerHTML !== html) $('preset').innerHTML = html;
 }
 function syncControls() {
   const p = PRESETS.find(x => x.id === state.preset), i = PRESETS.indexOf(p);
@@ -1893,6 +2052,7 @@ function syncControls() {
   $('lvl').classList.toggle('is-custom', !p);
   $('lname').textContent = p ? p.name : state.runs.length + ' runs, n = ' + fmtInt(n_());
   $('lhint').textContent = p ? p.hint : 'Your own input. Share it with the “copy link” button.';
+  renderPresetOptions();
   $('preset').value = p ? p.id : '';
   if (document.activeElement !== $('runtext')) $('runtext').value = state.runs.join(', ');
   $('btnUndo').disabled = !state.merges.length;
@@ -1926,7 +2086,7 @@ $('btnGen').addEventListener('click', () => {
   setRuns(runs);
 });
 $('btnLink').addEventListener('click', async () => {
-  const url = pageURL(state.runs, state.merges);
+  const url = pageURL(state.runs, state.merges, urlExtra());
   const m = $('linkMsg');
   try { await navigator.clipboard.writeText(url); m.textContent = 'link copied'; m.classList.add('ok'); }
   catch (e) { m.textContent = url; m.classList.remove('ok'); }
@@ -2062,6 +2222,11 @@ function runSelfTests() {
 buildInputControls();
 (function init() {
   const q = readURL();
+  if (q.api) state.api = q.api;
+  if (q.board === 'local' || q.board === 'off' || q.board === 'none' || !state.api) state.boardMode = 'local';
+  else if (q.board && /^[a-z0-9][a-z0-9_-]{0,31}$/.test(q.board)) state.boardId = q.board;
+  state.gateParam = q.gate;
+  state.view = state.boardMode === 'global' ? 'global' : 'local';
   if (q.secret) { state.secret = true; document.body.classList.add('is-secret'); }
   if (q.runs) {
     const p = PRESETS.find(x => x.runs.join(',') === q.runs.join(','));
