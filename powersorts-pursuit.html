@@ -272,6 +272,17 @@ h1 em, h2 em { font-style: normal; color: var(--lime); }
 }
 .popup-card.is-opt .popup-action { background: var(--green); }
 .popup-card:hover .popup-action { background: var(--yellow); }
+.popup-name { cursor: default; }
+.popup-name .popup-title { color: var(--lightblue); }
+.popup-name .popup-sub { margin: .4rem 0 .8rem; }
+.popup-name input {
+  width: 100%; font-family: var(--mono); font-size: .95rem; text-align: center;
+  color: var(--ink); background: #001050; border: 1.5px solid rgba(13, 237, 247, 0.35);
+  border-radius: 10px; padding: .5rem .7rem;
+}
+.popup-name input:focus { outline: none; border-color: var(--lime); }
+.name-btns { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: .8rem; }
+.name-btns .btn { font-size: .82rem; padding: .4rem 1rem; }
 .popup-hint { display: block; font-size: .66rem; color: rgba(0,28,107,.7); font-weight: 400; margin-top: .25rem; }
 .badge-arm { width: .95em; height: .95em; vertical-align: -.15em; display: inline-block; margin-right: .2em; }
 .badge-arm svg { width: 100%; height: 100%; fill: currentColor; display: block; }
@@ -502,6 +513,15 @@ body.is-secret .tool[data-secret] { display: inline-block; }
           <div class="popup-cost" id="popupCost"></div>
           <div class="popup-sub" id="popupSub"></div>
           <div class="popup-action" id="popupAction"></div>
+        </div>
+        <div class="popup-card popup-name" id="nameCard" hidden>
+          <div class="popup-title">Who is playing?</div>
+          <div class="popup-sub" id="nameSub"></div>
+          <input type="text" id="nameInput" maxlength="24" placeholder="your name" autocomplete="off" spellcheck="false" aria-label="your name for the leaderboard">
+          <div class="name-btns">
+            <button class="btn btn-lime" id="nameGo" type="button">let’s play</button>
+            <button class="btn" id="nameSkip" type="button">play as anonymous</button>
+          </div>
         </div>
       </div>
       </div>
@@ -1715,7 +1735,7 @@ document.addEventListener('keydown', e => {
   if ((mod && e.key.toLowerCase() === 'z' && !e.shiftKey) || (!mod && e.key === 'u')) { e.preventDefault(); return undo(); }
   if ((mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) || (!mod && e.key === 'y')) { e.preventDefault(); return redo(); }
   if (!mod && e.key === 'r') { e.preventDefault(); return reset(); }
-  if (e.key === 'Escape') { hidePopup(); state.selected = null; if (drag) endDrag(e, true); updateHighlights(); return; }
+  if (e.key === 'Escape') { if (!$('nameCard').hidden) { setPlayer(''); return; } hidePopup(); state.selected = null; if (drag) endDrag(e, true); updateHighlights(); return; }
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault();
     const dir = e.key === 'ArrowLeft' ? -1 : 1;
@@ -1870,10 +1890,42 @@ function showPopup(res) {
   const plan = popupPlan(res);
   popupAction = plan.run;
   $('popupAction').innerHTML = escapeHTML(plan.label) + `<span class="popup-hint">${escapeHTML(plan.hint)} · × keeps the tree</span>`;
+  $('nameCard').hidden = true;
+  card.hidden = false;
   $('popup').hidden = false;
   card.focus({ preventScroll: true });
 }
-function hidePopup() { clearTimeout(popupTimer); $('popup').hidden = true; popupAction = null; }
+function hidePopup() { clearTimeout(popupTimer); $('popup').hidden = true; $('popupCard').hidden = true; $('nameCard').hidden = true; popupAction = null; }
+
+/* ---- the name prompt, shown once when there is a leaderboard to appear on ---- */
+function askName() {
+  if (state.player.trim() || store.get('pursuit.nameAsked') === 'yes') return;
+  if (state.boardMode !== 'global') return;              // a browser-local board needs no name
+  clearTimeout(popupTimer);
+  $('popupCard').hidden = true;
+  $('nameSub').innerHTML = `Your name goes next to your scores on the <b>${escapeHTML(state.boardId)}</b> leaderboard, so you can find your trees again. You can change it later in the panel on the right.`;
+  $('nameCard').hidden = false;
+  $('popup').hidden = false;
+  $('nameInput').value = '';
+  /* on a phone the stage starts below the fold, so bring the card into view;
+     the keyboard is only summoned on roomier screens */
+  $('popup').scrollIntoView({ behavior: 'auto', block: 'center' });
+  if (innerWidth > 640) setTimeout(() => $('nameInput').focus({ preventScroll: true }), 60);
+}
+function setPlayer(name) {
+  state.player = name;
+  $('player').value = name;
+  store.set('pursuit.player', name);
+  store.set('pursuit.nameAsked', 'yes');
+  hidePopup();
+  renderBoard();
+}
+$('nameGo').addEventListener('click', () => setPlayer($('nameInput').value.trim().slice(0, 24)));
+$('nameSkip').addEventListener('click', () => setPlayer(''));
+$('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); setPlayer($('nameInput').value.trim().slice(0, 24)); }
+  if (e.key === 'Escape') { e.preventDefault(); setPlayer(''); }
+});
 $('popupCard').addEventListener('click', e => {
   if (e.target.closest('.popup-x')) { hidePopup(); return; }
   const run = popupAction; hidePopup(); if (run) run();
@@ -1954,7 +2006,7 @@ $('boardNote').addEventListener('click', e => {
   const all = loadBoards(); delete all[inputKey()]; saveBoards(all); renderBoard(); syncControls();
 });
 $('player').value = state.player;
-$('player').addEventListener('input', e => { state.player = e.target.value; store.set('pursuit.player', state.player); });
+$('player').addEventListener('input', e => { state.player = e.target.value; store.set('pursuit.player', state.player); store.set('pursuit.nameAsked', 'yes'); });
 
 /* ==========================================================================
    GLOBAL BOARD  --  talks to the Worker; other players' trees never arrive here
@@ -2236,6 +2288,7 @@ buildInputControls();
     setRuns(PRESETS[0].runs, { preset: PRESETS[0].id });
   }
   runSelfTests();
+  askName();
 })();
 
 </script>
