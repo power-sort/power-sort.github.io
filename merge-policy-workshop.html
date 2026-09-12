@@ -1,0 +1,3164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merge Policy Workshop — Powersort</title>
+<meta name="description" content="A workshop version of the merge cost lab: write your own merge policy for a run-adaptive mergesort in Python, right in the page, and watch its merge tree and merge cost against OPT on inputs you edit, generate or search for.">
+<link rel="stylesheet" href="https://pyscript.net/releases/2026.7.3/core.css">
+<script type="module" src="https://pyscript.net/releases/2026.7.3/core.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   POWERSORT — brand tokens (Brand Guidelines v1.0)
+   dark blue #001C6B · blue #380FFF · light blue #0DEDF7
+   green #00D600 · lime #B5FF00 · yellow #FFFF00
+   type: IBM Plex Mono (headlines / data) + IBM Plex Sans (body)
+
+   The block up to "MERGE COST LAB" is copied verbatim from the site's
+   style.css so that this file works on its own.  Once the page is linked
+   into the site, replace it with <link rel="stylesheet" href="style.css">.
+   ============================================================ */
+:root {
+  --darkblue: #001C6B;
+  --blue: #380FFF;
+  --lightblue: #0DEDF7;
+  --green: #00D600;
+  --lime: #B5FF00;
+  --yellow: #FFFF00;
+  --ink: #EAF2FF;
+  --panel: rgba(56, 15, 255, 0.16);
+  --panel-line: rgba(13, 237, 247, 0.35);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--darkblue);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--lightblue); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.9rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid rgba(181, 255, 0, 0.25);
+  position: sticky; top: 0;
+  background: rgba(0, 28, 107, 0.92);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 0.9rem; text-decoration: none; }
+.brand-logo-tight { width: 118px; height: auto; display: block; }
+.site-nav { display: flex; gap: clamp(0.6rem, 2vw, 1.6rem); flex-wrap: wrap; align-items: baseline; }
+.site-nav a {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--lime);
+  text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px;
+}
+.site-nav a:hover { border-bottom-color: var(--lime); }
+.act { padding: clamp(1.6rem, 4vw, 2.6rem) clamp(1rem, 4vw, 3rem); }
+.act + .act { border-top: 1px solid rgba(181, 255, 0, 0.25); }
+.act-head { max-width: 900px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--lime);
+}
+h1, h2 {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  line-height: 1.08; margin: 0.5rem 0 1rem; letter-spacing: -0.015em;
+}
+h1 { font-size: clamp(1.8rem, 4.4vw, 2.9rem); }
+h1 em, h2 em { font-style: normal; color: var(--lime); }
+.lede { font-size: clamp(1rem, 1.6vw, 1.1rem); max-width: 68ch; color: var(--ink); }
+.lede strong { color: var(--lime); font-weight: 600; }
+.btn {
+  font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+  color: var(--lightblue); background: transparent;
+  border: 2px solid var(--lightblue); border-radius: 999px;
+  padding: 0.5rem 1.15rem; cursor: pointer; text-decoration: none;
+  display: inline-block; transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+}
+.btn:hover { transform: translateY(-1px); background: rgba(13, 237, 247, 0.12); }
+.btn-lime { color: var(--darkblue); background: var(--lime); border-color: var(--lime); }
+.btn-lime:hover { background: var(--yellow); border-color: var(--yellow); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.ctl { display: flex; flex-direction: column; gap: 0.3rem; }
+.ctl > span {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em;
+  color: var(--lime); text-transform: uppercase;
+}
+.ctl select, .ctl input {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--ink);
+  background: rgba(0, 0, 0, 0.25); border: 1.5px solid var(--panel-line);
+  border-radius: 8px; padding: 0.42rem 0.6rem;
+}
+.panel {
+  border: 1px solid var(--panel-line); border-radius: 14px;
+  background: var(--panel); padding: 1rem; min-width: 0;
+}
+.panel-title {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--lime); margin-bottom: 0.7rem;
+}
+.site-footer {
+  border-top: 1px solid rgba(181, 255, 0, 0.25);
+  padding: 1.6rem clamp(1rem, 4vw, 3rem) 2.4rem;
+  display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+}
+.site-footer p { font-family: var(--mono); font-size: 0.85rem; margin: 0; color: var(--lightblue); }
+.code-comment { color: #8FB3FF; }
+.code-keyword { color: var(--lime); font-weight: 600; }
+.code-func    { color: var(--lightblue); }
+.code-number  { color: #CFE8FF; }
+
+/* ============================================================
+   MERGE COST LAB — page-specific
+   ============================================================ */
+
+/* mode navigation */
+.mode-nav { align-items: center; gap: clamp(.5rem, 1.6vw, 1.2rem); }
+.mode {
+  font-family: var(--mono); font-size: 0.86rem; letter-spacing: .02em;
+  color: rgba(234, 242, 255, 0.42); padding: 0.15rem 0.55rem;
+  border: 1.5px solid transparent; border-radius: 999px; white-space: nowrap;
+}
+.mode.is-active { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.mode .num { opacity: .65; }
+
+.act-hero { padding-bottom: 0; }
+.act-hero h1 { margin-bottom: .6rem; }
+
+/* ---- layout ---- */
+.lab-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 1rem; align-items: start;
+}
+@media (max-width: 1080px) { .lab-grid { grid-template-columns: 1fr; } }
+
+/* ---- stage ---- */
+.panel-stage { padding: 0.9rem 1rem 1rem; background: rgba(0, 0, 0, 0.16); }
+.stage-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: .7rem;
+}
+.ctl-policy select { min-width: 15rem; font-size: 1rem; }
+.cost-readout { text-align: right; line-height: 1.05; }
+.cost-readout .cost-label {
+  display: block; font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--lime);
+}
+.cost-readout .cost-value {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem); letter-spacing: -.02em;
+}
+.cost-readout .cost-sub { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.62); }
+
+#stage { width: 100%; height: auto; display: block; touch-action: none; }
+.stage-hint {
+  font-family: var(--mono); font-size: .72rem; color: rgba(234, 242, 255, 0.55);
+  margin-top: .5rem; line-height: 1.7;
+}
+.stage-hint kbd {
+  font-family: var(--mono); font-size: .95em; color: var(--lightblue);
+  border: 1px solid rgba(13,237,247,.3); border-radius: 4px; padding: 0 .28em;
+}
+.stage-error {
+  font-family: var(--mono); font-size: .8rem; color: var(--yellow);
+  margin-top: .4rem; min-height: 1.2em;
+}
+
+/* SVG pieces */
+.n-merge { fill: var(--lime); }
+.n-leaf  { fill: var(--lightblue); }
+.n-leaf.is-selected { fill: var(--yellow); }
+.n-leaf.is-dragging { fill: var(--yellow); }
+.node-rect { stroke: transparent; stroke-width: 2; }
+.node-rect.is-hot { stroke: #fff; }
+.n-label { font-family: var(--mono); font-weight: 600; fill: var(--darkblue); pointer-events: none; }
+.edge { stroke: rgba(234, 242, 255, .85); stroke-width: 1.6; fill: none; }
+.edge.drop { stroke-dasharray: 2 3.5; stroke: rgba(234, 242, 255, .55); }
+.guide { stroke: var(--yellow); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0; }
+.axis { stroke: rgba(13, 237, 247, .3); stroke-width: 1; }
+.axis-text { font-family: var(--mono); font-size: 11px; fill: rgba(234,242,255,.5); }
+.handle { fill: transparent; cursor: col-resize; }
+.grip { stroke: var(--darkblue); stroke-width: 2; opacity: 0; }
+.edge, .guide, .grip, .axis, .axis-text, .n-label, .node-rect { pointer-events: none; }
+.bnd:hover .grip { opacity: 1; }
+#stage:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.leaf-hit { cursor: grab; }
+.leaf-hit.is-dragging { cursor: grabbing; }
+
+/* ---- run tools ---- */
+.run-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; }
+.tool {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .02em;
+  color: var(--ink); background: rgba(0, 0, 0, .25);
+  border: 1.5px solid var(--panel-line); border-radius: 8px;
+  padding: .3rem .6rem; cursor: pointer;
+}
+.tool:hover { border-color: var(--lime); color: var(--lime); }
+.tool[disabled] { opacity: .4; cursor: not-allowed; }
+.tool .k { color: rgba(234,242,255,.45); margin-left: .35rem; }
+.tool-sep { width: 1px; background: rgba(13,237,247,.25); margin: .1rem .4rem; }
+
+.run-io { display: flex; gap: .7rem; flex-wrap: wrap; align-items: flex-end; margin-top: .9rem; }
+.run-io .ctl-grow { flex: 1 1 22rem; }
+.run-io .ctl { min-width: 0; max-width: 100%; }
+.run-io select, .run-io input { max-width: 100%; }
+.run-io .js-gen { width: 19rem; }
+.policy-toggles { min-width: 0; }
+.gen-bar .ctl, .compare-bar .ctl, .search-panel .ctl, .search-row .ctl { min-width: 0; max-width: 100%; }
+.gen-bar select, .compare-bar select, .search-panel select, .search-row select,
+.gen-bar input, .search-panel input, .search-row input { max-width: 100%; }
+.gen-bar .ctl select { min-width: min(15rem, 100%); }
+#sTarget, #sMetric, #sRival { width: 100%; }
+.run-io input[type="text"] { width: 100%; }
+.run-io input[type="number"] { width: 6.5rem; }
+
+/* ---- side panel ---- */
+.panel-side { display: flex; flex-direction: column; gap: 1.1rem; }
+.policy-blurb { font-size: .88rem; color: rgba(234, 242, 255, .88); margin: 0; }
+.input-summary { font-family: var(--mono); font-size: .8rem; color: var(--lightblue); margin: 0 0 .6rem; }
+.input-summary b { color: var(--lime); font-weight: 600; }
+.policy-ref { font-family: var(--mono); font-size: .75rem; margin: .45rem 0 0; }
+.params { display: flex; flex-wrap: wrap; gap: .6rem; }
+.params .ctl input { width: 8rem; }
+.metrics { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem; }
+.metrics td { padding: .22rem 0; border-bottom: 1px solid rgba(13, 237, 247, .12); }
+.metrics td:last-child { text-align: right; color: var(--lightblue); font-weight: 600; white-space: nowrap; }
+.metrics tr.hi td:last-child { color: var(--lime); }
+.metrics td .unit { color: rgba(234,242,255,.45); font-weight: 400; }
+#ruler { width: 100%; height: auto; display: block; margin-top: .2rem; }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-family: var(--mono); font-size: .72rem; color: rgba(234,242,255,.7); }
+.legend span { display: flex; align-items: center; gap: .35rem; }
+.legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* ---- code panel ---- */
+.panel-code { margin-top: 1rem; }
+.code-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.panel-code pre {
+  margin: .6rem 0 0; overflow-x: auto; background: #001050;
+  border: 1px solid rgba(13, 237, 247, 0.22); border-radius: 12px;
+  padding: 1rem 1.2rem; font-family: var(--mono); font-size: .82rem;
+  line-height: 1.6; color: #DDEBFF;
+}
+.panel-code details { margin-top: .7rem; }
+.panel-code summary {
+  font-family: var(--mono); font-size: .78rem; color: var(--lime); cursor: pointer;
+}
+.code-call { font-family: var(--mono); font-size: .78rem; color: var(--lightblue); margin: .5rem 0 0; }
+.code-call b { color: var(--lime); font-weight: 600; }
+.code-note { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.55); margin: .6rem 0 0; }
+
+/* ---- tooltip ---- */
+#tip {
+  position: fixed; z-index: 60; pointer-events: none; opacity: 0;
+  font-family: var(--mono); font-size: .75rem; line-height: 1.5;
+  background: #001050; color: var(--ink);
+  border: 1px solid var(--panel-line); border-radius: 8px;
+  padding: .35rem .55rem; white-space: pre;
+  transition: opacity 90ms ease;
+}
+
+/* ---- self test ---- */
+.selftest { font-family: var(--mono); font-size: .8rem; }
+.selftest .ok { color: var(--lime); }
+.selftest .fail { color: var(--yellow); }
+.selftest ul { margin: .5rem 0 0; padding-left: 1.1rem; color: rgba(234,242,255,.75); font-size: .76rem; }
+.selftest summary { cursor: pointer; color: var(--lightblue); }
+
+/* ---- modes ---- */
+.mode { cursor: pointer; background: none; border: 1.5px solid transparent; font-family: var(--mono); }
+/* Only on devices that really hover, and never on the active button: the active
+   button is lime-on-darkblue, so a lime hover colour would make it invisible.
+   On touch, :hover sticks after a tap, which is what made it vanish there. */
+@media (hover: hover) {
+  .mode:not([disabled]):not(.is-active):hover { color: var(--lime); }
+}
+.mode[disabled] { cursor: not-allowed; }
+.mode-panel[hidden] { display: none; }
+
+/* ---- small controls ---- */
+.params { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: flex-end; }
+.params:empty { display: none; }
+.params .ctl input[type="number"], .params .ctl select { width: 8.4rem; }
+.param-check {
+  display: flex; align-items: center; gap: .4rem; cursor: pointer;
+  font-family: var(--mono); font-size: .74rem; color: rgba(234, 242, 255, .8);
+}
+.param-check input { accent-color: var(--lime); margin: 0; }
+.param-check:hover { color: var(--lime); }
+.params-compact { gap: .35rem .6rem; margin-top: .4rem; }
+.params-compact .param-check { font-size: .68rem; }
+.params-compact .ctl > span { font-size: .62rem; }
+.params-compact .ctl input[type="number"], .params-compact .ctl select { width: 6.2rem; font-size: .74rem; padding: .25rem .4rem; }
+.code-params { display: flex; flex-wrap: wrap; gap: .6rem .9rem; align-items: center; margin-top: .5rem; }
+
+/* ---- mode 2: compare ---- */
+.panel-editor { padding: .9rem 1rem 1rem; background: rgba(0, 0, 0, .16); }
+.editor-stats { font-family: var(--mono); font-size: .8rem; color: var(--lightblue); text-align: right; }
+.editor-stats b { color: var(--lime); font-weight: 600; }
+.compare-bar {
+  display: flex; flex-wrap: wrap; gap: .9rem 1.4rem; align-items: flex-end;
+  margin: 1rem 0 .8rem; padding: .8rem 1rem;
+  border: 1px solid var(--panel-line); border-radius: 12px; background: var(--panel);
+}
+.policy-toggles { display: flex; flex-wrap: wrap; gap: .35rem; flex: 1 1 30rem; }
+.chip {
+  font-family: var(--mono); font-size: .74rem; cursor: pointer;
+  color: rgba(234, 242, 255, .6); background: rgba(0, 0, 0, .25);
+  border: 1.5px solid rgba(13, 237, 247, .25); border-radius: 999px; padding: .22rem .7rem;
+}
+@media (hover: hover) {
+  .chip:hover { border-color: var(--lime); color: var(--lime); }
+}
+.chip.is-on { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.chip.is-ref { box-shadow: 0 0 0 2px var(--yellow); }
+.cmp-row {
+  display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: .9rem;
+  align-items: center; margin-bottom: .55rem; padding: .55rem .8rem;
+  border: 1px solid rgba(13, 237, 247, .22); border-radius: 12px; background: rgba(0, 0, 0, .16);
+}
+@media (max-width: 780px) { .cmp-row { grid-template-columns: 1fr; } }
+.cmp-row.is-ref { border-color: var(--yellow); }
+.cmp-name { font-family: var(--mono); font-size: .82rem; color: var(--lightblue); font-weight: 600; }
+.cmp-badge {
+  font-size: .62rem; letter-spacing: .08em; text-transform: uppercase;
+  background: var(--lime); color: var(--darkblue); border-radius: 999px; padding: 0 .45rem; margin-left: .35rem;
+}
+.cmp-badge.ref { background: var(--yellow); }
+.cmp-cost { font-family: var(--mono); font-weight: 700; font-size: 1.5rem; color: var(--lime); line-height: 1.15; }
+.cmp-sub { font-family: var(--mono); font-size: .68rem; color: rgba(234, 242, 255, .6); }
+.cmp-bar { height: 4px; border-radius: 2px; background: rgba(13, 237, 247, .18); margin: .35rem 0 .1rem; }
+.cmp-bar i { display: block; height: 100%; border-radius: 2px; background: var(--lime); }
+.cmp-svg { width: 100%; height: auto; display: block; }
+.n-merge.is-diff { fill: var(--yellow); }
+.n-merge.is-same { fill-opacity: .34; }
+.cmp-empty { font-family: var(--mono); font-size: .82rem; color: rgba(234,242,255,.6); padding: 1.4rem; text-align: center; }
+
+/* ---- mode 3: random & search ---- */
+.gen-bar {
+  display: flex; flex-wrap: wrap; gap: .9rem 1.2rem; align-items: flex-end;
+  padding: .9rem 1rem; border: 1px solid var(--panel-line); border-radius: 12px;
+  background: var(--panel); margin-bottom: 1rem;
+}
+.gen-bar .ctl select { min-width: 15rem; }
+.gen-bar .ctl input[type="number"] { width: 6.2rem; }
+.gen-bar .gen-note { flex: 1 1 100%; font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.55); margin: 0; }
+.m3-cols { display: grid; grid-template-columns: minmax(0, 1fr) 6px var(--m3-side, 360px);
+            gap: 1rem; align-items: start; }
+@media (max-width: 1080px) { .m3-cols { grid-template-columns: 1fr; } }
+/* draggable column divider: the tree column is often empty in this mode, so the
+   search panel should be able to take the space back */
+.col-resizer {
+  position: relative; align-self: stretch; min-height: 140px; border-radius: 3px;
+  cursor: col-resize; background: rgba(13, 237, 247, .16); touch-action: none;
+}
+.col-resizer::after { content: ''; position: absolute; inset: 0 -8px; }   /* wider grab zone */
+.col-resizer:hover, .col-resizer.is-dragging { background: var(--lime); }
+@media (max-width: 1080px) { .col-resizer { display: none; } }
+.m3-side { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 74px; }
+@media (max-width: 1080px) { .m3-side { position: static; } }
+
+.search-panel .ctl { margin-bottom: .5rem; }
+.search-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.search-status {
+  font-family: var(--mono); font-size: .78rem; line-height: 1.5;
+  color: rgba(234, 242, 255, .8); margin: .7rem 0 0; min-height: 2.4em;
+}
+.search-status b { color: var(--lime); }
+.search-status .hit { color: var(--yellow); }
+.mini-legend { font-family: var(--mono); font-size: .72rem; color: rgba(234,242,255,.6); margin-top: .4rem; }
+
+/* conjecture list */
+.conj-list { display: flex; flex-direction: column; gap: .3rem; }
+.conj {
+  display: grid; grid-template-columns: 20px 1fr auto; gap: .5rem; align-items: baseline;
+  font-family: var(--mono); font-size: .76rem; padding: .3rem .1rem;
+  border-bottom: 1px solid rgba(13, 237, 247, .1);
+}
+.conj .mark { font-weight: 700; }
+.conj .mark.ok { color: var(--green); }
+.conj .mark.bad { color: var(--yellow); }
+.conj .mark.refuted { color: rgba(234,242,255,.35); }
+.conj-name { color: rgba(234, 242, 255, .9); }
+.conj-name .tag {
+  font-size: .62rem; letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 999px; padding: 0 .4rem; margin-left: .35rem; vertical-align: middle;
+}
+.conj-name .tag.open { background: rgba(13,237,247,.18); color: var(--lightblue); }
+.conj-name .tag.thm { background: rgba(0,214,0,.18); color: var(--green); }
+.conj-name .tag.refuted { background: rgba(255,255,0,.14); color: var(--yellow); }
+.conj-detail { grid-column: 2 / -1; font-size: .7rem; color: rgba(234,242,255,.5); }
+.conj-stop { grid-column: 1; }
+.conj-stop input { accent-color: var(--yellow); }
+.conj-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.conj-head .link {
+  font-family: var(--mono); font-size: .72rem; background: none; border: none;
+  color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0;
+}
+
+/* the all-trees grid */
+.tree-grid { display: flex; flex-direction: column; gap: .55rem; }
+.grid-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  flex-wrap: wrap; margin-bottom: .3rem;
+}
+.grid-head .input-echo {
+  font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.6);
+  max-width: 60ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hall {
+  display: flex; flex-direction: column; gap: .45rem; padding: .8rem 1rem;
+  border: 1px solid var(--panel-line); border-radius: 12px; background: var(--panel); margin-bottom: 1rem;
+}
+.hall-title { font-family: var(--mono); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; color: var(--lime); }
+.hall-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+.hall-chip {
+  font-family: var(--mono); font-size: .72rem; color: var(--ink);
+  background: rgba(0,0,0,.25); border: 1.5px solid rgba(13,237,247,.25);
+  border-radius: 8px; padding: .22rem .6rem; cursor: pointer;
+}
+.hall-chip:hover { border-color: var(--lime); color: var(--lime); }
+.hall-chip b { color: var(--yellow); }
+.hall-empty { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.45); }
+.conj-section {
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--lime); margin: .7rem 0 .1rem;
+  border-bottom: 1px solid rgba(181,255,0,.25); padding-bottom: .2rem;
+}
+.conj-section:first-child { margin-top: 0; }
+.conj-section span { color: rgba(234,242,255,.4); letter-spacing: .06em; text-transform: none; }
+
+
+/* ---- workshop: the python editor ---- */
+.policy-kind {
+  display: inline-block; font-family: var(--mono); font-size: .62rem; letter-spacing: .08em;
+  text-transform: uppercase; border-radius: 999px; padding: 0 .45rem; margin-left: .4rem; vertical-align: middle;
+  background: rgba(13,237,247,.18); color: var(--lightblue);
+}
+.policy-kind.mine { background: var(--lime); color: var(--darkblue); }
+.code-head .tools { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.policy-name {
+  font-family: var(--mono); font-size: .95rem; font-weight: 600; color: var(--lightblue);
+  background: rgba(0,0,0,.25); border: 1.5px solid var(--panel-line); border-radius: 8px;
+  padding: .3rem .6rem; min-width: 14rem;
+}
+.policy-name:disabled { border-color: transparent; background: transparent; }
+.editor-wrap {
+  position: relative; margin-top: .6rem; border: 1px solid rgba(13, 237, 247, 0.22);
+  border-radius: 12px; background: #001050; overflow: hidden;
+}
+.editor-wrap pre, .editor-wrap textarea {
+  margin: 0; padding: 1rem 1.2rem; font-family: var(--mono); font-size: 13.5px; line-height: 22px; /* integer px: fractional line pitches drift in some browsers */
+  tab-size: 4; white-space: pre; overflow: auto; box-sizing: border-box; width: 100%;
+  min-height: 22rem; letter-spacing: 0; word-spacing: 0;
+  overflow-wrap: normal; word-break: normal; hyphens: none; font-variant-ligatures: none;
+  -webkit-text-size-adjust: 100%;
+}
+.editor-wrap pre { position: absolute; inset: 0; pointer-events: none; color: #DDEBFF; overflow: hidden; }
+.editor-wrap pre code, .editor-wrap pre span { font: inherit; }  /* UA gives <code> its own monospace font; any other face changes the line pitch */
+.editor-wrap pre .code-keyword { font-weight: inherit; color: var(--lime); }  /* bold would use another face and drift too */
+.editor-wrap textarea {
+  position: relative; display: block; background: transparent; color: transparent;
+  caret-color: var(--yellow); border: 0; outline: none; resize: vertical;
+}
+.editor-wrap textarea::selection { background: rgba(13, 237, 247, .3); color: transparent; }
+.editor-wrap textarea:focus-visible { outline: none; }
+.editor-wrap:focus-within { border-color: var(--yellow); }
+.editor-wrap.is-readonly { opacity: .85; }
+.editor-wrap.is-readonly textarea { caret-color: transparent; }
+.py-status { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.7); display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; margin-top: .55rem; }
+.py-status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); margin-right: .35rem; vertical-align: middle; }
+.py-status.ready .dot { background: var(--green); }
+.py-status.failed .dot { background: var(--yellow); }
+.py-status .stale { color: var(--yellow); }
+.py-status .fresh { color: var(--lime); }
+.py-out {
+  margin: .5rem 0 0; font-family: var(--mono); font-size: .76rem; line-height: 1.5; color: rgba(234,242,255,.8);
+  background: rgba(0,0,0,.25); border: 1px solid rgba(13,237,247,.15); border-radius: 8px; padding: .5rem .7rem;
+  white-space: pre-wrap; max-height: 12rem; overflow: auto;
+}
+.py-out:empty { display: none; }
+.py-out.err { color: var(--yellow); border-color: rgba(255,255,0,.35); }
+.py-out .lbl { color: var(--lime); }
+.help { margin-top: .8rem; }
+.help summary { font-family: var(--mono); font-size: .78rem; color: var(--lime); cursor: pointer; }
+.help-body { font-size: .9rem; color: rgba(234,242,255,.9); max-width: 78ch; }
+.help-body h4 { font-family: var(--mono); font-size: .8rem; color: var(--lightblue); margin: 1rem 0 .3rem; letter-spacing: .04em; }
+.help-body code { font-family: var(--mono); font-size: .86em; color: var(--lightblue); }
+.help-body pre { background: #001050; border: 1px solid rgba(13,237,247,.22); border-radius: 10px; padding: .8rem 1rem; font-family: var(--mono); font-size: .8rem; line-height: 1.55; color: #DDEBFF; overflow-x: auto; margin: .4rem 0 .6rem; }
+.help-body ul { padding-left: 1.2rem; }
+.help-body li { margin: .2rem 0; }
+.code-string { color: #FFD48A; }
+.cmp-name button.link-name {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+}
+.cmp-name button.link-name:hover { color: var(--lime); text-decoration: underline; }
+.conj .param { width: 4.2rem; font-family: var(--mono); font-size: .7rem; color: var(--ink);
+  background: rgba(0,0,0,.25); border: 1px solid var(--panel-line); border-radius: 5px; padding: .05rem .3rem; margin: 0 .2rem; }
+.conj-detail.bad { color: var(--yellow); }
+.hidden-file { display: none; }
+py-splash, .py-terminal, py-terminal { display: none !important; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html" aria-label="Powersort home"><svg class="brand-logo-tight" viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Powersort"> <g transform="translate(-603.26978,-337.98157)"> <path fill="#b5ff00" d="m 664.42969,659.43359 12.99609,-11.63281 c 8.72656,9.50391 19.39453,14.73438 34.32422,14.73438 13.57812,0 22.88672,-4.45704 22.88672,-14.34375 0,-8.53516 -6.79297,-10.85938 -15.32422,-12.02735 l -15.90234,-2.51953 c -15.70704,-2.32812 -33.35157,-7.94922 -33.35157,-28.50781 0,-20.36328 17.0625,-31.22266 42.66016,-31.22266 18.61719,0 32,5.82031 41.11328,15.70703 L 742,602.03125 c -5.23438,-6.00781 -14.34375,-12.01953 -30.05469,-12.01953 -13.76953,0 -21.14062,4.65625 -21.14062,13.3789 0,8.53516 6.98047,10.85938 15.32031,12.02344 l 15.90234,2.52344 c 15.90235,2.32812 33.35547,7.75781 33.35547,28.30859 0,20.16797 -16.67578,32.38672 -44.01953,32.38672 -21.52734,0 -37.42969,-7.5625 -46.93359,-19.19922" /> <path fill="#b5ff00" d="m 774.24609,626.27344 c 0,-32 18.03516,-52.35938 47.51172,-52.35938 29.47656,0 47.50781,20.35938 47.50781,52.35938 0,32 -18.03125,52.35937 -47.50781,52.35937 -29.47656,0 -47.51172,-20.35937 -47.51172,-52.35937 m 72.91407,7.5625 v -15.1211 c 0,-18.61718 -10.08204,-28.12109 -25.40235,-28.12109 -15.32422,0 -25.40625,9.50391 -25.40625,28.12109 v 15.1211 c 0,18.61718 10.08203,28.12109 25.40625,28.12109 15.32031,0 25.40235,-9.50391 25.40235,-28.12109" /> <path fill="#b5ff00" d="m 881.77344,659.24219 h 22.50781 v -65.9336 h -22.50781 v -17.0664 h 43.64453 v 26.5664 h 1.16406 c 3.87891,-13.96484 12.60547,-26.5664 32.96484,-26.5664 h 7.96485 v 20.16797 h -15.71875 c -17.25781,0 -26.375,11.4414 -26.375,25.40625 v 37.42578 h 32.20312 v 17.0664 h -75.84765 z m 0,0" /> <path fill="#b5ff00" d="m 1040.1172,676.30859 c -17.457,0 -25.5977,-10.47265 -25.5977,-25.40625 v -57.59375 h -26.77341 v -17.0664 h 17.85161 c 7.371,0 10.2773,-2.51953 10.2773,-10.27735 v -21.0664 h 19.7813 v 31.34375 h 38.6015 v 17.0664 h -38.6015 v 65.9336 h 38.6015 v 17.0664 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,659.24219 h 93.6172 v 17.0664 h -93.6172 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,617.74219 h 56.9609 v 17.0664 h -56.9609 z m 0,0" /> <path fill="#b5ff00" d="m 1094.6836,576.24219 h 20.3047 v 17.0664 h -20.3047 z m 0,0" /> <path fill="#b5ff00" d="m 1255.5703,583.23047 -38.3125,-38.3125 -12.0703,12.0664 -26.2461,26.2461 12.0664,12.0664 17.7149,-17.71093 v 98.57031 h 17.0664 v -98.57031 l 17.7148,17.71093 z m 0,0" /> <path fill="#0dedf7" d="M 669.53125,520.46875 V 403.375 h 55.35547 c 21.80859,0 35.5664,15.26953 35.5664,37.41016 0,22.14843 -13.75781,37.41406 -35.5664,37.41406 h -29.85938 v 42.26953 z m 25.49609,-64.41797 h 26.84375 c 7.55078,0 12.24219,-4.02344 12.24219,-11.57031 v -7.38672 c 0,-7.54688 -4.69141,-11.57031 -12.24219,-11.57031 h -26.84375 z m 0,0" /> <path fill="#0dedf7" d="m 770.01953,461.92578 c 0,-39.75781 20.46484,-60.5625 51.5,-60.5625 31.03516,0 51.5,20.80469 51.5,60.5625 0,39.75781 -20.46484,60.55859 -51.5,60.55859 -31.03516,0 -51.5,-20.80078 -51.5,-60.55859 m 75.99219,8.71875 v -17.44531 c 0,-18.61719 -9.22656,-29.1875 -24.49219,-29.1875 -15.26562,0 -24.49219,10.57031 -24.49219,29.1875 v 17.44531 c 0,18.625 9.22657,29.19141 24.49219,29.19141 15.26563,0 24.49219,-10.56641 24.49219,-29.19141" /> <path fill="#0dedf7" d="M 903.89062,520.46875 877.38281,403.375 h 25.16406 l 11.07422,56.20312 6.20703,32.53907 h 0.5 l 7.38282,-32.53907 12.91797,-56.20312 h 27.84375 l 13.08984,56.20312 7.21094,32.53907 h 0.5039 l 6.20703,-32.53907 11.23833,-56.20312 h 24.1562 l -27.1758,117.09375 h -29.02341 l -14.76172,-63.41016 -5.70313,-25.66406 h -0.5039 l -5.8711,25.66406 -14.76172,63.41016 z m 0,0" /> <path fill="#0dedf7" d="M 1043.6367,520.46875 V 403.375 h 79.6836 v 22.65234 h -54.1875 v 23.98828 h 46.4688 v 22.47657 h -46.4688 v 25.33203 h 54.1875 v 22.64453 z m 0,0" /> <path fill="#0dedf7" d="m 1165.9297,520.46875 h -25.4961 V 403.375 h 55.5234 c 21.6407,0 35.3985,15.10156 35.3985,37.41016 0,15.77343 -7.0469,28.35156 -21.3086,33.71875 l 22.9844,45.96484 h -28.3477 l -20.4688,-42.94141 h -18.2851 z m 26.8398,-64.41797 c 7.5508,0 12.2461,-4.02344 12.2461,-11.57031 v -7.38672 c 0,-7.54688 -4.6953,-11.57031 -12.2461,-11.57031 h -26.8398 v 30.52734 z m 0,0" /> </g> </svg></a>
+  <nav class="site-nav mode-nav" aria-label="Lab modes">
+    <button class="mode is-active" type="button" data-mode="1"><span class="num">1</span> runs</button>
+    <button class="mode" type="button" data-mode="2"><span class="num">2</span> compare</button>
+    <button class="mode" type="button" data-mode="3"><span class="num">3</span> random</button>
+    <a href="index.html">back to site</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="mode-panel" id="mode1">
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow">merge policy workshop · mode 1 of 3 · run editor</span>
+    <h1>Your rule. Your tree.<br><em>Your bill.</em></h1>
+    <p class="lede">
+      A stable run-adaptive mergesort is fully described by its <strong>merge tree</strong>: the leaves
+      are the runs of the input, every internal node is one merge, and the <strong>merge cost</strong> is the
+      sum of the lengths of all internal nodes. The one policy built into this page is deliberately dumb —
+      it always merges the two rightmost blocks and never looks at a length. Your job is to write a better
+      rule, in Python, in the editor below. Edit the runs and the tree of the selected policy is rebuilt
+      on every change; the cost meter tells you how far above the entropy bound <em>nH</em> you are.
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="lab-grid">
+
+    <!-- ============ stage ============ -->
+    <div class="panel panel-stage">
+      <div class="stage-head">
+        <label class="ctl ctl-policy">
+          <span>merge policy</span>
+          <select id="policy"></select>
+        </label>
+        <div class="cost-readout">
+          <span class="cost-label">merge cost</span>
+          <span class="cost-value" id="costBig">—</span>
+          <span class="cost-sub" id="costSub">&nbsp;</span>
+        </div>
+      </div>
+
+      <svg id="stage" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid meet"
+           tabindex="0" role="img" aria-label="Merge tree of the selected policy over the current run lengths. The bottom row is the editable input: each bar is one run."></svg>
+      <p class="stage-error" id="stageError"></p>
+
+      <p class="stage-hint">
+        drag a boundary to resize two runs · drag a run past its neighbour to swap · click to select ·
+        <kbd>←</kbd><kbd>→</kbd> select &nbsp;<kbd>↑</kbd><kbd>↓</kbd> resize (<kbd>shift</kbd> ×10)
+        &nbsp;<kbd>s</kbd> split &nbsp;<kbd>j</kbd> join &nbsp;<kbd>d</kbd> duplicate &nbsp;<kbd>x</kbd> delete
+        &nbsp;<kbd>,</kbd><kbd>.</kbd> swap &nbsp;<kbd>u</kbd> undo
+      </p>
+
+      <div class="run-tools js-tools"></div>
+      <div class="run-io js-runio"></div>
+    </div>
+
+    <!-- ============ side ============ -->
+    <aside class="panel panel-side">
+      <div>
+        <div class="panel-title">policy</div>
+        <p class="input-summary" id="inputSummary"></p>
+        <p class="policy-blurb" id="blurb"></p>
+      </div>
+
+      <div>
+        <div class="panel-title">cost</div>
+        <table class="metrics"><tbody id="metrics"></tbody></table>
+        <svg id="ruler" viewBox="0 0 300 62" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+      </div>
+
+      <div>
+        <div class="panel-title">legend</div>
+        <div class="legend">
+          <span><i style="background:var(--lightblue)"></i> input run (leaf)</span>
+          <span><i style="background:var(--lime)"></i> merge (internal node)</span>
+          <span><i style="background:var(--yellow)"></i> selected run</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============ code ============ -->
+  <div class="panel panel-code">
+    <div class="code-head">
+      <div>
+        <span class="panel-title" id="codeTitle" style="display:inline">policy code</span>
+        <span class="policy-kind" id="codeKind"></span>
+      </div>
+      <div class="tools">
+        <input class="policy-name" id="policyName" type="text" spellcheck="false" autocomplete="off" aria-label="name of this policy" maxlength="40">
+        <button class="btn btn-lime" id="runCode" type="button" title="compile and run this code (Ctrl+Enter)">run ▶</button>
+        <button class="tool" id="checkCode" type="button" title="run the policy on 300 random inputs and report any invalid merge order">check on random inputs</button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="newPolicy" type="button">new policy</button>
+        <button class="tool" id="dupPolicy" type="button" title="copy this code into a new policy">duplicate</button>
+        <button class="tool" id="delPolicy" type="button">delete</button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="savePy" type="button" title="download this policy as a .py file">download .py</button>
+        <button class="tool" id="loadPy" type="button" title="load a .py file as a new policy">load .py</button>
+        <input class="hidden-file" id="loadPyFile" type="file" accept=".py,text/x-python,text/plain" multiple>
+        <button class="tool" id="copyCode" type="button">copy</button>
+      </div>
+    </div>
+
+    <div class="editor-wrap" id="editorWrap">
+      <pre aria-hidden="true"><code id="hl"></code></pre>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"
+                aria-label="Python source of the selected policy"></textarea>
+    </div>
+    <div class="py-status" id="pyStatus"><span><span class="dot"></span><span id="pyState">loading Python…</span></span><span id="codeState"></span></div>
+    <pre class="py-out" id="pyOut"></pre>
+
+    <details class="help" id="apiHelp">
+      <summary>how to write a policy — the API, with examples</summary>
+      <div class="help-body">
+        <p>A policy is one Python function. It receives the run lengths of the input, left to right, and it
+        does not sort anything — it only decides in which order neighbouring blocks are merged, and reports
+        that order as a list of merges:</p>
+<pre>def policy(runs):          # runs = [5, 3, 3, 14, 1, 2], say
+    merges = []
+    ...
+    return merges</pre>
+        <p>Every input of <code>r</code> runs needs exactly <code>r − 1</code> merges. There are two ways to say
+        which blocks a merge joins; use one of them for the whole list.</p>
+
+        <h4>style 1 · positions — “merge blocks k and k+1”</h4>
+        <p>An entry <code>k</code> means: merge the blocks that are <em>currently</em> at positions
+        <code>k</code> and <code>k+1</code>, counted from the left over all current blocks (0-based).
+        Order matters: the list of blocks gets one shorter with every merge. This is the natural style for
+        rules that scan or that keep a stack. If your stack holds the blocks read so far, <code>stack[i]</code>
+        <em>is</em> block <code>i</code>, so merging <code>stack[i]</code> and <code>stack[i+1]</code> is simply the
+        merge <code>i</code>, and “merge the top two” is <code>len(stack) - 2</code>:</p>
+<pre>def policy(runs):
+    stack = []                       # the blocks read so far, bottom ... top
+    merges = []
+    for length in runs:
+        stack.append(length)
+        while len(stack) >= 2 and stack[-1] >= stack[-2]:      # a first guess -- replace it
+            merges.append(len(stack) - 2)                      # merge the top two
+            stack[-2:] = [stack[-2] + stack[-1]]
+    while len(stack) > 1:            # whatever is left must still be merged
+        merges.append(len(stack) - 2)
+        stack[-2:] = [stack[-2] + stack[-1]]
+    return merges</pre>
+
+        <h4>style 2 · spans — “merge everything from run i to run j”</h4>
+        <p>An entry <code>(i, j)</code> means: merge the two blocks that together cover the original runs
+        <code>i</code>&nbsp;…&nbsp;<code>j</code> (0-based, inclusive). Order does not matter — spans are
+        sorted so smaller ones go first — which makes this the natural style for recursive, top-down rules:</p>
+<pre>def policy(runs):
+    merges = []
+    def split(i, j):                 # build the tree for runs i..j
+        if i == j:
+            return
+        k = (i + j) // 2             # cut after run k -- here: by run count, ignoring lengths
+        merges.append((i, j))
+        split(i, k)
+        split(k + 1, j)
+    split(0, len(runs) - 1)
+    return merges</pre>
+
+        <h4>what you get back</h4>
+        <ul>
+          <li>The page checks the merges and, if something is off, tells you what: a position out of range,
+              a span that crosses another, too few or too many merges, a forgotten <code>return</code>.</li>
+          <li><code>print(...)</code> inside your policy shows up in the box above — handy for debugging.
+              <code>import math</code> and the rest of the standard library work as usual.</li>
+          <li>Your code is saved in this browser as you type, and <em>download .py</em> gives you a file that
+              <code>check_policy.py</code> (from the workshop folder) can test from the command line.</li>
+          <li>An endless loop freezes the page. Reload; your code will still be there.</li>
+        </ul>
+        <p>Read <strong>merge cost</strong> as “elements written”: a merge of blocks of length a and b costs
+        a + b. <strong>nH</strong> (n times the entropy of the run lengths) is a lower bound no policy can beat.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+</section><!-- /mode 1 -->
+
+<section class="mode-panel" id="mode2" hidden>
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow">merge policy workshop · mode 2 of 3 · compare policies</span>
+    <h1>One input.<br><em>Every rule in the room.</em></h1>
+    <p class="lede">
+      The same run editor, now feeding every policy you switch on — the built-in one and each of
+      yours. Each row is one policy's merge tree over the identical input, with its cost beside it — so a
+      change to a single run shows you immediately <strong>who pays for it and who doesn't</strong>.
+      Turn on <strong>highlight differences</strong> to fade out the merges a policy shares with the
+      reference and keep only the ones where it goes its own way. Click a policy's name to edit it.
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="panel panel-editor">
+    <div class="stage-head">
+      <div class="panel-title" style="margin:0">input runs</div>
+      <div class="editor-stats" id="editorStats"></div>
+    </div>
+    <svg id="stage2" viewBox="0 0 1200 70" preserveAspectRatio="xMidYMid meet" tabindex="0"
+         role="img" aria-label="The input runs. Drag a boundary to resize two runs, drag a run past its neighbour to swap them."></svg>
+    <p class="stage-hint">
+        drag a boundary to resize two runs · drag a run past its neighbour to swap · click to select ·
+        <kbd>←</kbd><kbd>→</kbd> select &nbsp;<kbd>↑</kbd><kbd>↓</kbd> resize (<kbd>shift</kbd> ×10)
+        &nbsp;<kbd>s</kbd> split &nbsp;<kbd>j</kbd> join &nbsp;<kbd>d</kbd> duplicate &nbsp;<kbd>x</kbd> delete
+        &nbsp;<kbd>,</kbd><kbd>.</kbd> swap &nbsp;<kbd>u</kbd> undo
+      </p>
+    <div class="run-tools js-tools"></div>
+    <div class="run-io js-runio"></div>
+  </div>
+
+  <div class="compare-bar">
+    <div class="policy-toggles" id="policyToggles"></div>
+    <label class="param-check"><input type="checkbox" id="diffOn"><span>highlight differences</span></label>
+    <label class="ctl"><span>reference</span><select id="diffRef"></select></label>
+    <label class="ctl"><span>order rows</span>
+      <select id="rowOrder">
+        <option value="registry">as listed</option>
+        <option value="cost">by merge cost</option>
+      </select></label>
+  </div>
+
+  <div id="rows"></div>
+</section>
+
+</section><!-- /mode 2 -->
+
+<section class="mode-panel" id="mode3" hidden>
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow">merge policy workshop · mode 3 of 3 · random inputs &amp; adversarial search</span>
+    <h1>Throw inputs at it.<br><em>See what breaks.</em></h1>
+    <p class="lede">
+      Generate a random input, and every policy&rsquo;s tree is drawn at once — with
+      <strong>highlight differences</strong> to see where they diverge. Then let the search loose:
+      it samples thousands of inputs looking for the one that makes a chosen policy look
+      <strong>worst</strong> (highest cost above <em>nH</em>, or worse than a rival). Write down
+      what you believe about your policy as a <strong>conjecture</strong> — “never more than n(H&nbsp;+&nbsp;2)”, say — tick it, and the search stops the instant it finds a counterexample.
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="gen-bar">
+    <label class="ctl"><span>random input</span><select id="m3gen"></select></label>
+    <label class="ctl"><span>n</span><input type="number" id="m3n" value="800" min="2" step="1"></label>
+    <label class="ctl"><span>runs</span><input type="number" id="m3r" value="16" min="1" step="1"></label>
+    <button class="btn btn-lime" id="m3roll" type="button">roll a new input</button>
+    <button class="btn" id="m3send1" type="button">open in mode 1</button>
+    <p class="gen-note" id="m3genNote"></p>
+  </div>
+
+  <div class="m3-cols">
+    <!-- left: all trees -->
+    <div>
+      <div class="grid-head">
+        <div class="panel-title" style="margin:0">every policy on this input</div>
+        <div class="input-echo" id="m3echo"></div>
+      </div>
+      <div class="compare-bar" style="margin-top:0">
+        <div class="policy-toggles" id="m3toggles"></div>
+        <label class="param-check"><input type="checkbox" id="m3diff"><span>highlight differences</span></label>
+        <label class="ctl"><span>reference</span><select id="m3ref"></select></label>
+        <label class="ctl"><span>order</span>
+          <select id="m3order"><option value="registry">as listed</option><option value="cost">by merge cost</option></select></label>
+      </div>
+      <div class="tree-grid" id="m3rows"></div>
+    </div>
+
+    <div class="col-resizer" id="m3resizer" role="separator" aria-orientation="vertical"
+         title="drag to resize · double-click to reset"></div>
+
+    <!-- right: search + conjectures -->
+    <aside class="m3-side">
+      <div class="panel search-panel">
+        <div class="panel-title">adversarial search</div>
+        <label class="ctl"><span>make this policy look bad</span><select id="sTarget"></select></label>
+        <label class="ctl"><span>by maximising</span>
+          <select id="sMetric">
+            
+            <option value="excess">(cost − nH) / n</option>
+            <option value="ratioNH">cost / nH</option>
+            <option value="vsRival">cost − rival&rsquo;s cost</option>
+          </select></label>
+        <label class="ctl" id="sRivalRow" hidden><span>rival policy</span><select id="sRival"></select></label>
+        <div class="search-row">
+          <label class="ctl"><span>n</span>
+            <select id="sNmode"><option value="fixed">fixed</option><option value="upto" selected>up to</option></select></label>
+          <label class="ctl"><span>n value</span><input type="number" id="sN" value="2000" min="2" step="1"></label>
+          <label class="ctl"><span>runs</span>
+            <select id="sRmode"><option value="upto" selected>up to</option><option value="fixed">fixed</option></select></label>
+          <label class="ctl"><span>runs value</span><input type="number" id="sR" value="40" min="1" step="1"></label>
+          <label class="ctl"><span>samples</span><input type="number" id="sIter" value="3000" min="100" step="500"></label>
+        </div>
+        <div class="search-row" style="margin-top:.6rem">
+          <button class="btn btn-lime" id="sRun" type="button">search</button>
+          <button class="btn" id="sClimb" type="button">climb from current</button>
+          <button class="btn" id="sExtremify" type="button">extremify current</button>
+          <button class="btn" id="sExhaustive" type="button" title="check every composition of n into r runs, exactly">exhaustive (all compositions)</button>
+          <button class="btn" id="sLoad" type="button" disabled>load worst found</button>
+          <button class="btn" id="sClearHall" type="button">clear hall of fame</button>
+        </div>
+        <label class="param-check" style="margin-top:.5rem"><input type="checkbox" id="sAutoLoad" checked>
+          <span>always load the worst input found (uncheck to only report it)</span></label>
+        <p class="mini-legend"><b>search</b> samples random inputs, then hill-climbs from the best one by local edits. <b>extremify</b> repeatedly makes the shortest runs shorter and the longest runs longer, for as long as the metric improves; the number of runs never changes. <b>exhaustive</b> checks every composition in range and respects the n/runs mode toggles: <em>fixed</em> checks exactly that value, <em>up to</em> every value from the minimum up through it. If that space is large it says so and waits. Python policies are slower than the built-in one — keep n and the run count modest and grow them once things look good.</p>
+        <p class="search-status" id="sStatus">Ticking a conjecture below turns the search into a hunt for a counterexample: it stops the moment that conjecture fails.</p>
+        <label class="ctl" style="margin-top:.7rem"><span>current input</span>
+          <input type="text" class="js-runtext" spellcheck="false" autocomplete="off"
+                 style="width:100%" placeholder="comma-separated run lengths"></label>
+        <div class="search-row" style="margin-top:.5rem">
+          <button class="btn btn-lime" id="sApply" type="button">apply</button>
+          <button class="btn" id="sSend1" type="button">open in mode 1</button>
+          <button class="btn" id="sSend2" type="button">open in mode 2</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="conj-head">
+          <div class="panel-title" style="margin:0">conjectures</div>
+          <div><button class="link" type="button" data-stopset="1">stop-tick all</button> · <button class="link" type="button" data-stopset="0">none</button></div>
+        </div>
+        <p class="mini-legend">Two claims per policy, checked live against the input on the left. The numbers are yours to edit: how far above <em>nH</em> do you believe your policy can be driven? Tick the box to make the search stop on a violation.</p>
+        <div class="conj-list" id="conjList"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="hall" id="hall">
+    <div class="hall-title">hall of fame — worst inputs found this session</div>
+    <div class="hall-row" id="hallRow"><span class="hall-empty">nothing yet — run a search.</span></div>
+  </div>
+</section>
+
+</section><!-- /mode 3 -->
+
+</main>
+
+<footer class="site-footer">
+  <div class="selftest" id="selftest">checking…</div>
+  <p style="margin-left:auto">merge policy workshop · starter edition · modes 1–3 · bring your own policy</p>
+</footer>
+
+<div id="tip"></div>
+
+<!-- ======================================================================
+     PYTHON  --  PyScript (Pyodide) runs on the main thread, so the JS below
+     can call the harness synchronously.  The harness is the workshop's
+     mergelab.py, inlined verbatim by build.py; then a thin bridge that
+     compiles a policy from source and runs it on one input, talking JSON.
+     ====================================================================== -->
+<script type="py">
+import sys, io, json, linecache, traceback, types
+
+_mergelab_src = r'''
+"""
+mergelab -- the small harness behind the merge-policy workshop.
+
+A merge policy is a plain Python function
+
+    def policy(runs):
+        ...
+        return merges
+
+`runs` is the list of run lengths of the input, left to right, e.g.
+[5, 3, 3, 14, 1, 2].  The policy does not sort anything; it only decides
+in which order neighbouring blocks are merged.  It describes that order by
+returning a list of merges, in ONE of two styles:
+
+  positions   each entry is an int k: "merge the blocks that are currently at
+              positions k and k+1" (0-based, counted from the left over ALL
+              current blocks -- including runs a stack-based rule has not read
+              yet).  Order matters: the block list shrinks by one per merge.
+              If you keep a stack of the blocks read so far, stack[i] IS block
+              i, so merging stack[i] and stack[i+1] is simply the merge k = i.
+
+  spans       each entry is a pair (i, j): "merge the two blocks that together
+              cover the original runs i..j" (0-based, inclusive).  Order does
+              not matter -- the harness sorts them so small spans go first --
+              which makes this the natural style for recursive, top-down rules.
+
+Every input of r runs needs exactly r-1 merges.  The harness checks all of
+this and explains what went wrong in plain words.
+
+Merge cost = sum over all merges of the length of the merged block, i.e.
+"how many elements were written".  nH = n * (Shannon entropy of the run
+lengths in bits) is a lower bound for every policy; OPT is the cheapest
+possible tree, found by dynamic programming.
+"""
+
+
+import math
+import random
+
+__all__ = [
+    "Node", "PolicyError", "normalise_merges", "build_tree", "tree_of",
+    "merge_cost", "entropy", "nH", "optimal_tree", "optimal_cost",
+    "spans_of", "ascii_tree", "check_policy", "random_runs",
+]
+
+
+# ---------------------------------------------------------------------------
+# the merge tree
+# ---------------------------------------------------------------------------
+
+class Node:
+    """A node of a merge tree.  Leaves are the input runs (left is None)."""
+    __slots__ = ("lo", "hi", "length", "left", "right")
+
+    def __init__(self, lo, hi, length, left=None, right=None):
+        self.lo, self.hi, self.length = lo, hi, length
+        self.left, self.right = left, right
+
+    @property
+    def is_leaf(self):
+        return self.left is None
+
+    def __repr__(self):
+        if self.is_leaf:
+            return f"run{self.lo}[{self.length}]"
+        return f"({self.left!r} + {self.right!r})"
+
+
+class PolicyError(ValueError):
+    """Raised when a policy returns something that is not a valid merge order."""
+
+
+def _leaf(i, length):
+    return Node(i, i, length)
+
+
+def _merge(a, b):
+    return Node(a.lo, b.hi, a.length + b.length, a, b)
+
+
+def _fmt_blocks(blocks, limit=12):
+    parts = [f"[{b.lo}..{b.hi}]={b.length}" if b.lo != b.hi else f"run{b.lo}={b.length}"
+             for b in blocks[:limit]]
+    if len(blocks) > limit:
+        parts.append(f"... ({len(blocks)} blocks in total)")
+    return " ".join(parts)
+
+
+def _is_int(x):
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _is_pair(x):
+    return isinstance(x, (tuple, list)) and len(x) == 2 and all(_is_int(v) for v in x)
+
+
+def normalise_merges(runs, merges):
+    """Turn whatever the policy returned into an executable list of positions.
+
+    Returns a list of non-negative ints k (merge blocks k and k+1, applied in
+    order).  Raises PolicyError with a friendly message otherwise."""
+    r = len(runs)
+    if merges is None:
+        raise PolicyError("policy returned None -- did you forget `return merges`?")
+    try:
+        merges = list(merges)
+    except TypeError:
+        raise PolicyError(f"policy must return a list of merges, got {type(merges).__name__}")
+    if r == 1:
+        if merges:
+            raise PolicyError("a single run needs no merge at all, but the policy returned "
+                              f"{len(merges)} merge(s)")
+        return []
+
+    if all(_is_int(m) for m in merges):
+        style = "positions"
+    elif all(_is_pair(m) for m in merges):
+        style = "spans"
+    else:
+        bad = next((m for m in merges if not (_is_int(m) or _is_pair(m))), None)
+        if bad is None:
+            raise PolicyError("mixed styles: use EITHER positions (ints) OR spans (pairs) "
+                              "for all merges, not both")
+        raise PolicyError(f"each merge must be an int (position) or a pair (i, j) of run "
+                          f"indices; got {bad!r}")
+
+    blocks = [_leaf(i, l) for i, l in enumerate(runs)]
+    positions = []
+
+    if style == "positions":
+        for step, k in enumerate(merges):
+            h = len(blocks)
+            if h == 1:
+                raise PolicyError(f"too many merges: after {step} merges only one block is "
+                                  f"left, but the policy returned {len(merges)} merges")
+            if k < 0:
+                raise PolicyError(f"merge #{step + 1}: position {k} is negative. Positions count "
+                                  "from the left over ALL current blocks (including runs a "
+                                  "stack has not read yet), so a negative index would silently "
+                                  "pick the wrong blocks. For the top two blocks of a stack "
+                                  "of height h use h - 2.")
+            kk = k
+            if not (0 <= kk < h - 1):
+                raise PolicyError(f"merge #{step + 1}: position {k} is out of range -- there "
+                                  f"are {h} blocks right now, so positions 0..{h - 2} are "
+                                  f"allowed.\n  blocks: {_fmt_blocks(blocks)}")
+            blocks[kk:kk + 2] = [_merge(blocks[kk], blocks[kk + 1])]
+            positions.append(kk)
+    else:
+        seen = set()
+        for i, j in merges:
+            if not (0 <= i < j < r):
+                raise PolicyError(f"span ({i}, {j}) is not a valid range of run indices: "
+                                  f"need 0 <= i < j <= {r - 1}")
+            if (i, j) in seen:
+                raise PolicyError(f"span ({i}, {j}) appears twice")
+            seen.add((i, j))
+        if len(merges) != r - 1:
+            missing = r - 1 - len(merges)
+            raise PolicyError(f"{r} runs need exactly {r - 1} merges, but the policy returned "
+                              f"{len(merges)} spans ({'missing ' + str(missing) if missing > 0 else str(-missing) + ' too many'})")
+        for i, j in sorted(merges, key=lambda s: (s[1] - s[0], s[0])):
+            pos = next((p for p, b in enumerate(blocks) if b.lo == i), None)
+            if pos is None or pos + 1 >= len(blocks) or blocks[pos + 1].hi != j:
+                touching = [b for b in blocks if b.hi >= i and b.lo <= j]
+                out = [b for b in touching if b.lo < i or b.hi > j]
+                if out:
+                    why = (f"it crosses the earlier merge {_fmt_blocks(out)} -- spans must nest "
+                           f"like brackets, they can never overlap partially.")
+                else:
+                    why = (f"the blocks inside runs {i}..{j} are {_fmt_blocks(touching)} -- "
+                           f"that is {len(touching)} blocks, but one merge joins exactly two. "
+                           f"Some smaller span inside {i}..{j} is missing.")
+                raise PolicyError(f"span ({i}, {j}) does not fit the tree: {why}")
+            blocks[pos:pos + 2] = [_merge(blocks[pos], blocks[pos + 1])]
+            positions.append(pos)
+
+    if len(blocks) > 1:
+        raise PolicyError(f"{r} runs need {r - 1} merges, but the policy returned only "
+                          f"{len(merges)}. These blocks are still unmerged: "
+                          f"{_fmt_blocks(blocks)}\n  (A final loop that merges what is left "
+                          f"usually fixes this.)")
+    return positions
+
+
+def build_tree(runs, positions):
+    """Replay a list of (non-negative) positions into a Node tree."""
+    blocks = [_leaf(i, l) for i, l in enumerate(runs)]
+    for k in positions:
+        blocks[k:k + 2] = [_merge(blocks[k], blocks[k + 1])]
+    if len(blocks) != 1:
+        raise PolicyError("positions do not merge everything into one block")
+    return blocks[0]
+
+
+def tree_of(policy, runs):
+    """Run `policy` on `runs` and return the validated merge tree."""
+    runs = [int(x) for x in runs]
+    if not runs or any(x < 1 for x in runs):
+        raise PolicyError("run lengths must be positive integers")
+    return build_tree(runs, normalise_merges(runs, policy(list(runs))))
+
+
+# ---------------------------------------------------------------------------
+# measures
+# ---------------------------------------------------------------------------
+
+def merge_cost(tree):
+    """Sum of the lengths of all internal nodes."""
+    if tree.is_leaf:
+        return 0
+    return tree.length + merge_cost(tree.left) + merge_cost(tree.right)
+
+
+def entropy(runs):
+    """Shannon entropy of the run-length distribution, in bits per element."""
+    n = sum(runs)
+    return sum((l / n) * math.log2(n / l) for l in runs)
+
+
+def nH(runs):
+    """n * H: the information-theoretic lower bound on the merge cost."""
+    return sum(runs) * entropy(runs)
+
+
+def spans_of(tree):
+    """The set of (lo, hi) spans of the internal nodes -- the shape of the tree."""
+    out = set()
+
+    def walk(t):
+        if t.is_leaf:
+            return
+        out.add((t.lo, t.hi))
+        walk(t.left)
+        walk(t.right)
+    walk(tree)
+    return out
+
+
+def tree_height(tree):
+    if tree.is_leaf:
+        return 0
+    return 1 + max(tree_height(tree.left), tree_height(tree.right))
+
+
+def optimal_tree(runs):
+    """The cheapest merge tree of all (optimal alphabetic tree), by dynamic
+    programming over slices.  Knuth's monotonicity keeps it quadratic."""
+    r = len(runs)
+    if r == 1:
+        return _leaf(0, runs[0])
+    end = [0]
+    for l in runs:
+        end.append(end[-1] + l)
+    INF = float("inf")
+    cost = [[0.0] * r for _ in range(r)]
+    cut = [[i] * r for i in range(r)]
+    for width in range(2, r + 1):
+        for i in range(0, r - width + 1):
+            j = i + width - 1
+            lo, hi = max(i, cut[i][j - 1]), min(j - 1, cut[i + 1][j])
+            best, best_k = INF, lo
+            for k in range(lo, hi + 1):
+                c = cost[i][k] + cost[k + 1][j]
+                if c < best:
+                    best, best_k = c, k
+            cost[i][j] = best + (end[j + 1] - end[i])
+            cut[i][j] = best_k
+
+    def build(i, j):
+        if i == j:
+            return _leaf(i, runs[i])
+        k = cut[i][j]
+        return _merge(build(i, k), build(k + 1, j))
+    return build(0, r - 1)
+
+
+def optimal_cost(runs):
+    return merge_cost(optimal_tree(runs))
+
+
+# ---------------------------------------------------------------------------
+# a text picture of the tree, for the terminal
+# ---------------------------------------------------------------------------
+
+def ascii_tree(tree, runs, width=72):
+    """Draw the tree the way the lab does: one row per depth, leaves at the
+    bottom, every node a bar as wide as its share of the array."""
+    n = sum(runs)
+    start = [0]
+    for l in runs:
+        start.append(start[-1] + l)
+    depth = tree_height(tree)
+    rows = [[] for _ in range(depth + 1)]
+    inner = max(20, width - 2)
+
+    def x(pos):
+        return round(pos / n * inner)
+
+    def walk(t, d):
+        row = depth if t.is_leaf else d
+        rows[row].append((x(start[t.lo]), x(start[t.hi + 1]), t.length, t.is_leaf))
+        if not t.is_leaf:
+            walk(t.left, d + 1)
+            walk(t.right, d + 1)
+    walk(tree, 0)
+
+    lines = []
+    for row in rows:
+        line = [" "] * (inner + 1)
+        for x0, x1, length, is_leaf in sorted(row):
+            x1 = max(x1, x0 + 1)
+            fill = "=" if is_leaf else "-"
+            for p in range(x0, min(x1, inner + 1)):
+                line[p] = fill
+            label = str(length)
+            if x1 - x0 >= len(label) + 2:
+                mid = (x0 + x1 - len(label)) // 2
+                line[mid:mid + len(label)] = label
+            if x0 < len(line):
+                line[x0] = "|"
+        lines.append("".join(line).rstrip())
+    lines.append(f"0{'':{max(0, inner - len(str(n)) - 1)}}n={n}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# checking a policy
+# ---------------------------------------------------------------------------
+
+def random_runs(rng=random, max_runs=16, big=3000, small=40, p_big=0.3):
+    """The lab's random inputs: 2..max_runs runs, mostly short, some long."""
+    r = rng.randint(2, max_runs)
+    return [1 + rng.randrange(big if rng.random() < p_big else small) for _ in range(r)]
+
+
+def check_policy(policy, inputs, verbose=False):
+    """Run `policy` on every input in `inputs`; return a list of result dicts.
+
+    Each dict has: runs, ok, and either error or cost/opt/nH/tree."""
+    results = []
+    for runs in inputs:
+        rec = {"runs": list(runs)}
+        try:
+            tree = tree_of(policy, runs)
+            rec.update(ok=True, tree=tree, cost=merge_cost(tree),
+                       opt=optimal_cost(runs), nH=nH(runs), n=sum(runs))
+        except PolicyError as e:
+            rec.update(ok=False, error=str(e), kind="invalid")
+        except Exception as e:  # a bug inside the policy itself
+            rec.update(ok=False, error=f"{type(e).__name__}: {e}", kind="crash")
+        results.append(rec)
+    return results
+
+'''
+mergelab = types.ModuleType("mergelab")
+exec(compile(_mergelab_src, "mergelab.py", "exec"), mergelab.__dict__)
+sys.modules["mergelab"] = mergelab          # so a policy may `import mergelab` if it wants to
+
+from pyscript import window, document
+from pyscript.ffi import create_proxy
+
+POLICIES = {}                               # id -> policy function
+
+
+def _format_exc(e, filename):
+    if isinstance(e, SyntaxError) and e.filename == filename:
+        caret = " " * (max(1, e.offset or 1) - 1) + "^"
+        return f"syntax error on line {e.lineno}: {e.msg}\n    {(e.text or '').rstrip()}\n    {caret}"
+    frames = [f for f in traceback.extract_tb(e.__traceback__) if f.filename == filename]
+    lines = [f"  line {f.lineno}, in {f.name}:  {(f.line or '').strip()}" for f in frames]
+    if isinstance(e, RecursionError):
+        lines.append("RecursionError: the recursion never bottoms out (does the base case return?)")
+    else:
+        lines.append(f"{type(e).__name__}: {e}")
+    return "\n".join(lines)
+
+
+def py_compile(pid, src):
+    """Compile `src`, keep its policy() under `pid`.  Returns JSON {ok, error?, displayName?}."""
+    filename = f"<{pid}>"
+    linecache.cache[filename] = (len(src), None, src.splitlines(True), filename)
+    ns = {"__name__": "policy_" + pid}
+    try:
+        exec(compile(src, filename, "exec"), ns)
+    except BaseException as e:
+        POLICIES.pop(pid, None)
+        return json.dumps({"ok": False, "error": _format_exc(e, filename)})
+    fn = ns.get("policy")
+    if not callable(fn):
+        POLICIES.pop(pid, None)
+        return json.dumps({"ok": False, "error": "no function `policy(runs)` found -- define one with\n    def policy(runs):"})
+    POLICIES[pid] = fn
+    name = ns.get("NAME")
+    return json.dumps({"ok": True, "displayName": name if isinstance(name, str) else None})
+
+
+def py_run(pid, runs_json):
+    """Run policy `pid` on one input.  Returns JSON {ok, positions, stdout} or {ok: False, error, stdout}."""
+    fn = POLICIES.get(pid)
+    if fn is None:
+        return json.dumps({"ok": False, "error": "this policy has not been compiled yet -- press run", "stdout": ""})
+    runs = json.loads(runs_json)
+    buf, old = io.StringIO(), sys.stdout
+    sys.stdout = buf
+    try:
+        positions = mergelab.normalise_merges(runs, fn(list(runs)))
+        return json.dumps({"ok": True, "positions": positions, "stdout": buf.getvalue()[-4000:]})
+    except mergelab.PolicyError as e:
+        return json.dumps({"ok": False, "error": "not a valid merge order: " + str(e), "stdout": buf.getvalue()[-4000:]})
+    except BaseException as e:
+        return json.dumps({"ok": False, "error": _format_exc(e, f"<{pid}>"), "stdout": buf.getvalue()[-4000:]})
+    finally:
+        sys.stdout = old
+
+
+def py_drop(pid):
+    POLICIES.pop(pid, None)
+
+
+window.pyCompile = create_proxy(py_compile)
+window.pyRun = create_proxy(py_run)
+window.pyDrop = create_proxy(py_drop)
+window.pyVersion = "Python " + sys.version.split()[0]
+document.dispatchEvent(window.CustomEvent.new("mergelab-py-ready"))
+</script>
+
+<script>
+"use strict";
+
+/* ==========================================================================
+   MERGE TREES
+   A merge tree is built from two helpers only:
+     leaf(i, len)      a leaf: the i-th input run, of length len
+     merge(a, b)       an internal node: merge the adjacent trees a and b
+   The merge cost of the tree is the sum of the lengths of its internal nodes.
+   ========================================================================== */
+function leaf(i, len) { return { lo: i, hi: i, len: len, left: null, right: null }; }
+function merge(a, b) { return { lo: a.lo, hi: b.hi, len: a.len + b.len, left: a, right: b }; }
+function mergeCost(tree) { return tree.left === null ? 0 : tree.len + mergeCost(tree.left) + mergeCost(tree.right); }
+
+/* Replay a list of merge positions (as the Python harness returns them):
+   position k merges the blocks currently at k and k+1. */
+function replay(runs, positions) {
+  const blocks = runs.map((len, i) => leaf(i, len));
+  for (const k of positions) {
+    if (!(k >= 0 && k + 1 < blocks.length)) throw new Error('invalid merge position ' + k);
+    blocks.splice(k, 2, merge(blocks[k], blocks[k + 1]));
+  }
+  if (blocks.length !== 1) throw new Error('merges do not reduce the input to one block');
+  return blocks[0];
+}
+
+/* build-time variant flags (see build.py): the full edition has OPT as the
+   yardstick and a bottom-up dummy; the starter edition has no OPT at all and a
+   far worse dummy that always merges the rightmost two blocks. */
+const HAS_OPT = false;
+const DUMMY_RIGHT = true;
+
+/* --------------------------------------------------------------------------
+   MERGE THE RIGHTMOST TWO, ALWAYS  --  the starter-edition dummy: a chain that
+   drags the whole right end through every merge.
+   -------------------------------------------------------------------------- */
+function rightmostPairs(runs) {
+  let v = runs.map((len, i) => leaf(i, len));
+  while (v.length > 1) v.splice(v.length - 2, 2, merge(v[v.length - 2], v[v.length - 1]));
+  return v[0];
+}
+
+/* --------------------------------------------------------------------------
+   BOTTOM-UP, LEFT TO RIGHT  --  the built-in dummy.  Round after round, merge
+   neighbouring pairs from the left; an odd block at the end waits a round.
+   Ignores the run lengths completely.
+   -------------------------------------------------------------------------- */
+function bottomUp(runs) {
+  let v = runs.map((len, i) => leaf(i, len));
+  while (v.length > 1) {
+    const w = [];
+    for (let i = 0; i < v.length; i += 2) w.push(i + 1 < v.length ? merge(v[i], v[i + 1]) : v[i]);
+    v = w;
+  }
+  return v[0];
+}
+
+/* --------------------------------------------------------------------------
+   OPT  --  the cheapest merge tree of all: the optimal alphabetic tree, by
+   dynamic programming over slices (Knuth's monotonicity keeps it quadratic).
+   -------------------------------------------------------------------------- */
+function optimal(runs) {
+  const r = runs.length;
+  if (r === 1) return leaf(0, runs[0]);
+  const end = [0];
+  runs.forEach(l => end.push(end[end.length - 1] + l));
+  const cost = [], cut = [];
+  for (let i = 0; i < r; i++) { cost.push(new Float64Array(r)); cut.push(new Int32Array(r)); }
+  for (let i = 0; i < r; i++) cut[i][i] = i;
+  for (let width = 2; width <= r; width++)
+    for (let i = 0; i + width <= r; i++) {
+      const j = i + width - 1;
+      const from = Math.max(i, cut[i][j - 1]), to = Math.min(j - 1, cut[i + 1][j]);
+      let best = Infinity, bestK = from;
+      for (let k = from; k <= to; k++) {
+        const c = cost[i][k] + cost[k + 1][j];
+        if (c < best) { best = c; bestK = k; }
+      }
+      cost[i][j] = best + (end[j + 1] - end[i]);
+      cut[i][j] = bestK;
+    }
+  const build = (i, j) => i === j ? leaf(i, runs[i]) : merge(build(i, cut[i][j]), build(cut[i][j] + 1, j));
+  return build(0, r - 1);
+}
+
+/* The Python source of the built-in dummy -- shown read-only, and the seed of
+   every new policy.  Kept identical in behaviour to bottomUp() above; the
+   self-tests check that. */
+const RIGHTMOST_PY = `# Merge the rightmost two: the dummy policy built into this page.
+#
+# runs   is the list of run lengths of the input, e.g. [5, 3, 3, 14, 1, 2]
+# return a list of merges.  Here every entry k means "merge the blocks that
+#        are currently at positions k and k+1" (counted from the left, 0-based).
+#        Open "how to write a policy" below the editor for the other style.
+
+def policy(runs):
+    blocks = list(runs)          # the current block lengths, left to right
+    merges = []
+    while len(blocks) > 1:
+        k = len(blocks) - 2                       # the last two blocks ...
+        merges.append(k)                          # ... are merged, whatever their lengths
+        blocks[k:k + 2] = [blocks[k] + blocks[k + 1]]
+    return merges
+`;
+
+const NEW_POLICY_RIGHT_PY = `# A new policy.  runs is the list of run lengths, left to right.
+# Return a list of merges: either positions k ("merge blocks k and k+1",
+# counted over all current blocks, 0-based) or spans (i, j) ("merge the two
+# blocks that together cover runs i..j").  Details: "how to write a policy".
+#
+# This starts as the dumb built-in rule.  Make it look at the lengths.
+
+def policy(runs):
+    blocks = list(runs)
+    merges = []
+    while len(blocks) > 1:
+        k = len(blocks) - 2
+        merges.append(k)
+        blocks[k:k + 2] = [blocks[k] + blocks[k + 1]]
+    return merges
+`;
+
+const BOTTOM_UP_LEFT_PY = `# Bottom-up, left to right: the dummy policy built into this page.
+#
+# runs   is the list of run lengths of the input, e.g. [5, 3, 3, 14, 1, 2]
+# return a list of merges.  Here every entry k means "merge the blocks that
+#        are currently at positions k and k+1" (counted from the left, 0-based).
+#        Open "how to write a policy" below the editor for the other style.
+
+def policy(runs):
+    blocks = list(runs)          # the current block lengths, left to right
+    merges = []
+    while len(blocks) > 1:
+        k = 0
+        while k + 1 < len(blocks):
+            merges.append(k)                      # merge blocks k and k+1 ...
+            blocks[k:k + 2] = [blocks[k] + blocks[k + 1]]
+            k += 1                                # ... the merged block sits at k; move past it
+        # an odd block at the right end simply waits for the next round
+    return merges
+`;
+
+const NEW_POLICY_LEFT_PY = `# A new policy.  runs is the list of run lengths, left to right.
+# Return a list of merges: either positions k ("merge blocks k and k+1",
+# counted over all current blocks, 0-based) or spans (i, j) ("merge the two
+# blocks that together cover runs i..j").  Details: "how to write a policy".
+#
+# This starts as the dumb built-in rule.  Make it look at the lengths.
+
+def policy(runs):
+    blocks = list(runs)
+    merges = []
+    while len(blocks) > 1:
+        k = 0
+        while k + 1 < len(blocks):
+            merges.append(k)
+            blocks[k:k + 2] = [blocks[k] + blocks[k + 1]]
+            k += 1
+    return merges
+`;
+
+const BOTTOM_UP_PY = DUMMY_RIGHT ? RIGHTMOST_PY : BOTTOM_UP_LEFT_PY;
+const NEW_POLICY_PY = DUMMY_RIGHT ? NEW_POLICY_RIGHT_PY : NEW_POLICY_LEFT_PY;
+
+/* ==========================================================================
+   POLICY REGISTRY  --  two built-ins plus whatever the user writes.
+   Every policy has  build(runs) -> merge tree.  Custom ones call into Python.
+   ========================================================================== */
+const BUILTINS = [
+  DUMMY_RIGHT
+  ? { id: 'bottomup', kind: 'builtin', name: 'merge the rightmost two, always', build: rightmostPairs,
+      blurb: 'The dummy this page ships with: merge the last two blocks, then the last two again, and so on until one block is left. It never looks at a length — the whole right end of the array is dragged through every single merge. Its Python source is shown below as a starting point; almost any idea beats it.' }
+  : { id: 'bottomup', kind: 'builtin', name: 'bottom-up, left to right', build: bottomUp,
+      blurb: 'The dummy this page ships with: round after round, pair up neighbouring blocks from the left; a block without a partner waits for the next round. It never looks at a length — which is exactly why it pays so much on uneven inputs. Its Python source is shown below as a starting point.' },
+  { id: 'opt', kind: 'builtin', name: 'OPT · optimal merge tree', build: optimal,
+    blurb: 'The cheapest tree any stable policy could possibly build on this input, found by dynamic programming over all ways to cut. Not a practical policy — it needs every run length up front and quadratic time — but it is the yardstick everything else is measured against.' }
+];
+
+/* custom policies: { id, kind: 'custom', name, src, compiledSrc, ok, error, displayName, version } */
+let CUSTOM = [];
+const POLICIES = () => [BUILTINS[0]].concat(CUSTOM, HAS_OPT ? [BUILTINS[1]] : []);
+const byId = id => POLICIES().find(p => p.id === id);
+const isCustom = p => p && p.kind === 'custom';
+
+/* ---- the python side ------------------------------------------------------ */
+let pyReady = false, pyFailed = '';
+const pyCache = new Map();                         // "id#version|runs" -> positions
+
+function pyBuildFactory(cp) {
+  return function customBuild(runs) {
+    if (pyFailed) throw new Error('Python could not be loaded: ' + pyFailed);
+    if (!pyReady) throw new Error('Python is still loading — the tree appears as soon as it is ready.');
+    if (!cp.ok) throw new Error(cp.error || 'this policy has not run successfully yet — press run');
+    const key = cp.id + '#' + cp.version + '|' + runs.join(',');
+    let positions = pyCache.get(key);
+    if (!positions) {
+      const res = JSON.parse(window.pyRun(cp.id, JSON.stringify(runs)));
+      cp.lastStdout = res.stdout || '';
+      cp.lastRuns = runs.slice();
+      if (!res.ok) { cp.lastError = res.error; throw new Error(res.error); }
+      cp.lastError = '';
+      positions = res.positions;
+      if (pyCache.size > 20000) pyCache.clear();
+      pyCache.set(key, positions);
+    }
+    return replay(runs, positions);
+  };
+}
+
+function compilePolicy(cp) {
+  if (!pyReady) { cp.ok = false; cp.error = ''; return; }
+  const res = JSON.parse(window.pyCompile(cp.id, cp.src));
+  cp.compiledSrc = cp.src;
+  cp.version += 1;
+  cp.ok = res.ok;
+  cp.error = res.ok ? '' : res.error;
+  cp.lastError = ''; cp.lastStdout = '';
+  if (res.ok && res.displayName && !cp.nameEdited) cp.name = res.displayName.slice(0, 40);
+}
+
+function newCustom(name, src) {
+  const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const cp = { id, kind: 'custom', name, src, compiledSrc: null, ok: false, error: '', version: 0,
+               nameEdited: false, lastStdout: '', lastError: '', lastRuns: null };
+  cp.build = pyBuildFactory(cp);
+  return cp;
+}
+
+/* ---- persistence: everything the user writes survives a reload ---- */
+const STORE_KEY = 'powersort-workshop-policies-v1';
+function saveCustom() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      policies: CUSTOM.map(c => ({ id: c.id, name: c.name, src: c.src, nameEdited: c.nameEdited })),
+      selected: state.policy }));
+  } catch (e) { /* private mode etc. -- nothing to do */ }
+}
+function loadCustom() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { data = null; }
+  if (data && Array.isArray(data.policies) && data.policies.length) {
+    CUSTOM = data.policies.map(d => {
+      const cp = newCustom(String(d.name || 'my policy').slice(0, 40), String(d.src || NEW_POLICY_PY));
+      cp.id = String(d.id || cp.id); cp.nameEdited = !!d.nameEdited;
+      return cp;
+    });
+    return data.selected;
+  }
+  CUSTOM = [newCustom('my first policy', NEW_POLICY_PY)];
+  return CUSTOM[0].id;
+}
+
+/* ==========================================================================
+   INPUT GENERATORS  (only the ones that do not name a particular policy)
+   ========================================================================== */
+const sum = a => a.reduce((x, y) => x + y, 0);
+
+function rescale(parts, n) {                 // scale to sum exactly n, all parts >= 1
+  const r = parts.length, s = sum(parts) || r;
+  let out = parts.map(x => Math.max(1, Math.round(x / s * n)));
+  let diff = n - sum(out);
+  for (let g = 0; diff !== 0 && g < 4 * r + 8; g++) {
+    const i = g % r;
+    if (diff > 0) { out[i]++; diff--; }
+    else if (out[i] > 1) { out[i]--; diff++; }
+  }
+  return out;
+}
+
+function randomComposition(n, r) {
+  r = Math.max(1, Math.min(r, n));
+  const cuts = new Set();
+  while (cuts.size < r - 1) cuts.add(1 + Math.floor(Math.random() * (n - 1)));
+  const c = [...cuts].sort((a, b) => a - b);
+  const out = []; let prev = 0;
+  for (const x of c) { out.push(x - prev); prev = x; }
+  out.push(n - prev);
+  return out;
+}
+
+const GEN_NOTES = {
+  random: 'Uniformly random composition of n into r positive parts — the generic case.',
+  geometric: 'Run lengths drawn i.i.d. from an exponential, then rescaled to sum to n. Models runs of independent random data.',
+  equal: 'r runs of equal length: the balanced-merge best case, entropy log₂ r.',
+  ramp: 'Lengths 1, 2, …, r rescaled to n.',
+  ramprev: 'Lengths r, …, 2, 1 rescaled to n — the ramp, mirrored.',
+  spike: 'One run holds almost everything, the rest are singletons — very low entropy.',
+  spikemid: 'The huge run sits in the middle of the singletons instead of at the front.',
+  halving: 'Geometrically halving run lengths — deep, unbalanced trees.',
+  alternate: 'Alternating long and short runs.',
+  sawtooth: 'Many length-2 runs and one square run: tiny entropy, many runs.',
+  twopeaks: 'Two long runs far apart, small runs between and around them.'
+};
+const GENERATORS = [
+  { id: 'random', label: 'random composition', make: (n, r) => randomComposition(n, r) },
+  { id: 'geometric', label: 'geometric run lengths', make: (n, r) =>
+      rescale(Array.from({ length: r }, () => 1 - Math.log(1 - Math.random())), n) },
+  { id: 'equal', label: 'equal runs', make: (n, r) => rescale(Array(r).fill(1), n) },
+  { id: 'ramp', label: 'ramp 1, 2, 3, …, r', make: (n, r) => rescale(Array.from({ length: r }, (_, i) => i + 1), n) },
+  { id: 'ramprev', label: 'ramp r, …, 3, 2, 1', make: (n, r) => rescale(Array.from({ length: r }, (_, i) => r - i), n) },
+  { id: 'spike', label: 'one huge run + tiny runs', make: (n, r) =>
+      rescale([Math.max(1, n - r + 1)].concat(Array(Math.max(0, r - 1)).fill(1)), n) },
+  { id: 'spikemid', label: 'tiny runs, huge run in the middle', make: (n, r) => {
+      const k = Math.max(0, r - 1), a = Math.floor(k / 2);
+      return rescale(Array(a).fill(1).concat([Math.max(1, n - k)], Array(k - a).fill(1)), n); } },
+  { id: 'halving', label: '(2n, n, n/2, …, 4, 4, 2)', make: n => {
+      const out = []; let x = Math.max(4, 1 << Math.floor(Math.log2(Math.max(4, n / 4))));
+      out.push(2 * x, x);
+      while (x > 4) { x >>= 1; out.push(x); }
+      out.push(4, 2); return out; } },
+  { id: 'alternate', label: 'alternating long / short', make: (n, r) =>
+      rescale(Array.from({ length: r }, (_, i) => i % 2 ? 1 : 30), n) },
+  { id: 'sawtooth', label: '(2, 2, …, 2, k²) — tiny entropy, many runs', make: (n, r) => {
+      const k = Math.max(2, r - 1); return Array(k).fill(2).concat([k * k]); } },
+  { id: 'twopeaks', label: 'two long runs far apart', make: (n, r) => {
+      const k = Math.max(3, r), out = Array(k).fill(1);
+      out[Math.floor(k / 4)] = 40; out[Math.floor(3 * k / 4)] = 60; return rescale(out, n); } }
+];
+
+/* ==========================================================================
+   STATE
+   ========================================================================== */
+const state = {
+  mode: 1,
+  runs: [61, 49, 8, 4, 9, 7, 164, 5, 9, 320],
+  policy: 'bottomup',
+  active: {},                                   // mode 2
+  diffOn: false, diffRef: HAS_OPT ? 'opt' : 'bottomup', rowOrder: 'registry',
+  m3: { active: {}, diffOn: true, diffRef: HAS_OPT ? 'opt' : 'bottomup', rowOrder: 'cost',
+        gen: 'random', worst: null, hall: [], stop: {}, autoLoad: true },
+  conj: {},                                     // pid -> { c, rho }  the editable bound constants
+  selected: 0,
+  past: [], future: []
+};
+
+const treeOf = (p, runs) => p.build(runs);
+const $ = id => document.getElementById(id);
+
+function snapshot() { return state.runs.slice(); }
+function commit(runs, { history = true, defer = false } = {}) {
+  if (history) { state.past.push(snapshot()); if (state.past.length > 200) state.past.shift(); state.future.length = 0; }
+  state.runs = runs.map(x => Math.max(1, Math.round(x)));
+  if (!state.runs.length) state.runs = [1];
+  state.selected = Math.min(state.selected, state.runs.length - 1);
+  if (defer) scheduleRender(); else render();
+}
+function undo() { if (!state.past.length) return; state.future.push(snapshot()); state.runs = state.past.pop(); state.selected = Math.min(state.selected, state.runs.length - 1); render(); }
+function redo() { if (!state.future.length) return; state.past.push(snapshot()); state.runs = state.future.pop(); state.selected = Math.min(state.selected, state.runs.length - 1); render(); }
+
+/* ==========================================================================
+   METRICS
+   ========================================================================== */
+function entropy(runs) {                       // H in bits per element
+  const n = sum(runs);
+  return runs.reduce((a, l) => a + (l / n) * Math.log2(n / l), 0);
+}
+function treeStats(tree) {
+  let height = 0, merges = 0;
+  (function walk(t, d) {
+    if (!t.left) { height = Math.max(height, d); return; }
+    merges++; walk(t.left, d + 1); walk(t.right, d + 1);
+  })(tree, 0);
+  return { height, merges };
+}
+const fmtInt = x => Math.round(x).toLocaleString('en-US');
+const fmt = (x, d = 3) => Number.isFinite(x) ? x.toFixed(d) : '—';
+
+/* costs of every policy on one input; a policy that fails gets NaN */
+function allCosts(runs) {
+  const out = {};
+  for (const p of POLICIES()) {
+    try { out[p.id] = mergeCost(p.build(runs)); }
+    catch (e) { out[p.id] = NaN; }
+  }
+  return out;
+}
+function inputFacts(runs) {
+  const n = sum(runs), H = entropy(runs), nH = n * H;
+  return { runs, n, r: runs.length, H, nH, c: allCosts(runs) };
+}
+
+/* ==========================================================================
+   CONJECTURES  --  two editable claims per policy, plus the one theorem.
+   ========================================================================== */
+function conjParams(pid) {
+  if (!state.conj[pid]) state.conj[pid] = { c: 2, rho: 1.5 };
+  return state.conj[pid];
+}
+function conjectures() {
+  const list = HAS_OPT
+    ? [{ id: 'opt_lb', tag: 'thm', name: 'OPT ≥ ⌈nH⌉ for every input',
+         test: f => f.c.opt >= f.nH - 1e-6,
+         detail: f => `OPT = ${fmtInt(f.c.opt)},  nH = ${fmtInt(f.nH)}` }]
+    : [{ id: 'nh_lb', tag: 'thm', name: 'every policy ≥ ⌈nH⌉ on every input',
+         test: f => POLICIES().every(p => !Number.isFinite(f.c[p.id]) || f.c[p.id] >= f.nH - 1e-6),
+         detail: f => `nH = ${fmtInt(f.nH)}` }];
+  for (const p of POLICIES()) {
+    if (p.id === 'opt') continue;
+    const q = conjParams(p.id);
+    list.push({ id: 'nh_' + p.id, tag: 'open', policy: p.id, param: 'c',
+      name: `${p.name} ≤ n(H + <input class="param" type="number" step="0.1" data-conjparam="c" data-pid="${p.id}" value="${q.c}">)`,
+      test: f => !Number.isFinite(f.c[p.id]) || f.c[p.id] <= f.nH + q.c * f.n + 1e-6,
+      detail: f => Number.isFinite(f.c[p.id]) ? `(cost − nH)/n = ${fmt((f.c[p.id] - f.nH) / f.n, 3)}` : 'policy failed on this input' });
+    if (HAS_OPT) list.push({ id: 'opt_' + p.id, tag: 'open', policy: p.id, param: 'rho',
+      name: `${p.name} ≤ <input class="param" type="number" step="0.01" data-conjparam="rho" data-pid="${p.id}" value="${q.rho}"> · OPT`,
+      test: f => !Number.isFinite(f.c[p.id]) || f.c.opt <= 0 || f.c[p.id] <= q.rho * f.c.opt + 1e-9,
+      detail: f => Number.isFinite(f.c[p.id]) ? (f.c.opt > 0 ? `cost / OPT = ${fmt(f.c[p.id] / f.c.opt, 4)}  (+${fmt(100 * (f.c[p.id] / f.c.opt - 1), 2)} %)` : 'OPT = 0') : 'policy failed on this input' });
+  }
+  return list;
+}
+function testConj(c, facts) {
+  try { return { ok: !!c.test(facts), detail: c.detail ? c.detail(facts) : '' }; }
+  catch (e) { return { ok: false, detail: String(e.message || e) }; }
+}
+
+/* ==========================================================================
+   TREE DRAWING
+   ========================================================================== */
+const W = 1200, PADX = 14, PADTOP = 10;
+
+function buildTree() { return treeOf(byId(state.policy), state.runs); }
+
+/* Draws a merge tree into `svg`.  Options:
+     editable    the leaf row gets drag handles and can be clicked
+     leavesOnly  draw just the input runs (the editor strip of mode 2)
+     budget      vertical room for the tree, in SVG units
+     diffSpans   set of "lo:hi" of a reference tree; merges outside it stand out  */
+function drawTree(svg, tree, opts = {}) {
+  const { editable = false, leavesOnly = false, budget = 640, diffSpans = null,
+          showAxis = true, width, classOf = null } = opts;
+  const W = Math.round(Math.max(560, Math.min(1200, width || svg.clientWidth || 1200)));
+  const AXIS = showAxis ? 26 : 8;
+  svg.dataset.w = W;
+  const PFX = svg.id + '-';
+  const runs = state.runs, n = sum(runs), r = runs.length;
+  const start = [0];
+  runs.forEach(l => start.push(start[start.length - 1] + l));
+  const X = pos => PADX + pos / n * (W - 2 * PADX);
+
+  const items = [], leafItem = [];
+  if (leavesOnly) {
+    runs.forEach((len, i) => {
+      const t = { lo: i, hi: i, len, left: null, right: null };
+      leafItem[i] = t;
+      items.push({ t, d: 0, leaf: true, x0: i, x1: i + 1 });
+    });
+  } else {
+    (function walk(t, d) {
+      const it = { t, d, leaf: !t.left, x0: t.lo, x1: t.hi + 1 };
+      items.push(it);
+      if (it.leaf) leafItem[t.lo] = t;
+      if (t.left) { walk(t.left, d + 1); walk(t.right, d + 1); }
+      return it;
+    })(tree, 0);
+  }
+
+  const idx = new Map(items.map((it, k) => [it.t, k]));
+  const maxDepth = items.reduce((a, it) => Math.max(a, it.d), 0);
+  const leafRow = maxDepth;
+  const rowH = leafRow ? Math.max(15, Math.min(46, budget / (leafRow + 1))) : 30;
+  const barH = Math.max(9, Math.min(27, leafRow ? rowH - 11 : 26));
+  const rowY = row => PADTOP + row * rowH;
+  const H = rowY(leafRow) + barH + AXIS;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const parts = [];
+  const cx = it => (X(start[it.x0]) + X(start[it.x1])) / 2;
+  const rowOf = it => it.leaf ? leafRow : it.d;
+
+  for (const it of items) {
+    if (it.leaf) continue;
+    const kids = [it.t.left, it.t.right].map(k => items[idx.get(k)]);
+    const yTop = rowY(it.d) + barH, yBus = yTop + (rowH - barH) / 2;
+    parts.push(`<path class="edge" d="M${cx(it).toFixed(2)},${yTop.toFixed(2)} V${yBus.toFixed(2)}"/>`);
+    parts.push(`<path class="edge" d="M${cx(kids[0]).toFixed(2)},${yBus.toFixed(2)} H${cx(kids[1]).toFixed(2)}"/>`);
+    for (const k of kids) {
+      const drop = rowOf(k) > it.d + 1;
+      parts.push(`<path class="edge${drop ? ' drop' : ''}" d="M${cx(k).toFixed(2)},${yBus.toFixed(2)} V${rowY(rowOf(k)).toFixed(2)}"/>`);
+    }
+  }
+
+  items.forEach((it, k) => {
+    const x0 = X(start[it.x0]) + 0.7, x1 = X(start[it.x1]) - 0.7;
+    const w = Math.max(1.4, x1 - x0), y = rowY(rowOf(it));
+    const cls = (it.leaf
+      ? `n-leaf${editable && it.x0 === state.selected ? ' is-selected' : ''}`
+      : 'n-merge' + (diffSpans ? (diffSpans.has(it.x0 + ':' + (it.x1 - 1)) ? ' is-same' : ' is-diff') : ''))
+      + (classOf ? ' ' + classOf(it.t, it.leaf) : '');
+    parts.push(`<rect id="${PFX}bar${k}" class="node-rect ${cls}" x="${x0.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${barH.toFixed(2)}" rx="${Math.min(6, barH / 2).toFixed(1)}"/>`);
+    const label = String(it.t.len);
+    if (w > label.length * 7.4 + 8 && barH >= 13)
+      parts.push(`<text class="n-label" x="${(x0 + w / 2).toFixed(2)}" y="${(y + barH / 2 + 4).toFixed(2)}" text-anchor="middle" font-size="${Math.min(13, barH - 5).toFixed(1)}">${label}</text>`);
+  });
+
+  for (const g of ['g0', 'g1'])
+    parts.push(`<line class="guide ${g}" y1="${PADTOP}" y2="${(rowY(leafRow) + barH).toFixed(2)}"/>`);
+
+  const yLeaf = rowY(leafRow);
+  items.forEach((it, k) => {
+    if (it.leaf) return;
+    const x0 = X(start[it.x0]), x1 = X(start[it.x1]), y = rowY(it.d);
+    parts.push(`<rect data-role="node" data-bar="${PFX}bar${k}" data-x0="${x0.toFixed(2)}" data-x1="${x1.toFixed(2)}" data-lo="${it.x0}" data-hi="${it.x1 - 1}" data-len="${it.t.len}" data-d="${it.d}" x="${x0.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(1, x1 - x0).toFixed(2)}" height="${barH.toFixed(2)}" fill="transparent"/>`);
+  });
+  for (let i = 0; i < r; i++) {
+    const x0 = X(start[i]), x1 = X(start[i + 1]);
+    const k = idx.get(leafItem[i]);
+    parts.push(`<rect class="${editable ? 'leaf-hit' : ''}" data-role="${editable ? 'leaf' : 'run'}" data-bar="${PFX}bar${k}" data-i="${i}" data-x0="${x0.toFixed(2)}" data-x1="${x1.toFixed(2)}" data-len="${runs[i]}" x="${x0.toFixed(2)}" y="${yLeaf.toFixed(2)}" width="${Math.max(1, x1 - x0).toFixed(2)}" height="${barH.toFixed(2)}" fill="transparent"/>`);
+  }
+  for (let i = 0; editable && i < r - 1; i++) {
+    const x = X(start[i + 1]);
+    const room = Math.min(X(start[i + 1]) - X(start[i]), X(start[i + 2]) - X(start[i + 1]));
+    const hw = Math.max(3, Math.min(7, room * 0.45));
+    parts.push('<g class="bnd">' +
+      `<rect class="handle" data-role="handle" data-i="${i}" x="${(x - hw).toFixed(2)}" y="${(yLeaf - 3).toFixed(2)}" width="${(2 * hw).toFixed(2)}" height="${(barH + 6).toFixed(2)}"/>` +
+      `<line class="grip" x1="${x.toFixed(2)}" x2="${x.toFixed(2)}" y1="${(yLeaf + 2).toFixed(2)}" y2="${(yLeaf + barH - 2).toFixed(2)}"/></g>`);
+  }
+
+  const yA = rowY(leafRow) + barH + 12;
+  if (showAxis) {
+    parts.push(`<line class="axis" x1="${PADX}" x2="${W - PADX}" y1="${yA}" y2="${yA}"/>`);
+    parts.push(`<text class="axis-text" x="${PADX}" y="${yA + 13}">0</text>`);
+    parts.push(`<text class="axis-text" x="${W - PADX}" y="${yA + 13}" text-anchor="end">n = ${fmtInt(n)}</text>`);
+    parts.push(`<text class="axis-text" x="${W / 2}" y="${yA + 13}" text-anchor="middle">${r} runs${leavesOnly ? '' : ' · tree height ' + maxDepth}</text>`);
+  }
+  svg.innerHTML = parts.join('');
+}
+
+/* ---- the cost ruler: where the cost sits between nH and nH + 2n ---- */
+function drawRuler(cost, nH, opt, n) {
+  const hasOpt = Number.isFinite(opt);
+  const lo = nH, hi = Math.max(nH + 2.6 * n, cost * 1.03, hasOpt ? opt + 0.4 * n : 0, nH + 1);
+  const x = v => 8 + Math.max(0, Math.min(1, (v - lo) / (hi - lo))) * 284;
+  const mark = (v, color, up) => up
+    ? `<path d="M${x(v).toFixed(1)},31 l-4.5,-8 h9 z" fill="${color}"/>`
+    : `<line x1="${x(v).toFixed(1)}" x2="${x(v).toFixed(1)}" y1="34" y2="43" stroke="${color}" stroke-width="1.5"/>`;
+  const text = (v, color, label, y, anchor) =>
+    `<text x="${x(v).toFixed(1)}" y="${y}" fill="${color}" font-family="IBM Plex Mono, monospace" font-size="9" text-anchor="${anchor}">${label}</text>`;
+  const far = hasOpt && Math.abs(x(cost) - x(opt)) > 26;
+  $('ruler').innerHTML =
+    `<line x1="8" x2="292" y1="34" y2="34" stroke="rgba(13,237,247,.3)" stroke-width="1"/>` +
+    `<rect x="${x(nH).toFixed(1)}" y="31" width="${(x(nH + 2 * n) - x(nH)).toFixed(1)}" height="6" fill="rgba(181,255,0,.16)"/>` +
+    mark(nH, '#0DEDF7', false) + mark(nH + 2 * n, 'rgba(234,242,255,.45)', false) +
+    (hasOpt ? mark(opt, '#00D600', true) : '') + mark(cost, '#B5FF00', true) +
+    text(nH, '#0DEDF7', 'nH', 54, 'start') +
+    text(nH + 2 * n, 'rgba(234,242,255,.55)', 'nH + 2n', 54, x(nH + 2 * n) > 250 ? 'end' : 'middle') +
+    (far ? text(opt, '#00D600', 'OPT', 17, x(opt) < 24 ? 'start' : 'middle') : '') +
+    text(cost, '#B5FF00', 'cost', 17, x(cost) > 268 ? 'end' : 'middle');
+}
+
+/* ==========================================================================
+   RENDER
+   ========================================================================== */
+let lastPolicy = null;
+
+function render() {
+  if (state.mode === 1) renderMode1();
+  else if (state.mode === 2) renderMode2();
+  else renderMode3();
+  syncEditorControls();
+}
+
+let rafPending = false;
+function scheduleRender() {
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => { rafPending = false; render(); });
+}
+
+function syncEditorControls() {
+  const text = state.runs.join(', ');
+  document.querySelectorAll('.js-runtext').forEach(el => { if (document.activeElement !== el) el.value = text; });
+  document.querySelectorAll('.js-undo').forEach(el => { el.disabled = !state.past.length; });
+  document.querySelectorAll('.js-redo').forEach(el => { el.disabled = !state.future.length; });
+}
+
+function renderMode1() {
+  const p = byId(state.policy) || BUILTINS[0];
+  state.policy = p.id;
+  const runs = state.runs, n = sum(runs), r = runs.length;
+  $('inputSummary').innerHTML = `n <b>${fmtInt(n)}</b> · runs <b>${fmtInt(r)}</b> · H <b>${fmt(entropy(runs), 3)}</b> bit`;
+
+  let tree = null, err = '';
+  try { tree = buildTree(); }
+  catch (e) { err = String(e && e.message || e); }
+  $('stageError').textContent = err ? '⚠ ' + err.split('\n')[0] : '';
+
+  if (tree) {
+    drawTree($('stage'), tree, { editable: true, budget: 640 });
+    const cost = mergeCost(tree);
+    const H = entropy(runs), nH = n * H;
+    const opt = HAS_OPT ? mergeCost(optimal(runs)) : NaN;
+    const st = treeStats(tree);
+
+    $('costBig').textContent = fmtInt(cost);
+    $('costSub').textContent = (nH > 0 ? '(cost − nH)/n = ' + fmt((cost - nH) / n, 3) + '  ·  ' : '') + overOptText(cost, opt, nH);
+
+    const rows = [
+      ['elements n', fmtInt(n)],
+      ['runs r', fmtInt(r) + ' <span class="unit">· ' + fmtInt(st.merges) + ' merges</span>'],
+      ['selected run', '#' + (state.selected + 1) + ' <span class="unit">· length ' + fmtInt(runs[state.selected]) + '</span>'],
+      ['merge cost', fmtInt(cost), true],
+      ...(HAS_OPT ? [['OPT', fmtInt(opt)],
+                     ['cost − OPT', fmtInt(cost - opt) + ' <span class="unit">= ' + fmt((cost - opt) / n, 3) + ' n</span>']] : []),
+      ['n·H (lower bound)', fmtInt(nH)],
+      ['(cost − nH)/n', fmt((cost - nH) / n, 3)],
+      ['H', fmt(H, 4) + ' <span class="unit">bit</span>'],
+      ['tree height', fmtInt(st.height)]
+    ];
+    $('metrics').innerHTML = rows.map(([k, v, hi]) =>
+      `<tr class="${hi ? 'hi' : ''}"><td>${k}</td><td>${v}</td></tr>`).join('');
+    drawRuler(cost, nH, opt, n);
+  } else {
+    drawTree($('stage'), null, { editable: true, leavesOnly: true });
+    $('costBig').textContent = '—';
+    $('costSub').textContent = isCustom(p) ? 'no tree yet — see the editor below' : '';
+    $('metrics').innerHTML = '';
+    $('ruler').innerHTML = '';
+  }
+
+  if (state.policy !== lastPolicy) {
+    lastPolicy = state.policy;
+    $('blurb').textContent = isCustom(p)
+      ? 'Your policy. Edit the code below and press run; the tree above is rebuilt from it on every change to the input.'
+      : p.blurb;
+    loadEditor(p);
+  }
+  renderEditorStatus(p);
+}
+
+/* ---- mode 2: one row per active policy over the same input ---- */
+function spansOf(tree) {
+  const s = new Set();
+  (function walk(t) { if (!t.left) return; s.add(t.lo + ':' + t.hi); walk(t.left); walk(t.right); })(tree);
+  return s;
+}
+
+function policyLabel(p) {
+  return `<button class="link-name" type="button" data-edit-policy="${p.id}" title="open in mode 1">${p.name}</button>` +
+         (isCustom(p) ? '<span class="policy-kind mine">yours</span>' : '');
+}
+
+/* the second half of a cost caption: relative to OPT when we have it, else to nH */
+function overOptText(cost, opt, nH) {
+  if (HAS_OPT) return cost === opt ? 'optimal' : '+' + fmt(100 * (cost / opt - 1), 2) + ' % over OPT';
+  return nH > 0 ? 'cost / nH = ' + fmt(cost / nH, 3) : '';
+}
+
+function rowsHtml(built, { diffOn, diffRef, order, best, worst, nH, n, opt, prefix }) {
+  return order.map(b => {
+    const isRef = diffOn && b.p.id === diffRef;
+    const pct = worst > best ? (b.cost - best) / (worst - best) : 0;
+    return `<div class="cmp-row${isRef ? ' is-ref' : ''}">
+      <div class="cmp-side">
+        <div class="cmp-name">${policyLabel(b.p)}${b.tree && b.cost === best ? '<span class="cmp-badge">best</span>' : ''}${isRef ? '<span class="cmp-badge ref">reference</span>' : ''}</div>
+        <div class="cmp-cost">${b.tree ? fmtInt(b.cost) : '—'}</div>
+        <div class="cmp-bar"><i style="width:${(12 + 88 * (Number.isFinite(pct) ? pct : 0)).toFixed(1)}%"></i></div>
+        <div class="cmp-sub">${b.tree
+          ? (nH > 0 ? '(cost − nH)/n = ' + fmt((b.cost - nH) / n, 3) + ' · ' : '') + overOptText(b.cost, opt, nH)
+          : '⚠ ' + (b.err || 'failed').split('\n')[0]}</div>
+      </div>
+      <svg class="cmp-svg" id="${prefix}${b.p.id}" viewBox="0 0 1200 120" preserveAspectRatio="xMidYMid meet"
+           role="img" aria-label="merge tree of ${b.p.name}"></svg>
+    </div>`;
+  }).join('');
+}
+
+function renderMode2() {
+  const runs = state.runs, n = sum(runs), r = runs.length;
+  const H = entropy(runs), nH = n * H, opt = HAS_OPT ? mergeCost(optimal(runs)) : NaN;
+
+  drawTree($('stage2'), null, { editable: true, leavesOnly: true });
+  const rowW = Math.max(560, ($('rows').clientWidth || 1000) - 250);
+  $('editorStats').innerHTML =
+    `n <b>${fmtInt(n)}</b> · runs <b>${fmtInt(r)}</b> · H <b>${fmt(H, 3)}</b> bit · ` +
+    `nH <b>${fmtInt(nH)}</b>` + (HAS_OPT ? ` · OPT <b>${fmtInt(opt)}</b>` : '');
+
+  const built = POLICIES().filter(p => state.active[p.id]).map(p => {
+    try { const tree = treeOf(p, runs); return { p, tree, cost: mergeCost(tree) }; }
+    catch (e) { return { p, tree: null, cost: NaN, err: String(e && e.message || e) }; }
+  });
+
+  document.querySelectorAll('#policyToggles .chip').forEach(c => {
+    c.classList.toggle('is-on', !!state.active[c.dataset.toggle]);
+    c.classList.toggle('is-ref', state.diffOn && state.diffRef === c.dataset.toggle);
+  });
+  const refIds = built.map(b => b.p.id);
+  $('diffRef').innerHTML = refIds.map(id => `<option value="${id}">${byId(id).name}</option>`).join('');
+  if (!refIds.includes(state.diffRef)) state.diffRef = refIds[0] || '';
+  $('diffRef').value = state.diffRef;
+  $('diffRef').disabled = !state.diffOn;
+
+  if (!built.length) { $('rows').innerHTML = '<p class="cmp-empty">No policy selected — switch one on above.</p>'; return; }
+
+  const refRow = built.find(b => b.p.id === state.diffRef);
+  const diffSpans = state.diffOn && refRow && refRow.tree ? spansOf(refRow.tree) : null;
+  const costs = built.filter(b => Number.isFinite(b.cost)).map(b => b.cost);
+  const best = Math.min(...costs), worst = Math.max(...costs);
+  const order = state.rowOrder === 'cost' ? built.slice().sort((a, b) => (a.cost || Infinity) - (b.cost || Infinity)) : built;
+
+  $('rows').innerHTML = rowsHtml(built, { diffOn: state.diffOn, diffRef: state.diffRef, order, best, worst, nH, n, opt, prefix: 'cmp-' });
+  for (const b of order)
+    if (b.tree) drawTree($('cmp-' + b.p.id), b.tree, { budget: 150, showAxis: false, width: rowW,
+      diffSpans: b.p.id === state.diffRef ? null : diffSpans });
+}
+
+/* ==========================================================================
+   MODE 3  --  random inputs, all-policy view, conjectures, adversarial search
+   ========================================================================== */
+function renderMode3() {
+  const m = state.m3, runs = state.runs;
+  const facts = inputFacts(runs);
+
+  $('m3echo').textContent = `n = ${fmtInt(facts.n)} · ${facts.r} runs · H = ${fmt(facts.H, 3)} · nH = ${fmtInt(facts.nH)}` + (HAS_OPT ? ` · OPT = ${fmtInt(facts.c.opt)}` : '');
+  $('m3genNote').textContent = GEN_NOTES[m.gen] || '';
+
+  document.querySelectorAll('#m3toggles .chip').forEach(c => {
+    c.classList.toggle('is-on', !!m.active[c.dataset.toggle]);
+    c.classList.toggle('is-ref', m.diffOn && m.diffRef === c.dataset.toggle);
+  });
+
+  const built = POLICIES().filter(p => m.active[p.id]).map(p => ({ p, cost: facts.c[p.id], tree: null }));
+  const activeIds = built.map(b => b.p.id);
+  $('m3ref').innerHTML = activeIds.map(id => `<option value="${id}">${byId(id).name}</option>`).join('');
+  if (!activeIds.includes(m.diffRef)) m.diffRef = activeIds[0] || '';
+  $('m3ref').value = m.diffRef; $('m3ref').disabled = !m.diffOn;
+  $('m3diff').checked = m.diffOn;
+  $('m3order').value = m.rowOrder;
+
+  if (!built.length) { $('m3rows').innerHTML = '<p class="cmp-empty">No policy selected.</p>'; }
+  else {
+    for (const b of built) { try { b.tree = b.p.build(runs); } catch (e) { b.tree = null; b.err = String(e && e.message || e); } }
+    const refTree = (built.find(b => b.p.id === m.diffRef) || {}).tree;
+    const diffSpans = m.diffOn && refTree ? spansOf(refTree) : null;
+    const costs = built.filter(b => Number.isFinite(b.cost)).map(b => b.cost);
+    const best = Math.min(...costs), worst = Math.max(...costs);
+    const order = m.rowOrder === 'cost' ? built.slice().sort((a, b) => (a.cost || Infinity) - (b.cost || Infinity)) : built;
+    const rowW = Math.max(560, ($('m3rows').clientWidth || 900) - 250);
+    $('m3rows').innerHTML = rowsHtml(built, { diffOn: m.diffOn, diffRef: m.diffRef, order, best, worst, nH: facts.nH, n: facts.n, opt: facts.c.opt, prefix: 'm3-' });
+    for (const b of order)
+      if (b.tree) drawTree($('m3-' + b.p.id), b.tree, { budget: 150, showAxis: false, width: rowW, diffSpans: b.p.id === m.diffRef ? null : diffSpans });
+  }
+
+  renderConjectures(facts);
+  renderHall();
+  syncSearchControls();
+}
+
+function conjRowHtml(c, facts) {
+  const { ok, detail } = testConj(c, facts);
+  const tag = c.tag === 'thm' ? '<span class="tag thm">proven</span>' : '<span class="tag open">yours</span>';
+  return `<div class="conj">
+    <label class="conj-stop"><input type="checkbox" data-conj="${c.id}"${state.m3.stop[c.id] ? ' checked' : ''}></label>
+    <div class="conj-name">${c.name}${tag}</div>
+    <div class="mark ${ok ? 'ok' : 'bad'}">${ok ? '✓' : '✗'}</div>
+    <div class="conj-detail${ok ? '' : ' bad'}">${detail}</div>
+  </div>`;
+}
+
+function renderConjectures(facts) {
+  const list = conjectures();
+  const groups = [...new Set(list.map(c => c.policy || ''))];
+  $('conjList').innerHTML = groups.map(g =>
+    (g ? `<div class="conj-section">${byId(g).name}</div>` : '') +
+    list.filter(c => (c.policy || '') === g).map(c => conjRowHtml(c, facts)).join('')).join('');
+}
+
+function renderHall() {
+  const hall = state.m3.hall;
+  if (!hall.length) { $('hallRow').innerHTML = '<span class="hall-empty">nothing yet — run a search.</span>'; return; }
+  $('hallRow').innerHTML = hall.map((e, i) =>
+    `<button class="hall-chip" type="button" data-hall="${i}">${e.label} <b>${e.score}</b> · n ${fmtInt(e.n)} · ${e.runs.length} runs</button>`).join('');
+}
+
+/* ---- search metrics ---- */
+const SEARCH_METRICS = {
+  overOpt:  (c, f) => c.opt > 0 ? c.score / c.opt - 1 : 0,
+  excess:   (c, f) => (c.score - f.nH) / f.n,
+  ratioNH:  (c, f) => f.nH > 0 ? c.score / f.nH : 0,
+  vsRival:  (c, f) => (c.score - c.rivalCost) / f.n
+};
+const METRIC_LABEL = { overOpt: '% over OPT', excess: '(cost−nH)/n', ratioNH: 'cost/nH', vsRival: '(cost−rival)/n' };
+
+function scoreOf(facts, targetId, metric, rivalId) {
+  const bag = { score: facts.c[targetId], opt: facts.c.opt, rivalCost: rivalId ? facts.c[rivalId] : NaN };
+  const s = SEARCH_METRICS[metric](bag, facts);
+  return Number.isFinite(s) ? s : -Infinity;
+}
+function enabledStops() { return conjectures().filter(c => state.m3.stop[c.id]); }
+function shortName(id) { return byId(id).name.split(/[ (·]/)[0]; }
+
+/* A policy that fails on an input (invalid merges, exception) should not stop
+   the search silently: report the first such input instead. */
+function failedPolicy(facts) {
+  for (const p of POLICIES()) if (!Number.isFinite(facts.c[p.id])) return p;
+  return null;
+}
+
+function search(fromCurrent = false) {
+  const m = state.m3;
+  const target = $('sTarget').value, metric = $('sMetric').value, rival = $('sRival').value;
+  const iter = fromCurrent ? 0 : Math.max(100, +$('sIter').value || 3000);
+  const nMode = $('sNmode').value, nVal = Math.max(2, +$('sN').value || 2000);
+  const rMode = $('sRmode').value, rVal = Math.max(1, +$('sR').value || 40);
+  const stops = enabledStops();
+
+  const t0 = performance.now();
+  let best = -Infinity, bestRuns = null, hit = null, failed = null, sampled = 0;
+
+  const pickN = () => nMode === 'fixed' ? nVal : 2 + Math.floor(Math.random() * (nVal - 1));
+  const pickR = n => rMode === 'fixed' ? Math.min(n, rVal) : Math.max(1, 1 + Math.floor(Math.random() * Math.min(n, rVal)));
+
+  function sampleRuns() {
+    const n = pickN(), r = Math.max(1, pickR(n));
+    const kind = Math.random();
+    if (kind < 0.55 || r < 3) return randomComposition(n, r);
+    if (kind < 0.75) {
+      const out = []; let big = Math.random() < 0.5;
+      for (let i = 0; i < r; i++) { out.push(big ? 50 : 1); big = !big; }
+      return rescale(out, n);
+    }
+    if (kind < 0.9) {
+      const out = Array(r).fill(1);
+      const heavy = 1 + Math.floor(Math.random() * Math.min(3, r));
+      for (let k = 0; k < heavy; k++) out[Math.floor(Math.random() * r)] = 20 + Math.floor(Math.random() * 400);
+      return rescale(out, n);
+    }
+    const out = [];
+    for (let i = 0; i < r; i++) out.push(1 + Math.floor((-Math.log(1 - Math.random())) * (1 + Math.random() * 30)));
+    return rescale(out, n);
+  }
+  const consider = (runs) => {
+    const facts = inputFacts(runs);
+    const bad = failedPolicy(facts);
+    if (bad) { failed = { p: bad, runs }; return null; }
+    for (const c of stops) if (!testConj(c, facts).ok) { hit = { c, runs, facts }; return null; }
+    return facts;
+  };
+
+  if (fromCurrent) {
+    const runs = state.runs.slice();
+    const facts = consider(runs);
+    if (facts) { bestRuns = runs; best = scoreOf(facts, target, metric, rival); }
+  } else {
+    for (; sampled < iter && !hit && !failed; sampled++) {
+      const runs = sampleRuns();
+      const facts = consider(runs);
+      if (!facts) break;
+      const s = scoreOf(facts, target, metric, rival);
+      if (s > best) { best = s; bestRuns = runs; }
+    }
+  }
+
+  if (!hit && !failed && bestRuns) {
+    const cap = nVal;
+    const fixedRuns = rMode === 'fixed';
+    const maxRuns = fixedRuns ? bestRuns.length : 90;
+    let cur = bestRuns.slice(), curScore = best;
+    const steps = fromCurrent ? 6000 : 3000;
+    for (let step = 0; step < steps; step++) {
+      const cand = cur.slice();
+      const op = fixedRuns ? Math.floor(Math.random() * 2) : Math.floor(Math.random() * 5);
+      const i = Math.floor(Math.random() * cand.length);
+      if (op === 0) cand[i] = Math.max(1, cand[i] + Math.floor(Math.random() * 16) - 8);
+      else if (op === 1) cand[i] = Math.max(1, Math.round(cand[i] * (0.6 + Math.random() * 0.8)));
+      else if (op === 2 && cand.length < maxRuns) { const l = cand[i]; if (l >= 2) cand.splice(i, 1, Math.ceil(l / 2), Math.max(1, l - Math.ceil(l / 2))); }
+      else if (op === 3 && cand.length > 2) cand.splice(i, 1);
+      else if (op === 4 && cand.length < maxRuns) cand.splice(i, 0, 1 + Math.floor(Math.random() * 12));
+      if (cand.length < 2) continue;
+      if (fixedRuns && cand.length !== bestRuns.length) continue;
+      let cn = sum(cand);
+      if (nMode === 'fixed' && cn !== nVal) { cand[cand.length - 1] += nVal - cn; if (cand[cand.length - 1] < 1) continue; }
+      else if (cn > cap) continue;
+      const facts = consider(cand);
+      if (!facts) break;
+      const s = scoreOf(facts, target, metric, rival);
+      if (s >= curScore) { cur = cand; curScore = s; }
+    }
+    if (curScore > best) { best = curScore; bestRuns = cur; }
+  }
+
+  const ms = (performance.now() - t0).toFixed(0);
+  m.worst = bestRuns;
+  $('sLoad').disabled = !bestRuns;
+
+  if (failed) { landOnFailure(failed.p, failed.runs, `after ${fmtInt(sampled)} samples · ${ms} ms`); return; }
+  if (hit) { landOnCounterexample(hit.c, hit.runs, hit.facts, `after ${fmtInt(sampled)} samples · ${ms} ms`); return; }
+  if (!bestRuns) { $('sStatus').textContent = 'nothing to report.'; return; }
+
+  const label = byId(target).name;
+  $('sStatus').innerHTML =
+    `worst <b>${METRIC_LABEL[metric]}</b> for <b>${label}</b> = ` +
+    `<b>${metric === 'overOpt' ? fmt(100 * best, 2) + ' %' : fmt(best, 4)}</b> ` +
+    (fromCurrent ? 'by hill-climbing from the current input' : `over ${fmtInt(iter)} samples`) +
+    ` · n = ${fmtInt(sum(bestRuns))} · ${bestRuns.length} runs · ${ms} ms.<br>` +
+    `no ticked conjecture violated.` +
+    (state.m3.autoLoad ? ' Loaded below.' : ' “Load worst found” to inspect it.');
+  pushHall({ label: shortName(target) + ' ' + METRIC_LABEL[metric],
+             score: metric === 'overOpt' ? fmt(100 * best, 1) + '%' : fmt(best, 3),
+             n: sum(bestRuns), runs: bestRuns });
+  if (state.m3.autoLoad) { state.selected = 0; commit(bestRuns.slice()); }
+  else render();
+}
+
+function pushHall(entry) {
+  const hall = state.m3.hall;
+  hall.unshift(entry);
+  if (hall.length > 12) hall.pop();
+}
+
+/* ---- exhaustive: every composition of n into r positive parts ---- */
+function* compositions(n, r) {
+  if (r < 1 || n < r) return;
+  if (r === 1) { yield [n]; return; }
+  const m = n - 1, k = r - 1;
+  const c = Array.from({ length: k }, (_, i) => i + 1);
+  const a = new Array(r);
+  for (;;) {
+    let prev = 0;
+    for (let i = 0; i < k; i++) { a[i] = c[i] - prev; prev = c[i]; }
+    a[r - 1] = n - prev;
+    yield a;
+    let i = k - 1;
+    while (i >= 0 && c[i] === m - k + 1 + i) i--;
+    if (i < 0) return;
+    c[i]++;
+    for (let j = i + 1; j < k; j++) c[j] = c[i] + (j - i);
+  }
+}
+function compositionCount(n, r) {
+  if (r < 1 || n < r) return 0n;
+  const N = BigInt(n - 1), K = BigInt(Math.min(r - 1, n - r));
+  let out = 1n;
+  for (let i = 1n; i <= K; i++) out = out * (N - K + i) / i;
+  return out;
+}
+/* Python policies run at a few thousand inputs per second; the guess is
+   deliberately conservative and only feeds the confirmation prompt. */
+const EXHAUSTIVE_RATE = 3000;
+const EXHAUSTIVE_WARN_AT = 60000n;
+
+function fmtBig(x) {
+  if (x < 1000000n) return x.toLocaleString('en-US');
+  const s = x.toString();
+  return s.length <= 15 ? Number(s).toLocaleString('en-US') : s[0] + '.' + s.slice(1, 3) + '×10^' + (s.length - 1);
+}
+function fmtSeconds(sec) {
+  if (sec < 1) return 'well under a second';
+  if (sec < 60) return Math.ceil(sec) + ' s';
+  if (sec < 3600) return (sec / 60).toFixed(1) + ' min';
+  if (sec < 86400) return (sec / 3600).toFixed(1) + ' h';
+  const days = sec / 86400;
+  if (days < 365) return days.toFixed(1) + ' d';
+  const years = days / 365;
+  if (years < 1000) return years.toFixed(1) + ' years';
+  if (years < 1e9) return (years / 1000).toFixed(1) + ' millennia';
+  return 'longer than the age of the universe';
+}
+
+function exhaustiveSearch(force = false) {
+  const nMode = $('sNmode').value, rMode = $('sRmode').value;
+  const nVal = Math.max(2, Math.round(+$('sN').value || 2000));
+  const rVal = Math.max(1, Math.round(+$('sR').value || 40));
+  const nLo = nMode === 'fixed' ? nVal : 2, nHi = nVal;
+  const rLo = rMode === 'fixed' ? rVal : 1, rHi = rVal;
+  const target = $('sTarget').value, metric = $('sMetric').value, rival = $('sRival').value;
+  const stops = enabledStops();
+  const rangeDesc = (nMode === 'fixed' ? `n = ${fmtInt(nVal)}` : `n up to ${fmtInt(nVal)}`) + ', ' +
+                    (rMode === 'fixed' ? `r = ${fmtInt(rVal)}` : `r up to ${fmtInt(rVal)}`);
+
+  const pairCount = (nHi - nLo + 1) * (rHi - rLo + 1);
+  let total = 0n, totalKnown = pairCount <= 500000;
+  if (totalKnown)
+    for (let n = nLo; n <= nHi; n++) for (let r = rLo; r <= Math.min(rHi, n); r++) total += compositionCount(n, r);
+
+  if (totalKnown && total === 0n) { $('sStatus').innerHTML = `${rangeDesc} has no compositions anywhere in range (need r ≤ n).`; return; }
+  if (!force && (!totalKnown || total > EXHAUSTIVE_WARN_AT)) {
+    $('sStatus').innerHTML = (totalKnown
+      ? `<span class="hit">large search</span> — <b>${rangeDesc}</b> spans <b>${fmtBig(total)}</b> compositions ` +
+        `(Σ C(n−1, r−1)). Rough guess: <b>${fmtSeconds(Number(total) / EXHAUSTIVE_RATE)}</b>, and the tab will be unresponsive for that long.`
+      : `<span class="hit">very large search</span> — <b>${rangeDesc}</b> spans too many (n, r) pairs to even count precisely. This is almost certainly impractical.`) +
+      `<br>Nothing has been checked yet. <button class="btn btn-lime" id="sExhaustiveGo" type="button" style="margin-top:.4rem">run it anyway</button>`;
+    return;
+  }
+
+  const t0 = performance.now();
+  let best = -Infinity, bestRuns = null, hit = null, failed = null, checked = 0;
+  outer:
+  for (let n = nLo; n <= nHi; n++)
+    for (let r = rLo; r <= Math.min(rHi, n); r++)
+      for (const runs of compositions(n, r)) {
+        checked++;
+        const facts = inputFacts(runs);
+        const bad = failedPolicy(facts);
+        if (bad) { failed = { p: bad, runs: runs.slice() }; break outer; }
+        let stop = false;
+        for (const c of stops) if (!testConj(c, facts).ok) { hit = { c, runs: runs.slice(), facts }; stop = true; break; }
+        if (stop) break outer;
+        const s = scoreOf(facts, target, metric, rival);
+        if (s > best) { best = s; bestRuns = runs.slice(); }
+      }
+  const ms = (performance.now() - t0).toFixed(0);
+
+  if (failed) { landOnFailure(failed.p, failed.runs, `exhaustive over ${rangeDesc} · checked ${fmtInt(checked)} · ${ms} ms`); return; }
+  if (hit) { landOnCounterexample(hit.c, hit.runs, hit.facts, `exhaustive over ${rangeDesc} (${totalKnown ? fmtBig(total) : 'too many to count'} compositions) · checked ${fmtInt(checked)} · ${ms} ms`); return; }
+
+  state.m3.worst = bestRuns;
+  $('sLoad').disabled = false;
+  const label = byId(target).name;
+  $('sStatus').innerHTML =
+    `exhaustive over <b>${rangeDesc}</b> — checked all <b>${fmtInt(checked)}</b> compositions in that range — no ticked conjecture violated anywhere in it.<br>` +
+    `worst <b>${METRIC_LABEL[metric]}</b> for <b>${label}</b> = <b>${metric === 'overOpt' ? fmt(100 * best, 2) + ' %' : fmt(best, 4)}</b> · ${ms} ms.`;
+  pushHall({ label: 'exhaustive ' + shortName(target), score: metric === 'overOpt' ? fmt(100 * best, 1) + '%' : fmt(best, 3), n: sum(bestRuns), runs: bestRuns });
+  if (state.m3.autoLoad) { state.selected = 0; commit(bestRuns.slice()); } else render();
+}
+
+/* ---- extremify: shorter shorts, longer longs, as long as the metric improves ---- */
+function polarisingMoves(runs, { fixedN, capN }) {
+  const out = [];
+  const startN = sum(runs);
+  const add = c => {
+    if (c.length !== runs.length) return;
+    for (const l of c) if (l < 1) return;
+    const cn = sum(c);
+    if (fixedN ? cn !== startN : cn > capN) return;
+    out.push(c);
+  };
+  const order = runs.map((_, i) => i).sort((a, b) => runs[a] - runs[b]);
+  const donors = order.filter(i => runs[i] > 1).slice(0, 4);
+  const receivers = order.slice(-4);
+  for (const i of donors) for (const j of receivers) {
+    if (i === j) continue;
+    for (const frac of [0.25, 0.5, 1]) {
+      const d = Math.max(1, Math.round((runs[i] - 1) * frac));
+      const c = runs.slice(); c[i] -= d; c[j] += d; add(c);
+    }
+    for (const d of [1, 2]) { const c = runs.slice(); c[i] -= d; c[j] += d; add(c); }
+  }
+  if (!fixedN) {
+    for (const i of donors) {
+      for (const f of [0.5, 0.25]) { const c = runs.slice(); c[i] = Math.max(1, Math.round(c[i] * f)); add(c); }
+      for (const d of [1, 2]) { const c = runs.slice(); c[i] -= d; add(c); }
+      const c1 = runs.slice(); c1[i] = 1; add(c1);
+    }
+    for (const j of receivers) {
+      for (const f of [1.25, 1.5, 2]) { const c = runs.slice(); c[j] = Math.round(c[j] * f); add(c); }
+      for (const d of [1, 2]) { const c = runs.slice(); c[j] += d; add(c); }
+    }
+  }
+  const mean = startN / runs.length;
+  const finish = c => add(fixedN ? rescale(c, startN) : c);
+  for (const f of [1.1, 1.25, 1.6, 2.5])
+    finish(runs.map(l => Math.max(1, Math.round(l >= mean ? l * f : l / f))));
+  const rank = new Map(order.map((idx, pos) => [idx, pos])), half = runs.length / 2;
+  for (const f of [1.25, 1.6, 2.5])
+    finish(runs.map((l, i) => Math.max(1, Math.round(rank.get(i) < half ? l / f : l * f))));
+  return out;
+}
+
+function extremify() {
+  const target = $('sTarget').value, metric = $('sMetric').value, rival = $('sRival').value;
+  const stops = enabledStops();
+  const t0 = performance.now();
+  const fixedN = $('sNmode').value === 'fixed';
+  const startN = sum(state.runs);
+  const capN = Math.max(Math.max(2, +$('sN').value || 2000), startN);
+
+  const evaluate = runs => {
+    const facts = inputFacts(runs);
+    const bad = failedPolicy(facts);
+    if (bad) return { failed: bad, facts };
+    for (const c of stops) if (!testConj(c, facts).ok) return { violated: c, facts };
+    return { score: scoreOf(facts, target, metric, rival) };
+  };
+
+  let cur = state.runs.slice();
+  const first = evaluate(cur);
+  if (first.failed) { landOnFailure(first.failed, cur, 'the current input already breaks it'); return; }
+  if (first.violated) { landOnCounterexample(first.violated, cur, first.facts, 'the current input already violates it'); return; }
+  const startScore = first.score;
+  let curScore = startScore, rounds = 0, hit = null, failed = null;
+
+  for (; rounds < 300; rounds++) {
+    let best = null, bestScore = curScore;
+    for (const cand of polarisingMoves(cur, { fixedN, capN })) {
+      const res = evaluate(cand);
+      if (res.failed) { failed = { p: res.failed, runs: cand }; break; }
+      if (res.violated) { hit = { c: res.violated, runs: cand, facts: res.facts }; break; }
+      if (res.score > bestScore + 1e-12) { bestScore = res.score; best = cand; }
+    }
+    if (hit || failed || !best) break;
+    cur = best; curScore = bestScore;
+  }
+
+  const ms = (performance.now() - t0).toFixed(0);
+  if (failed) { landOnFailure(failed.p, failed.runs, `after ${rounds} extremify rounds · ${ms} ms`); return; }
+  if (hit) { landOnCounterexample(hit.c, hit.runs, hit.facts, `after ${rounds} extremify rounds · ${ms} ms`); return; }
+
+  const label = byId(target).name, fmtScore = s => metric === 'overOpt' ? fmt(100 * s, 2) + ' %' : fmt(s, 4);
+  const endN = sum(cur);
+  state.m3.worst = cur;
+  $('sLoad').disabled = false;
+  $('sStatus').innerHTML = rounds === 0
+    ? `already extremal for <b>${METRIC_LABEL[metric]}</b> on <b>${label}</b> — no polarising move improved it (${fmtScore(startScore)}, ${ms} ms).`
+    : `extremified <b>${label}</b>: <b>${METRIC_LABEL[metric]}</b> ${fmtScore(startScore)} → <b>${fmtScore(curScore)}</b> ` +
+      `in ${rounds} round${rounds === 1 ? '' : 's'} · ${ms} ms.<br>${cur.length} runs unchanged; n ` +
+      (endN === startN ? `= ${fmtInt(startN)}, unchanged` : `${fmtInt(startN)} → ${fmtInt(endN)}`) + `. The input below is the extremified one.`;
+  if (rounds > 0) {
+    pushHall({ label: 'extremify ' + shortName(target), score: fmtScore(curScore), n: sum(cur), runs: cur });
+    state.selected = 0; commit(cur.slice());
+  } else render();
+}
+
+function landOnCounterexample(conj, runs, facts, how) {
+  state.m3.worst = runs;
+  $('sLoad').disabled = false;
+  $('sStatus').innerHTML =
+    `<span class="hit">✗ counterexample found</span> — <b>${conj.name.replace(/<input[^>]*value="([^"]*)"[^>]*>/g, '$1')}</b> fails.<br>` +
+    `${testConj(conj, facts || inputFacts(runs)).detail}<br>${how} · loaded below.`;
+  pushHall({ label: 'CEX ' + shortName(conj.policy || 'opt'), score: '✗', n: sum(runs), runs });
+  state.selected = 0; commit(runs.slice());
+}
+function landOnFailure(p, runs, how) {
+  state.m3.worst = runs;
+  $('sLoad').disabled = false;
+  $('sStatus').innerHTML =
+    `<span class="hit">⚠ policy failed</span> — <b>${p.name}</b> did not produce a valid merge tree on the input below (see mode 1 for the error).<br>${how} · loaded below.`;
+  pushHall({ label: 'FAIL ' + shortName(p.id), score: '⚠', n: sum(runs), runs });
+  state.selected = 0; commit(runs.slice());
+}
+function syncSearchControls() { $('sRivalRow').hidden = $('sMetric').value !== 'vsRival'; }
+
+/* ==========================================================================
+   THE PYTHON EDITOR
+   ========================================================================== */
+function highlightPy(src) {
+  const esc = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const KW = /\b(def|return|for|while|if|elif|else|in|not|and|or|is|lambda|True|False|None|import|from|as|break|continue|pass|yield|class|with|try|except|finally|raise|global|nonlocal|del|assert)\b/;
+  const re = new RegExp(
+    '(#[^\\n]*)' +                                             // 1 comment
+    '|("""[\\s\\S]*?"""|\'\'\'[\\s\\S]*?\'\'\'|"(?:[^"\\\\\\n]|\\\\.)*"|\'(?:[^\'\\\\\\n]|\\\\.)*\')' +  // 2 string
+    '|' + KW.source +                                          // 3 keyword
+    '|(\\b\\d+(?:\\.\\d+)?\\b)', 'g');                         // 4 number
+  return esc.replace(re, (m, c, s, k, num) =>
+    c ? `<span class="code-comment">${c}</span>` :
+    s ? `<span class="code-string">${s}</span>` :
+    k ? `<span class="code-keyword">${k}</span>` :
+        `<span class="code-number">${num}</span>`);
+}
+
+const ed = { pid: null, saveTimer: null };
+
+/* the editor grows with its content (the user can still drag it taller) */
+function autosize(ta) {
+  const lines = ta.value.split('\n').length;
+  const lh = parseFloat(getComputedStyle(ta).lineHeight) || 21;
+  ta.style.minHeight = Math.max(22 * 16, Math.min(window.innerHeight * 0.8, (lines + 2) * lh + 32)) + 'px';
+}
+
+function loadEditor(p) {
+  ed.pid = p.id;
+  const ta = $('src'), name = $('policyName');
+  ta.value = isCustom(p) ? p.src : (p.id === 'bottomup' ? BOTTOM_UP_PY : '# OPT is computed by dynamic programming in the page itself.\n# It is the yardstick, not a policy to imitate: it needs every run\n# length up front and quadratic time.  Beat the dummy first, then\n# see how close to OPT a rule with only local information can get.\n');
+  ta.readOnly = !isCustom(p);
+  $('editorWrap').classList.toggle('is-readonly', !isCustom(p));
+  name.value = p.name; name.disabled = !isCustom(p);
+  $('codeTitle').textContent = isCustom(p) ? 'policy code — Python' : (p.id === 'bottomup' ? 'built-in policy — the same rule, in Python' : 'OPT');
+  $('codeKind').textContent = isCustom(p) ? 'yours · editable' : 'built in · read only';
+  $('codeKind').className = 'policy-kind' + (isCustom(p) ? ' mine' : '');
+  for (const id of ['runCode', 'checkCode', 'delPolicy', 'savePy']) $(id).disabled = !isCustom(p);
+  $('dupPolicy').disabled = p.id === 'opt';
+  $('dupPolicy').textContent = isCustom(p) ? 'duplicate' : 'copy into a new policy';
+  refreshHighlight();
+}
+
+function refreshHighlight() {
+  const ta = $('src');
+  autosize(ta);
+  $('hl').innerHTML = highlightPy(ta.value + '\n');
+  $('hl').parentElement.scrollTop = ta.scrollTop;
+  $('hl').parentElement.scrollLeft = ta.scrollLeft;
+}
+
+function renderEditorStatus(p) {
+  const st = $('pyStatus'), out = $('pyOut');
+  st.classList.toggle('ready', pyReady); st.classList.toggle('failed', !!pyFailed);
+  $('pyState').textContent = pyFailed ? 'Python failed to load — ' + pyFailed
+    : pyReady ? (window.pyVersion || 'Python') + ' ready' : 'loading Python (a few seconds, once)…';
+  if (!isCustom(p)) { $('codeState').textContent = ''; out.textContent = ''; out.className = 'py-out'; return; }
+  const dirty = p.compiledSrc !== null && p.src !== p.compiledSrc;
+  $('codeState').innerHTML = p.compiledSrc === null
+    ? (pyReady ? '<span class="stale">not run yet — press run (Ctrl+Enter)</span>' : '')
+    : dirty ? '<span class="stale">edited since the last run — press run (Ctrl+Enter)</span>'
+    : p.ok ? '<span class="fresh">running · this is the code that drew the tree</span>' : '<span class="stale">did not compile</span>';
+  const bits = [];
+  let isErr = false;
+  if (p.error) { bits.push(p.error); isErr = true; }
+  else if (p.lastError) { bits.push((p.lastRuns ? `on the input [${p.lastRuns.join(', ')}]:\n` : '') + p.lastError); isErr = true; }
+  if (p.lastStdout) bits.push((isErr ? '\n' : '') + 'printed:\n' + p.lastStdout.replace(/\n$/, ''));
+  out.textContent = bits.join('\n');
+  out.className = 'py-out' + (isErr ? ' err' : '');
+}
+
+function currentCustom() { const p = byId(ed.pid); return isCustom(p) ? p : null; }
+
+function runCode() {
+  const cp = currentCustom(); if (!cp) return;
+  cp.src = $('src').value;
+  saveCustom();
+  if (!pyReady) { renderEditorStatus(cp); return; }
+  compilePolicy(cp);
+  rebuildPolicyLists();            // NAME = "…" in the code may have renamed it
+  saveCustom();
+  lastPolicy = null;               // re-render the blurb & editor state
+  render();
+}
+
+function checkCode() {
+  const cp = currentCustom(); if (!cp) return;
+  if (cp.src !== cp.compiledSrc) runCode();
+  if (!cp.ok) return;
+  const t0 = performance.now();
+  let seed = 4242, worstOpt = 0, worstOptRuns = null, worstEx = -Infinity, worstExRuns = null, optimalCount = 0, failure = null;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  const N = 300;
+  const inputs = [[7], [3, 4], [1, 1, 1], [1, 2, 1], [5, 3, 3, 14, 1, 2], [1, 1, 1, 1, 1, 1, 1, 1], [999, 1, 1, 1000], [1, 2, 3, 4, 5, 6, 7], [7, 6, 5, 4, 3, 2, 1], [2, 2, 2, 2, 2, 2, 2, 36]];
+  for (let t = inputs.length; t < N; t++) inputs.push(randomRuns(rnd));
+  for (const runs of inputs) {
+    let tree;
+    try { tree = cp.build(runs); } catch (e) { failure = { runs, err: String(e.message || e) }; break; }
+    const cost = mergeCost(tree), opt = HAS_OPT ? mergeCost(optimal(runs)) : NaN, n = sum(runs), ex = (cost - n * entropy(runs)) / n;
+    if (cost === opt) optimalCount++;
+    if (opt > 0 && cost / opt - 1 > worstOpt) { worstOpt = cost / opt - 1; worstOptRuns = runs; }
+    if (ex > worstEx) { worstEx = ex; worstExRuns = runs; }
+  }
+  const ms = (performance.now() - t0).toFixed(0);
+  const out = $('pyOut');
+  if (failure) {
+    cp.lastError = failure.err; cp.lastRuns = failure.runs;
+    out.className = 'py-out err';
+    out.textContent = `✗ check on ${N} inputs stopped at [${failure.runs.join(', ')}]:\n${failure.err}\n\nThis input has been loaded into the editor above so you can look at it.`;
+    state.selected = 0; commit(failure.runs.slice());
+    return;
+  }
+  out.className = 'py-out';
+  out.textContent = `✓ ${N} inputs, ${N} valid merge trees · ${ms} ms\n` +
+    (HAS_OPT ? `  optimal on ${optimalCount} of ${N}\n` +
+    `  worst cost/OPT = ${fmt(1 + worstOpt, 4)} (+${fmt(100 * worstOpt, 2)} %) on [${worstOptRuns.join(', ')}]\n` : '') +
+    `  worst (cost − nH)/n = ${fmt(worstEx, 4)} on [${worstExRuns.join(', ')}]\n` +
+    `  (mode 3 searches for worse inputs than these)`;
+}
+
+function randomRuns(rnd) {
+  const r = 2 + Math.floor(rnd() * 14), out = [];
+  for (let i = 0; i < r; i++) out.push(1 + Math.floor(rnd() * (rnd() < .3 ? 3000 : 40)));
+  return out;
+}
+
+function addPolicy(name, src, select = true) {
+  const cp = newCustom(name, src);
+  CUSTOM.push(cp);
+  state.active[cp.id] = true; state.m3.active[cp.id] = true;
+  if (pyReady) compilePolicy(cp);
+  rebuildPolicyLists();
+  if (select) { state.policy = cp.id; lastPolicy = null; }
+  saveCustom();
+  render();
+  return cp;
+}
+
+function uniqueName(base) {
+  const names = new Set(POLICIES().map(p => p.name));
+  if (!names.has(base)) return base;
+  for (let k = 2; ; k++) if (!names.has(`${base} ${k}`)) return `${base} ${k}`;
+}
+
+function deletePolicy(cp) {
+  if (!confirm(`Delete “${cp.name}”? Its code is gone unless you downloaded it.`)) return;
+  CUSTOM = CUSTOM.filter(c => c !== cp);
+  delete state.active[cp.id]; delete state.m3.active[cp.id];
+  if (pyReady) try { window.pyDrop(cp.id); } catch (e) {}
+  if (!CUSTOM.length) CUSTOM.push(Object.assign(newCustom('my first policy', NEW_POLICY_PY), {}));
+  if (!byId(state.policy)) state.policy = CUSTOM[0].id;
+  if (pyReady) for (const c of CUSTOM) if (c.compiledSrc === null) compilePolicy(c);
+  rebuildPolicyLists();
+  lastPolicy = null;
+  saveCustom();
+  render();
+}
+
+function downloadPolicy(cp) {
+  const safe = cp.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'policy';
+  const header = cp.src.match(/^\s*NAME\s*=/m) ? '' : `NAME = ${JSON.stringify(cp.name)}\n\n`;
+  const blob = new Blob([header + cp.src.replace(/\s*$/, '\n')], { type: 'text/x-python' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = safe + '.py';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function importFiles(files) {
+  const list = [...files];
+  let first = null;
+  const done = () => { if (first) { state.policy = first.id; lastPolicy = null; render(); } };
+  let pending = list.length;
+  for (const f of list) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result);
+      const m = src.match(/^\s*NAME\s*=\s*(['"])(.*?)\1/m);
+      const name = uniqueName((m ? m[2] : f.name.replace(/\.py$/i, '').replace(/[_-]+/g, ' ')).slice(0, 40));
+      const cp = addPolicy(name, src, false);
+      cp.nameEdited = true;
+      if (!first) first = cp;
+      if (--pending === 0) done();
+    };
+    reader.readAsText(f);
+  }
+}
+
+function wireEditor() {
+  const ta = $('src');
+  ta.addEventListener('input', () => {
+    refreshHighlight();
+    const cp = currentCustom(); if (!cp) return;
+    cp.src = ta.value;
+    renderEditorStatus(cp);
+    clearTimeout(ed.saveTimer);
+    ed.saveTimer = setTimeout(saveCustom, 400);
+  });
+  ta.addEventListener('scroll', () => {
+    const pre = $('hl').parentElement;
+    pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft;
+  });
+  ta.addEventListener('keydown', e => {
+    if (ta.readOnly) return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runCode(); return; }
+    const s = ta.selectionStart, t = ta.selectionEnd, v = ta.value;
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+      if (e.shiftKey) {
+        const line = v.slice(lineStart, s);
+        const strip = Math.min(4, line.match(/^ */)[0].length);
+        if (strip) { ta.setRangeText('', lineStart, lineStart + strip, 'end'); ta.selectionStart = ta.selectionEnd = Math.max(lineStart, s - strip); }
+      } else {
+        ta.setRangeText('    ', s, t, 'end');
+      }
+      ta.dispatchEvent(new Event('input'));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+      const line = v.slice(lineStart, s);
+      let indent = line.match(/^ */)[0];
+      if (/:\s*(#.*)?$/.test(line)) indent += '    ';
+      ta.setRangeText('\n' + indent, s, t, 'end');
+      ta.dispatchEvent(new Event('input'));
+    }
+  });
+  $('runCode').addEventListener('click', runCode);
+  $('checkCode').addEventListener('click', () => { $('pyOut').textContent = 'checking…'; setTimeout(checkCode, 10); });
+  $('policyName').addEventListener('input', () => {
+    const cp = currentCustom(); if (!cp) return;
+    cp.name = $('policyName').value.trim().slice(0, 40) || 'my policy';
+    cp.nameEdited = true;
+    rebuildPolicyLists(); saveCustom();
+  });
+  $('newPolicy').addEventListener('click', () => addPolicy(uniqueName('my policy'), NEW_POLICY_PY));
+  $('dupPolicy').addEventListener('click', () => {
+    const p = byId(ed.pid); if (!p || p.id === 'opt') return;
+    const src = isCustom(p) ? $('src').value : BOTTOM_UP_PY;
+    const cp = addPolicy(uniqueName(isCustom(p) ? p.name + ' copy' : 'my policy'), src);
+    cp.nameEdited = true; saveCustom();
+  });
+  $('delPolicy').addEventListener('click', () => { const cp = currentCustom(); if (cp) deletePolicy(cp); });
+  $('savePy').addEventListener('click', () => { const cp = currentCustom(); if (cp) downloadPolicy(cp); });
+  $('loadPy').addEventListener('click', () => $('loadPyFile').click());
+  $('loadPyFile').addEventListener('change', () => { importFiles($('loadPyFile').files); $('loadPyFile').value = ''; });
+  $('copyCode').addEventListener('click', () => {
+    navigator.clipboard.writeText($('src').value);
+    $('copyCode').textContent = 'copied';
+    setTimeout(() => { $('copyCode').textContent = 'copy'; }, 1200);
+  });
+}
+
+/* ==========================================================================
+   RUN EDITING
+   ========================================================================== */
+function select(i) { state.selected = Math.max(0, Math.min(i, state.runs.length - 1)); render(); }
+
+const EDITS = {
+  split: () => { const r = state.runs.slice(), i = state.selected, l = r[i];
+    if (l < 2) return; r.splice(i, 1, Math.floor(l / 2), Math.ceil(l / 2)); commit(r); },
+  joinRight: () => { const r = state.runs.slice(), i = state.selected;
+    if (i >= r.length - 1) return; r.splice(i, 2, r[i] + r[i + 1]); commit(r); },
+  swapLeft: () => { const r = state.runs.slice(), i = state.selected;
+    if (i === 0) return; [r[i - 1], r[i]] = [r[i], r[i - 1]]; state.selected = i - 1; commit(r); },
+  swapRight: () => { const r = state.runs.slice(), i = state.selected;
+    if (i >= r.length - 1) return; [r[i], r[i + 1]] = [r[i + 1], r[i]]; state.selected = i + 1; commit(r); },
+  grow: (k = 1) => { const r = state.runs.slice(); r[state.selected] += k; commit(r); },
+  shrink: (k = 1) => { const r = state.runs.slice(); r[state.selected] = Math.max(1, r[state.selected] - k); commit(r); },
+  double: () => { const r = state.runs.slice(); r[state.selected] *= 2; commit(r); },
+  halve: () => { const r = state.runs.slice(); r[state.selected] = Math.max(1, Math.round(r[state.selected] / 2)); commit(r); },
+  duplicate: () => { const r = state.runs.slice(), i = state.selected; r.splice(i, 0, r[i]); commit(r); },
+  remove: () => { if (state.runs.length < 2) return; const r = state.runs.slice(); r.splice(state.selected, 1); commit(r); },
+  reverse: () => commit(state.runs.slice().reverse()),
+  shuffle: () => { const r = state.runs.slice();
+    for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
+    commit(r); },
+  sortDesc: () => commit(state.runs.slice().sort((a, b) => b - a))
+};
+
+const TOOLS = [
+  ['split', 'split', 's'], ['joinRight', 'join →', 'j'],
+  ['swapLeft', '← swap', ','], ['swapRight', 'swap →', '.'],
+  ['grow', 'longer', '↑'], ['shrink', 'shorter', '↓'],
+  ['double', '×2', ''], ['halve', '÷2', ''],
+  ['duplicate', 'duplicate', 'd'], ['remove', 'delete', 'x'],
+  null,
+  ['reverse', 'reverse all', ''], ['shuffle', 'shuffle', ''], ['sortDesc', 'sort ↓', '']
+];
+
+function buildTools() {
+  const html = TOOLS.map(t => t === null ? '<span class="tool-sep"></span>' :
+    `<button class="tool" data-edit="${t[0]}" type="button">${t[1]}${t[2] ? `<span class="k">${t[2]}</span>` : ''}</button>`)
+    .join('') +
+    '<span class="tool-sep"></span>' +
+    '<button class="tool js-undo" type="button">undo<span class="k">u</span></button>' +
+    '<button class="tool js-redo" type="button">redo</button>';
+  document.querySelectorAll('.js-tools').forEach(host => { host.innerHTML = html; });
+
+  const io = `<label class="ctl ctl-grow"><span>run lengths</span>
+      <input type="text" class="js-runtext" spellcheck="false" autocomplete="off"></label>
+    <label class="ctl"><span>generator</span><select class="js-gen">` +
+    GENERATORS.map(g => `<option value="${g.id}">${g.label}</option>`).join('') + `</select></label>
+    <label class="ctl"><span>n</span><input type="number" class="js-genN" value="600" min="2" step="1"></label>
+    <label class="ctl"><span>runs</span><input type="number" class="js-genR" value="12" min="1" step="1"></label>
+    <button class="btn btn-lime js-genbtn" type="button">generate</button>`;
+  document.querySelectorAll('.js-runio').forEach(host => { host.innerHTML = io; });
+}
+
+document.addEventListener('click', e => {
+  const edit = e.target.closest('[data-edit-policy]');
+  if (edit) { state.policy = edit.dataset.editPolicy; $('policy').value = state.policy; lastPolicy = null; setMode(1); return; }
+  const b = e.target.closest('.js-tools button, .js-genbtn');
+  if (!b) return;
+  if (b.classList.contains('js-undo')) return undo();
+  if (b.classList.contains('js-redo')) return redo();
+  if (b.classList.contains('js-genbtn')) {
+    const io = b.closest('.js-runio');
+    const g = GENERATORS.find(x => x.id === io.querySelector('.js-gen').value);
+    const n = Math.max(2, Math.round(+io.querySelector('.js-genN').value || 600));
+    const r = Math.max(1, Math.round(+io.querySelector('.js-genR').value || 12));
+    let out; try { out = g.make(n, r); } catch (err) { out = [n]; }
+    state.selected = 0;
+    return commit(out);
+  }
+  if (b.dataset.edit) EDITS[b.dataset.edit]();
+});
+
+document.addEventListener('change', e => {
+  if (!e.target.classList.contains('js-runtext')) return;
+  const parsed = e.target.value.split(/[^0-9.]+/).map(Number).filter(x => Number.isFinite(x) && x >= 1);
+  if (parsed.length) commit(parsed); else render();
+});
+
+/* ---- pointer editing: works on any svg that carries an editable leaf row ---- */
+let drag = null;
+
+function posOf(evt, svg) {
+  const pt = new DOMPoint(evt.clientX, evt.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  const w = +svg.dataset.w || W;
+  return (pt.x - PADX) / (w - 2 * PADX) * sum(state.runs);
+}
+function startsOf(runs) { const s = [0]; runs.forEach(l => s.push(s[s.length - 1] + l)); return s; }
+
+function attachEditor(svg) {
+  svg.addEventListener('pointerdown', e => {
+    const el = e.target.closest('[data-role]');
+    if (!el) return;
+    const role = el.dataset.role, i = +el.dataset.i;
+    if (role === 'handle') {
+      const s = startsOf(state.runs);
+      drag = { svg, type: 'handle', i, at: s[i], total: state.runs[i] + state.runs[i + 1], dirty: false };
+      svg.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    } else if (role === 'leaf') {
+      drag = { svg, type: 'run', i, x: e.clientX, moved: false, dirty: false };
+      select(i);
+      svg.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) { hover(e); return; }
+    const pos = posOf(e, drag.svg);
+    if (drag.type === 'handle') {
+      const len = Math.max(1, Math.min(drag.total - 1, Math.round(pos - drag.at)));
+      if (len === state.runs[drag.i]) return;
+      const r = state.runs.slice();
+      r[drag.i] = len; r[drag.i + 1] = drag.total - len;
+      if (!drag.dirty) { state.past.push(snapshot()); state.future.length = 0; drag.dirty = true; }
+      commit(r, { history: false, defer: true });
+    } else {
+      if (Math.abs(e.clientX - drag.x) > 3) drag.moved = true;
+      if (!drag.moved) return;
+      const r = state.runs.slice();
+      let i = drag.i, changed = false, s = startsOf(r);
+      while (i > 0 && pos < s[i]) { [r[i - 1], r[i]] = [r[i], r[i - 1]]; i--; s = startsOf(r); changed = true; }
+      while (i < r.length - 1 && pos > s[i + 1]) { [r[i], r[i + 1]] = [r[i + 1], r[i]]; i++; s = startsOf(r); changed = true; }
+      if (!changed) return;
+      if (!drag.dirty) { state.past.push(snapshot()); state.future.length = 0; drag.dirty = true; }
+      drag.i = i; state.selected = i;
+      commit(r, { history: false, defer: true });
+    }
+  });
+  const endDrag = () => { drag = null; render(); };
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  svg.addEventListener('pointerleave', () => hide());
+}
+
+/* ---- hover: tooltip + span guides ---- */
+const tip = $('tip');
+let hot = null;
+function hide() {
+  tip.style.opacity = 0;
+  document.querySelectorAll('.guide').forEach(g => { g.style.opacity = 0; });
+  if (hot) { hot.classList.remove('is-hot'); hot = null; }
+}
+function hover(e) {
+  const el = e.target.closest('[data-bar]');
+  if (!el) { hide(); return; }
+  if (hot) hot.classList.remove('is-hot');
+  hot = $(el.dataset.bar);
+  if (hot) hot.classList.add('is-hot');
+  const svg = el.ownerSVGElement;
+  const g0 = svg.querySelector('.guide.g0'), g1 = svg.querySelector('.guide.g1');
+  if (g0) {
+    g0.setAttribute('x1', el.dataset.x0); g0.setAttribute('x2', el.dataset.x0);
+    g1.setAttribute('x1', el.dataset.x1); g1.setAttribute('x2', el.dataset.x1);
+    g0.style.opacity = .8; g1.style.opacity = .8;
+  }
+  tip.textContent = el.dataset.role === 'node'
+    ? `merge of runs ${+el.dataset.lo + 1}–${+el.dataset.hi + 1}\nlength ${fmtInt(+el.dataset.len)} · depth ${el.dataset.d}`
+    : `run ${+el.dataset.i + 1} of ${state.runs.length}\nlength ${fmtInt(+el.dataset.len)}`;
+  tip.style.left = Math.min(window.innerWidth - 190, e.clientX + 14) + 'px';
+  tip.style.top = (e.clientY + 16) + 'px';
+  tip.style.opacity = 1;
+}
+document.addEventListener('pointermove', e => {
+  if (drag) return;
+  if (e.target.closest && e.target.closest('svg') && e.target.closest('[data-bar]')) hover(e);
+});
+
+/* ---- keyboard ---- */
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  const big = e.shiftKey ? 10 : 1;
+  const map = {
+    ArrowLeft: () => select(state.selected - 1),
+    ArrowRight: () => select(state.selected + 1),
+    ArrowUp: () => EDITS.grow(big),
+    ArrowDown: () => EDITS.shrink(big),
+    s: EDITS.split, j: EDITS.joinRight, d: EDITS.duplicate, x: EDITS.remove,
+    ',': EDITS.swapLeft, '.': EDITS.swapRight, u: undo, r: redo
+  };
+  const f = map[e.key];
+  if (f) { e.preventDefault(); f(); }
+});
+
+/* ==========================================================================
+   WIRING
+   ========================================================================== */
+function rebuildPolicyLists() {
+  const all = POLICIES();
+  const sel = $('policy');
+  sel.innerHTML =
+    `<optgroup label="built in"><option value="bottomup">${BUILTINS[0].name}</option></optgroup>` +
+    (CUSTOM.length ? `<optgroup label="yours">${CUSTOM.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</optgroup>` : '') +
+    (HAS_OPT ? `<optgroup label="baseline"><option value="opt">${BUILTINS[1].name}</option></optgroup>` : '');
+  if (!byId(state.policy)) state.policy = all[0].id;
+  sel.value = state.policy;
+
+  const chips = all.map(p => `<button class="chip" type="button" data-toggle="${p.id}">${p.name}</button>`).join('') +
+    '<button class="chip" type="button" data-toggle="*all*">all</button>' +
+    '<button class="chip" type="button" data-toggle="*none*">none</button>';
+  $('policyToggles').innerHTML = chips;
+  $('m3toggles').innerHTML = chips;
+
+  const opts = all.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const keep = (el, fallback) => { const v = el.value; el.innerHTML = opts; el.value = all.some(p => p.id === v) ? v : fallback; };
+  keep($('sTarget'), CUSTOM.length ? CUSTOM[0].id : 'bottomup');
+  keep($('sRival'), HAS_OPT ? 'opt' : 'bottomup');
+}
+
+function buildControls() {
+  $('policy').addEventListener('change', () => { state.policy = $('policy').value; render(); });
+
+  $('policyToggles').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const id = b.dataset.toggle;
+    if (id === '*all*') POLICIES().forEach(p => { state.active[p.id] = true; });
+    else if (id === '*none*') state.active = {};
+    else state.active[id] = !state.active[id];
+    render();
+  });
+  $('diffOn').addEventListener('change', () => { state.diffOn = $('diffOn').checked; render(); });
+  $('diffRef').addEventListener('change', () => { state.diffRef = $('diffRef').value; render(); });
+  $('rowOrder').addEventListener('change', () => { state.rowOrder = $('rowOrder').value; render(); });
+
+  $('m3gen').innerHTML = GENERATORS.map(g => `<option value="${g.id}">${g.label}</option>`).join('');
+  $('m3gen').value = state.m3.gen;
+  const rollFromGen = () => {
+    const g = GENERATORS.find(x => x.id === $('m3gen').value);
+    const n = Math.max(2, Math.round(+$('m3n').value || 800));
+    const r = Math.max(1, Math.round(+$('m3r').value || 16));
+    let out; try { out = g.make(n, r); } catch (e) { out = [n]; }
+    state.m3.gen = g.id; state.selected = 0; commit(out);
+  };
+  $('m3gen').addEventListener('change', rollFromGen);
+  $('m3roll').addEventListener('click', rollFromGen);
+  $('m3send1').addEventListener('click', () => setMode(1));
+  $('m3toggles').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const id = b.dataset.toggle;
+    if (id === '*all*') POLICIES().forEach(p => { state.m3.active[p.id] = true; });
+    else if (id === '*none*') state.m3.active = {};
+    else state.m3.active[id] = !state.m3.active[id];
+    render();
+  });
+  $('m3diff').addEventListener('change', () => { state.m3.diffOn = $('m3diff').checked; render(); });
+  $('m3ref').addEventListener('change', () => { state.m3.diffRef = $('m3ref').value; render(); });
+  $('m3order').addEventListener('change', () => { state.m3.rowOrder = $('m3order').value; render(); });
+
+  $('sMetric').addEventListener('change', syncSearchControls);
+  $('sRun').addEventListener('click', () => { $('sStatus').textContent = 'searching…'; setTimeout(() => search(false), 20); });
+  $('sClimb').addEventListener('click', () => { $('sStatus').textContent = 'climbing from the current input…'; setTimeout(() => search(true), 20); });
+  $('sExtremify').addEventListener('click', () => { $('sStatus').textContent = 'extremifying…'; setTimeout(extremify, 20); });
+  $('sExhaustive').addEventListener('click', () => { setTimeout(() => exhaustiveSearch(false), 20); });
+  $('sStatus').addEventListener('click', e => {
+    if (!e.target.closest('#sExhaustiveGo')) return;
+    $('sStatus').textContent = 'running the full exhaustive sweep…';
+    setTimeout(() => exhaustiveSearch(true), 20);
+  });
+  $('sLoad').addEventListener('click', () => { if (state.m3.worst) { state.selected = 0; commit(state.m3.worst.slice()); } });
+  $('sClearHall').addEventListener('click', () => { state.m3.hall = []; render(); });
+  $('sAutoLoad').checked = state.m3.autoLoad;
+  $('sAutoLoad').addEventListener('change', () => { state.m3.autoLoad = $('sAutoLoad').checked; });
+  const applyRunText = () => {
+    const box = $('mode3').querySelector('.js-runtext');
+    const parsed = box.value.split(/[^0-9.]+/).map(Number).filter(x => Number.isFinite(x) && x >= 1);
+    if (parsed.length && parsed.join(',') !== state.runs.join(',')) { state.selected = 0; commit(parsed); }
+    return parsed.length > 0;
+  };
+  $('sApply').addEventListener('click', applyRunText);
+  $('sSend1').addEventListener('click', () => { applyRunText(); setMode(1); });
+  $('sSend2').addEventListener('click', () => { applyRunText(); setMode(2); });
+
+  $('conjList').addEventListener('change', e => {
+    const cb = e.target.closest('[data-conj]');
+    if (cb) { state.m3.stop[cb.dataset.conj] = cb.checked; return; }
+  });
+  $('conjList').addEventListener('input', e => {
+    const inp = e.target.closest('[data-conjparam]'); if (!inp) return;
+    const v = parseFloat(inp.value); if (!Number.isFinite(v)) return;
+    conjParams(inp.dataset.pid)[inp.dataset.conjparam] = v;
+    /* re-evaluate the marks without rebuilding the inputs under the cursor */
+    const facts = inputFacts(state.runs);
+    conjectures().forEach(c => {
+      const row = inp.closest('.conj-list').querySelector(`[data-conj="${c.id}"]`)?.closest('.conj');
+      if (!row) return;
+      const { ok, detail } = testConj(c, facts);
+      row.querySelector('.mark').textContent = ok ? '✓' : '✗';
+      row.querySelector('.mark').className = 'mark ' + (ok ? 'ok' : 'bad');
+      row.querySelector('.conj-detail').textContent = detail;
+      row.querySelector('.conj-detail').className = 'conj-detail' + (ok ? '' : ' bad');
+    });
+  });
+  document.querySelectorAll('[data-stopset]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const on = btn.dataset.stopset === '1';
+      conjectures().forEach(c => { state.m3.stop[c.id] = on && c.tag !== 'thm'; });
+      render();
+    }));
+  $('hallRow').addEventListener('click', e => {
+    const b = e.target.closest('[data-hall]'); if (!b) return;
+    const entry = state.m3.hall[+b.dataset.hall];
+    if (entry) { state.selected = 0; commit(entry.runs.slice()); }
+  });
+}
+
+function setMode(m) {
+  state.mode = m;
+  document.querySelectorAll('.mode').forEach(el => el.classList.toggle('is-active', +el.dataset.mode === m));
+  $('mode1').hidden = m !== 1;
+  $('mode2').hidden = m !== 2;
+  $('mode3').hidden = m !== 3;
+  render();
+}
+document.querySelectorAll('.mode').forEach(el => el.addEventListener('click', () => setMode(+el.dataset.mode)));
+
+let resizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 120); });
+
+/* Drag the divider between the two mode-3 columns. */
+function attachColResizer(handle, cols, varName, def, minSide, minMain) {
+  if (!handle || !cols) return;
+  let dragging = false;
+  const set = px => cols.style.setProperty(varName, Math.round(px) + 'px');
+  handle.addEventListener('pointerdown', e => { dragging = true; handle.classList.add('is-dragging'); try { handle.setPointerCapture(e.pointerId); } catch (err) {} e.preventDefault(); });
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const r = cols.getBoundingClientRect(); if (!r.width) return;
+    set(Math.max(minSide, Math.min(r.width - minMain, r.right - e.clientX)));
+  });
+  const stop = e => { if (!dragging) return; dragging = false; handle.classList.remove('is-dragging'); try { handle.releasePointerCapture(e.pointerId); } catch (err) {} };
+  handle.addEventListener('pointerup', stop);
+  handle.addEventListener('pointercancel', stop);
+  handle.addEventListener('dblclick', () => set(def));
+}
+
+/* ==========================================================================
+   SELF-TESTS  --  the built-ins and the replay, then (once Python is up) the
+   harness: the Python dummy must build exactly the tree the JS dummy builds.
+   ========================================================================== */
+const shapeOf = t => { const o = []; (function w(x) { if (!x.left) return; o.push(x.lo + ':' + x.hi); w(x.left); w(x.right); })(t); return o.sort().join('|'); };
+const selfTestResults = [];
+
+function runSelfTests(withPython) {
+  let seed = 20240917;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  const check = (name, fn) => { try { const bad = fn(); selfTestResults.push({ name, ok: !bad, why: bad || '' }); }
+                               catch (e) { selfTestResults.push({ name, ok: false, why: String(e.message || e) }); } };
+  if (!withPython) {
+    check((HAS_OPT ? 'the dummy and OPT build' : 'the dummy builds') + ' one tree over exactly the input runs (300 random inputs)', () => {
+      for (let t = 0; t < 300; t++) {
+        const runs = randomRuns(rnd), n = sum(runs);
+        for (const p of BUILTINS.slice(0, HAS_OPT ? 2 : 1)) {
+          const tree = p.build(runs), leaves = [];
+          (function walk(x) { if (!x.left) return leaves.push(x.lo); walk(x.left); walk(x.right); })(tree);
+          if (tree.len !== n || tree.lo !== 0 || tree.hi !== runs.length - 1) return p.id + ': root spans ' + tree.lo + '..' + tree.hi;
+          if (leaves.join() !== runs.map((_, i) => i).join()) return p.id + ': leaves out of order';
+        }
+      }
+      return null;
+    });
+    check(HAS_OPT ? 'OPT is never beaten and never below n·H (300 random inputs)' : 'the dummy never goes below n·H (300 random inputs)', () => {
+      for (let t = 0; t < 300; t++) {
+        if (!HAS_OPT) { const runs = randomRuns(rnd); if (mergeCost(BUILTINS[0].build(runs)) < sum(runs) * entropy(runs) - 1e-6) return 'below nH on ' + runs.join(','); continue; }
+        const runs = randomRuns(rnd), opt = mergeCost(optimal(runs)), nH = sum(runs) * entropy(runs);
+        if (mergeCost(BUILTINS[0].build(runs)) < opt) return 'the dummy beat OPT on ' + runs.join(',');
+        if (opt < nH - 1e-6) return 'OPT below nH on ' + runs.join(',');
+      }
+      return null;
+    });
+    if (HAS_OPT) check('OPT on hand-computed cases: {5,3,3,14,1,2} → 65, {999,1,1,1000} → 3004, {1,1,1,1} → 8', () => {
+      for (const [runs, want] of [[[5, 3, 3, 14, 1, 2], 65], [[999, 1, 1, 1000], 3004], [[1, 1, 1, 1], 8], [[7], 0]])
+        if (mergeCost(optimal(runs)) !== want) return `[${runs}] gave ${mergeCost(optimal(runs))}`;
+      return null;
+    });
+    check('replay() rebuilds a tree from merge positions and rejects bad ones', () => {
+      const runs = [5, 3, 3, 14, 1, 2];
+      if (mergeCost(replay(runs, [0, 0, 0, 0, 0])) !== 5 + 3 + 3 + 14 + 1 + 2 + 5 + 3 + 3 + 14 + 1 + 5 + 3 + 3 + 14 + 5 + 3 + 3 + 5 + 3) return 'left spine cost wrong';
+      if (shapeOf(replay(runs, [0, 1, 0, 1, 0])) !== shapeOf(bottomUp(runs))) return 'bottom-up positions do not give the bottom-up tree';
+      let threw = false; try { replay(runs, [5]); } catch (e) { threw = true; }
+      if (!threw) return 'out-of-range position accepted';
+      threw = false; try { replay(runs, [0, 0]); } catch (e) { threw = true; }
+      if (!threw) return 'incomplete merge list accepted';
+      return null;
+    });
+  } else {
+    check('Python harness: the built-in dummy in Python builds exactly the JS tree (150 random inputs)', () => {
+      const res = JSON.parse(window.pyCompile('__selftest', BOTTOM_UP_PY));
+      if (!res.ok) return 'did not compile: ' + res.error;
+      for (let t = 0; t < 150; t++) {
+        const runs = randomRuns(rnd);
+        const r = JSON.parse(window.pyRun('__selftest', JSON.stringify(runs)));
+        if (!r.ok) return r.error;
+        if (shapeOf(replay(runs, r.positions)) !== shapeOf(BUILTINS[0].build(runs))) return 'trees differ on ' + runs.join(',');
+      }
+      window.pyDrop('__selftest');
+      return null;
+    });
+    check('Python harness: spans and positions describe the same tree, and bad merge lists are explained', () => {
+      const runs = [5, 3, 3, 14, 1, 2];
+      const cases = [
+        ['def policy(runs):\n    return [(0,5),(0,1),(2,5),(3,5),(4,5)]', true],
+        ['def policy(runs):\n    return [4,3,2,0,0]', true],
+        ['def policy(runs):\n    return [0,0]', false],
+        ['def policy(runs):\n    return [(0,2),(1,3),(0,3),(0,5),(4,5)]', false],
+        ['def policy(runs):\n    return [-2]*5', false],
+        ['def policy(runs):\n    pass', false],
+        ['def policy(runs):\n    return 1/0', false]
+      ];
+      for (const [src, good] of cases) {
+        const c = JSON.parse(window.pyCompile('__selftest', src));
+        if (!c.ok) return 'compile failed: ' + c.error;
+        const r = JSON.parse(window.pyRun('__selftest', JSON.stringify(runs)));
+        if (r.ok !== good) return `${src.split('\n')[1].trim()} → ${r.ok ? 'accepted' : r.error}`;
+      }
+      const a = JSON.parse((window.pyCompile('__selftest', cases[0][0]), window.pyRun('__selftest', JSON.stringify(runs))));
+      const b = JSON.parse((window.pyCompile('__selftest', cases[1][0]), window.pyRun('__selftest', JSON.stringify(runs))));
+      if (shapeOf(replay(runs, a.positions)) !== shapeOf(replay(runs, b.positions))) return 'spans and positions gave different trees';
+      window.pyDrop('__selftest');
+      return null;
+    });
+  }
+  const okCount = selfTestResults.filter(r => r.ok).length;
+  $('selftest').innerHTML =
+    `<details><summary><span class="${okCount === selfTestResults.length ? 'ok' : 'fail'}">` +
+    `${okCount === selfTestResults.length ? '✓' : '✗'} self-tests: ${okCount}/${selfTestResults.length}${withPython ? '' : ' · Python tests follow once it has loaded'}</span></summary>` +
+    '<ul>' + selfTestResults.map(r => `<li><span class="${r.ok ? 'ok' : 'fail'}">${r.ok ? '✓' : '✗'}</span> ${r.name}${r.why ? ' — ' + r.why : ''}</li>`).join('') +
+    '</ul></details>';
+}
+
+/* ==========================================================================
+   PYTHON READY
+   ========================================================================== */
+document.addEventListener('mergelab-py-ready', () => {
+  pyReady = true;
+  for (const cp of CUSTOM) compilePolicy(cp);
+  rebuildPolicyLists(); saveCustom();
+  lastPolicy = null;
+  render();
+  setTimeout(() => runSelfTests(true), 30);
+});
+/* PyScript reports bootstrap problems as errors on the document */
+document.addEventListener('py:error', e => { if (!pyReady) { pyFailed = String(e.detail || e.message || 'see the browser console'); render(); } });
+window.addEventListener('error', e => {
+  if (pyReady) return;
+  const src = String(e.filename || '') + String(e.message || '');
+  if (/pyscript|pyodide|polyscript/i.test(src)) { pyFailed = 'the PyScript runtime failed to load (offline? blocked?)'; render(); }
+});
+setTimeout(() => { if (!pyReady && !pyFailed) { $('pyState').textContent = 'still loading Python — the first load downloads ~10 MB; a slow network takes a while'; } }, 15000);
+
+/* ==========================================================================
+   GO
+   ========================================================================== */
+const selectedAtStart = loadCustom();
+state.policy = byId(selectedAtStart) ? selectedAtStart : CUSTOM[0].id;
+state.active = { bottomup: true, opt: HAS_OPT }; CUSTOM.forEach(c => { state.active[c.id] = true; });
+state.m3.active = Object.assign({}, state.active);
+rebuildPolicyLists();
+buildControls();
+wireEditor();
+attachColResizer($('m3resizer'), document.querySelector('.m3-cols'), '--m3-side', 360, 300, 320);
+buildTools();
+attachEditor($('stage'));
+attachEditor($('stage2'));
+render();
+setTimeout(() => runSelfTests(false), 60);
+</script>
+</body>
+</html>
