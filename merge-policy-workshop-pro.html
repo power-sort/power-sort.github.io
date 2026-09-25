@@ -541,7 +541,7 @@ py-splash, .py-terminal, py-terminal { display: none !important; }
       sum of the lengths of all internal nodes. The one policy built into this page is deliberately dumb —
       it pairs up neighbours left to right and never looks at a length. Your job is to write a better
       rule, in Python, in the editor below. Edit the runs and the tree of the selected policy is rebuilt
-      on every change; <strong>OPT</strong>, the cheapest tree possible, is always shown next to it.
+      on every change; <strong>OPT</strong>, the cheapest tree possible, is always shown next to it. Three published policies — <strong>Powersort</strong>, <strong>Peeksort</strong> and <strong>Timsort</strong> (with its repaired fourth rule) — are built in for comparison, with their Python source to read and to fork.
     </p>
   </div>
 </section>
@@ -710,7 +710,7 @@ py-splash, .py-terminal, py-terminal { display: none !important; }
     <span class="eyebrow">merge policy workshop · mode 2 of 3 · compare policies</span>
     <h1>One input.<br><em>Every rule in the room.</em></h1>
     <p class="lede">
-      The same run editor, now feeding every policy you switch on — the built-in one, OPT, and each of
+      The same run editor, now feeding every policy you switch on — the built-in one, the published ones, OPT, and each of
       yours. Each row is one policy's merge tree over the identical input, with its cost beside it — so a
       change to a single run shows you immediately <strong>who pays for it and who doesn't</strong>.
       Turn on <strong>highlight differences</strong> to fade out the merges a policy shares with the
@@ -867,7 +867,7 @@ py-splash, .py-terminal, py-terminal { display: none !important; }
 
 <footer class="site-footer">
   <div class="selftest" id="selftest">checking…</div>
-  <p style="margin-left:auto">merge policy workshop · modes 1–3 · bring your own policy</p>
+  <p style="margin-left:auto">merge policy workshop · advanced edition · modes 1–3 · bring your own policy</p>
 </footer>
 
 <div id="tip"></div>
@@ -1340,6 +1340,7 @@ function replay(runs, positions) {
    far worse dummy that always merges the rightmost two blocks. */
 const HAS_OPT = true;
 const DUMMY_RIGHT = false;
+const ADVANCED = true;   // published policies included for comparison
 
 /* --------------------------------------------------------------------------
    MERGE THE RIGHTMOST TWO, ALWAYS  --  the starter-edition dummy: a chain that
@@ -1487,9 +1488,95 @@ const BUILTINS = [
     blurb: 'The cheapest tree any stable policy could possibly build on this input, found by dynamic programming over all ways to cut. Not a practical policy — it needs every run length up front and quadratic time — but it is the yardstick everything else is measured against.' }
 ];
 
+/* ==========================================================================
+   PUBLISHED POLICIES  --  advanced edition only.  JavaScript versions run the
+   trees (fast enough for the adversarial search); the Python source shown in
+   the editor is the same policy file from the workshop folder, and a self-test
+   checks the two agree.
+   ========================================================================== */
+function forceCollapse(stack) {                 // merge the top two until one run is left
+  while (stack.length >= 2) stack.splice(stack.length - 2, 2, merge(stack[stack.length - 2], stack[stack.length - 1]));
+  return stack[0];
+}
+
+/* Timsort with the repaired 4th rule (Jugé 2020, Algorithm 2). */
+function timsort4(runs) {
+  const stack = [];
+  const r = i => stack[i - 1].len;
+  const mergeAt = i => stack.splice(i - 1, 2, merge(stack[i - 1], stack[i]));
+  for (let i = 0; i < runs.length; i++) {
+    stack.push(leaf(i, runs[i]));
+    for (;;) {
+      const h = stack.length;
+      if (h >= 3 && r(h - 2) < r(h))                          mergeAt(h - 2);
+      else if (h >= 2 && r(h - 1) <= r(h))                    mergeAt(h - 1);
+      else if (h >= 3 && r(h - 2) <= r(h - 1) + r(h))         mergeAt(h - 1);
+      else if (h >= 4 && r(h - 3) <= r(h - 2) + r(h - 1))     mergeAt(h - 1);
+      else break;
+    }
+  }
+  return forceCollapse(stack);
+}
+
+/* Peeksort (Munro & Wild 2018): cut at the boundary closest to the middle. */
+function peeksort(runs) {
+  const end = [0];
+  runs.forEach(l => end.push(end[end.length - 1] + l));
+  function build(i, j) {
+    if (i === j) return leaf(i, runs[i]);
+    const middle = (end[i] + end[j + 1]) / 2;
+    let k = i;
+    for (let m = i + 1; m < j; m++)
+      if (Math.abs(end[m + 1] - middle) < Math.abs(end[k + 1] - middle)) k = m;
+    return merge(build(i, k), build(k + 1, j));
+  }
+  return build(0, runs.length - 1);
+}
+
+/* Powersort (Munro & Wild 2018), CPython's list.sort() policy since 3.11. */
+function nodePower(start, len1, len2, n) {
+  let a = 2 * start + len1, b = a + len1 + len2, p = 0;
+  for (;;) {
+    p += 1;
+    if (a >= n) { a -= n; b -= n; }
+    else if (b >= n) return p;
+    a *= 2; b *= 2;
+  }
+}
+function powersort(runs) {
+  const n = sum(runs), stack = [];
+  let top = leaf(0, runs[0]), start = 0;
+  for (let i = 1; i < runs.length; i++) {
+    const next = leaf(i, runs[i]);
+    const p = nodePower(start, top.len, next.len, n);
+    while (stack.length && stack[stack.length - 1].power > p) {
+      const below = stack.pop();
+      start -= below.node.len;
+      top = merge(below.node, top);
+    }
+    stack.push({ node: top, power: p });
+    start += top.len;
+    top = next;
+  }
+  return forceCollapse(stack.map(s => s.node).concat(top));
+}
+
+const PUBLISHED = [
+  { id: 'powersort', kind: 'published', name: 'Powersort', build: powersort, py: "\"\"\"Powersort (Munro & Wild 2018) -- CPython's list.sort() merge policy since 3.11.\n\nEvery boundary between two neighbouring runs gets an integer POWER: the depth\nat which a perfectly balanced binary tree over the array separates the\nmidpoints of the two runs.  Runs sit on a stack whose boundary powers increase\nstrictly bottom to top; a run is merged as soon as a boundary of smaller (or\nequal) power arrives.\n\"\"\"\n\nNAME = \"Powersort\"\n\n\ndef node_power(start, len1, len2, n):\n    a = 2 * start + len1                 # 2 x midpoint of the left run\n    b = a + len1 + len2                  # 2 x midpoint of the right run\n    p = 0\n    while True:                          # compare a/2n and b/2n bit by bit\n        p += 1\n        if a >= n:                       # both midpoints in the upper half\n            a -= n\n            b -= n\n        elif b >= n:                     # they split here: this is the power\n            return p\n        a *= 2\n        b *= 2\n\n\ndef policy(runs):\n    n = sum(runs)\n    merges = []\n    stack = []                           # [length, power of the boundary to the right]\n    top = runs[0]                        # the newest run: its right boundary is not known yet\n    start = 0                            # where `top` begins in the array\n    for i in range(1, len(runs)):\n        p = node_power(start, top, runs[i], n)\n        while stack and stack[-1][1] > p:\n            below, _ = stack.pop()       # a deeper node: merge it with `top` now\n            start -= below\n            merges.append(len(stack))    # `below` is block number len(stack); `top` is right of it\n            top += below\n        stack.append([top, p])\n        start += top\n        top = runs[i]\n    h = len(stack) + 1                   # final collapse: merge the top two until one is left\n    while h > 1:\n        merges.append(h - 2)\n        h -= 1\n    return merges\n",
+    title: 'Powersort — published policy, in Python',
+    blurb: 'Munro & Wild 2018; CPython\'s list.sort() merge policy since 3.11. Every run boundary gets an integer power — the depth at which a perfectly balanced tree over the array would separate the two run midpoints — and a run is merged as soon as a boundary of smaller power arrives. Provably within nH + 2n, and it never has to look at more than the top of a stack.' },
+  { id: 'peeksort', kind: 'published', name: 'Peeksort', build: peeksort, py: "\"\"\"Peeksort (Munro & Wild 2018) -- top-down.\n\nLook at the whole array, find the run boundary closest to its middle, cut\nthere, and recurse on both halves.  Ties go to the left boundary.\nWritten in the SPANS style: every recursive call records the span it merges.\n\"\"\"\n\nNAME = \"Peeksort\"\n\n\ndef policy(runs):\n    end = [0]                                  # end[i] = total length of runs 0..i-1\n    for length in runs:\n        end.append(end[-1] + length)\n    merges = []\n\n    def split(i, j):                           # build the tree for runs i..j\n        if i == j:\n            return\n        middle = (end[i] + end[j + 1]) / 2\n        # cut between run k and k+1, where the boundary end[k+1] is closest to the middle\n        k = min(range(i, j), key=lambda m: abs(end[m + 1] - middle))   # min() keeps the first -> ties go left\n        merges.append((i, j))\n        split(i, k)\n        split(k + 1, j)\n\n    split(0, len(runs) - 1)\n    return merges\n",
+    title: 'Peeksort — published policy, in Python',
+    blurb: 'Munro & Wild 2018. Top-down: find the run boundary closest to the middle of the array, cut there, recurse. Needs all run boundaries up front, which is why it is the top-down sibling of Powersort; the same nH + 2n guarantee.' },
+  { id: 'timsort4', kind: 'published', name: 'Timsort, 4 rules', build: timsort4, py: "\"\"\"Timsort with the repaired fourth rule (Jug\u00e9 2020, Algorithm 2).\n\nRuns are pushed onto a stack.  With Z on top, Y below and X below that, merge\n    X and Y   if |X| < |Z|\n    Y and Z   if |Y| <= |Z|        or if |X| <= |Y| + |Z|\n    Y and Z   if |W| <= |X| + |Y|  (the fourth rule, W below X)\nuntil none of the rules fires; at the end merge the top two until one is left.\n\"\"\"\n\nNAME = \"Timsort, 4 rules\"\nFOURTH_RULE = True             # the 2015 bug fix (de Gouw et al.)\n\n\ndef policy(runs):\n    stack = []                 # lengths of the blocks read so far, bottom ... top\n    merges = []\n\n    def merge_top(offset):     # offset 2: merge the top two (Y, Z); offset 3: merge X, Y\n        i = len(stack) - offset\n        merges.append(i)                          # stack[i] is block number i\n        stack[i:i + 2] = [stack[i] + stack[i + 1]]\n\n    for length in runs:\n        stack.append(length)\n        while True:\n            h = len(stack)\n            if h >= 3 and stack[-3] < stack[-1]:\n                merge_top(3)\n            elif h >= 2 and stack[-2] <= stack[-1]:\n                merge_top(2)\n            elif h >= 3 and stack[-3] <= stack[-2] + stack[-1]:\n                merge_top(2)\n            elif FOURTH_RULE and h >= 4 and stack[-4] <= stack[-3] + stack[-2]:\n                merge_top(2)\n            else:\n                break\n    while len(stack) > 1:      # final collapse\n        merge_top(2)\n    return merges\n",
+    title: 'Timsort (repaired, 4 rules) — published policy, in Python',
+    blurb: 'Tim Peters 2002, with the fourth rule that repairs the stack invariant (de Gouw et al. 2015, as stated by Jugé). Runs go on a stack and three (four) length comparisons among the top runs decide what to merge. Cost is within a constant factor of nH, but the constant is worse than Powersort\'s and the merge tree can be visibly lopsided.' }
+];
+
+
 /* custom policies: { id, kind: 'custom', name, src, compiledSrc, ok, error, displayName, version } */
 let CUSTOM = [];
-const POLICIES = () => [BUILTINS[0]].concat(CUSTOM, HAS_OPT ? [BUILTINS[1]] : []);
+const POLICIES = () => [BUILTINS[0]].concat(PUBLISHED, CUSTOM, HAS_OPT ? [BUILTINS[1]] : []);
 const byId = id => POLICIES().find(p => p.id === id);
 const isCustom = p => p && p.kind === 'custom';
 
@@ -1526,7 +1613,14 @@ function compilePolicy(cp) {
   cp.ok = res.ok;
   cp.error = res.ok ? '' : res.error;
   cp.lastError = ''; cp.lastStdout = '';
-  if (res.ok && res.displayName && !cp.nameEdited) cp.name = res.displayName.slice(0, 40);
+  if (res.ok && res.displayName && !cp.nameEdited) {
+    const want = res.displayName.slice(0, 40);
+    if (want !== cp.name) {                       // NAME = "..." in the code renames the policy, but never onto a name already taken
+      const taken = new Set(POLICIES().filter(p => p !== cp).map(p => p.name));
+      let name = want; for (let k = 2; taken.has(name); k++) name = `${want} ${k}`;
+      cp.name = name;
+    }
+  }
 }
 
 function newCustom(name, src) {
@@ -2467,15 +2561,20 @@ function autosize(ta) {
   ta.style.minHeight = Math.max(22 * 16, Math.min(window.innerHeight * 0.8, (lines + 2) * lh + 32)) + 'px';
 }
 
+function builtinSource(p) {
+  if (p.py) return p.py;
+  if (p.id === 'bottomup') return BOTTOM_UP_PY;
+  return '# OPT is computed by dynamic programming in the page itself.\n# It is the yardstick, not a policy to imitate: it needs every run\n# length up front and quadratic time.  Beat the dummy first, then\n# see how close to OPT a rule with only local information can get.\n';
+}
 function loadEditor(p) {
   ed.pid = p.id;
   const ta = $('src'), name = $('policyName');
-  ta.value = isCustom(p) ? p.src : (p.id === 'bottomup' ? BOTTOM_UP_PY : '# OPT is computed by dynamic programming in the page itself.\n# It is the yardstick, not a policy to imitate: it needs every run\n# length up front and quadratic time.  Beat the dummy first, then\n# see how close to OPT a rule with only local information can get.\n');
+  ta.value = isCustom(p) ? p.src : builtinSource(p);
   ta.readOnly = !isCustom(p);
   $('editorWrap').classList.toggle('is-readonly', !isCustom(p));
   name.value = p.name; name.disabled = !isCustom(p);
-  $('codeTitle').textContent = isCustom(p) ? 'policy code — Python' : (p.id === 'bottomup' ? 'built-in policy — the same rule, in Python' : 'OPT');
-  $('codeKind').textContent = isCustom(p) ? 'yours · editable' : 'built in · read only';
+  $('codeTitle').textContent = isCustom(p) ? 'policy code — Python' : (p.title || (p.id === 'bottomup' ? 'built-in policy — the same rule, in Python' : 'OPT'));
+  $('codeKind').textContent = isCustom(p) ? 'yours · editable' : (p.kind === 'published' ? 'published · read only' : 'built in · read only');
   $('codeKind').className = 'policy-kind' + (isCustom(p) ? ' mine' : '');
   for (const id of ['runCode', 'checkCode', 'delPolicy', 'savePy']) $(id).disabled = !isCustom(p);
   $('dupPolicy').disabled = p.id === 'opt';
@@ -2571,8 +2670,8 @@ function addPolicy(name, src, select = true) {
   CUSTOM.push(cp);
   state.active[cp.id] = true; state.m3.active[cp.id] = true;
   if (pyReady) compilePolicy(cp);
-  rebuildPolicyLists();
   if (select) { state.policy = cp.id; lastPolicy = null; }
+  rebuildPolicyLists();                          // after state.policy so the dropdown shows the new one
   saveCustom();
   render();
   return cp;
@@ -2678,7 +2777,7 @@ function wireEditor() {
   $('newPolicy').addEventListener('click', () => addPolicy(uniqueName('my policy'), NEW_POLICY_PY));
   $('dupPolicy').addEventListener('click', () => {
     const p = byId(ed.pid); if (!p || p.id === 'opt') return;
-    const src = isCustom(p) ? $('src').value : BOTTOM_UP_PY;
+    const src = isCustom(p) ? $('src').value : builtinSource(p);
     const cp = addPolicy(uniqueName(isCustom(p) ? p.name + ' copy' : 'my policy'), src);
     cp.nameEdited = true; saveCustom();
   });
@@ -2888,6 +2987,7 @@ function rebuildPolicyLists() {
   const sel = $('policy');
   sel.innerHTML =
     `<optgroup label="built in"><option value="bottomup">${BUILTINS[0].name}</option></optgroup>` +
+    (PUBLISHED.length ? `<optgroup label="published"><option value="${PUBLISHED[0].id}">${PUBLISHED[0].name}</option>${PUBLISHED.slice(1).map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</optgroup>` : '') +
     (CUSTOM.length ? `<optgroup label="yours">${CUSTOM.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</optgroup>` : '') +
     (HAS_OPT ? `<optgroup label="baseline"><option value="opt">${BUILTINS[1].name}</option></optgroup>` : '');
   if (!byId(state.policy)) state.policy = all[0].id;
@@ -3044,10 +3144,10 @@ function runSelfTests(withPython) {
   const check = (name, fn) => { try { const bad = fn(); selfTestResults.push({ name, ok: !bad, why: bad || '' }); }
                                catch (e) { selfTestResults.push({ name, ok: false, why: String(e.message || e) }); } };
   if (!withPython) {
-    check((HAS_OPT ? 'the dummy and OPT build' : 'the dummy builds') + ' one tree over exactly the input runs (300 random inputs)', () => {
+    check((HAS_OPT ? 'the dummy' + (PUBLISHED.length ? ', the published policies' : '') + ' and OPT build' : 'the dummy builds') + ' one tree over exactly the input runs (300 random inputs)', () => {
       for (let t = 0; t < 300; t++) {
         const runs = randomRuns(rnd), n = sum(runs);
-        for (const p of BUILTINS.slice(0, HAS_OPT ? 2 : 1)) {
+        for (const p of BUILTINS.slice(0, HAS_OPT ? 2 : 1).concat(PUBLISHED)) {
           const tree = p.build(runs), leaves = [];
           (function walk(x) { if (!x.left) return leaves.push(x.lo); walk(x.left); walk(x.right); })(tree);
           if (tree.len !== n || tree.lo !== 0 || tree.hi !== runs.length - 1) return p.id + ': root spans ' + tree.lo + '..' + tree.hi;
@@ -3089,6 +3189,20 @@ function runSelfTests(withPython) {
         const r = JSON.parse(window.pyRun('__selftest', JSON.stringify(runs)));
         if (!r.ok) return r.error;
         if (shapeOf(replay(runs, r.positions)) !== shapeOf(BUILTINS[0].build(runs))) return 'trees differ on ' + runs.join(',');
+      }
+      window.pyDrop('__selftest');
+      return null;
+    });
+    if (PUBLISHED.length) check('Python harness: the published policies in Python build exactly the JS trees (100 random inputs each)', () => {
+      for (const p of PUBLISHED) {
+        const res = JSON.parse(window.pyCompile('__selftest', p.py));
+        if (!res.ok) return p.name + ' did not compile: ' + res.error;
+        for (let t = 0; t < 100; t++) {
+          const runs = randomRuns(rnd);
+          const r = JSON.parse(window.pyRun('__selftest', JSON.stringify(runs)));
+          if (!r.ok) return p.name + ': ' + r.error;
+          if (shapeOf(replay(runs, r.positions)) !== shapeOf(p.build(runs))) return p.name + ': trees differ on ' + runs.join(',');
+        }
       }
       window.pyDrop('__selftest');
       return null;
@@ -3150,7 +3264,7 @@ setTimeout(() => { if (!pyReady && !pyFailed) { $('pyState').textContent = 'stil
    ========================================================================== */
 const selectedAtStart = loadCustom();
 state.policy = byId(selectedAtStart) ? selectedAtStart : CUSTOM[0].id;
-state.active = { bottomup: true, opt: HAS_OPT }; CUSTOM.forEach(c => { state.active[c.id] = true; });
+state.active = { bottomup: true, opt: HAS_OPT }; PUBLISHED.forEach(p => { state.active[p.id] = true; }); CUSTOM.forEach(c => { state.active[c.id] = true; });
 state.m3.active = Object.assign({}, state.active);
 rebuildPolicyLists();
 buildControls();
