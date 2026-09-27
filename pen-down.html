@@ -1,0 +1,2955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pen Down — a one-stroke drawing game</title>
+<meta name="description" content="Pen Down: trace every line of a picture exactly once without lifting the pen, or decide that it cannot be done. Levels, a timer and a shared leaderboard for workshops.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   POWERSORT — brand tokens (Brand Guidelines v1.0)
+   dark blue #001C6B · blue #380FFF · light blue #0DEDF7
+   green #00D600 · lime #B5FF00 · yellow #FFFF00
+   type: IBM Plex Mono (headlines / data) + IBM Plex Sans (body)
+
+   The block up to "PEN DOWN" is the same shared block that the other
+   workshop pages (merge-cost-lab.html, powersorts-pursuit.html) carry, so
+   this file works on its own.
+   ============================================================ */
+:root {
+  --darkblue: #001C6B;
+  --blue: #380FFF;
+  --lightblue: #0DEDF7;
+  --green: #00D600;
+  --lime: #B5FF00;
+  --yellow: #FFFF00;
+  --ink: #EAF2FF;
+  --panel: rgba(56, 15, 255, 0.16);
+  --panel-line: rgba(13, 237, 247, 0.35);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--darkblue);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--lightblue); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.site-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.9rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid rgba(181, 255, 0, 0.25);
+  position: sticky; top: 0;
+  background: rgba(0, 28, 107, 0.92);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 0.9rem; text-decoration: none; }
+.site-nav { display: flex; gap: clamp(0.6rem, 2vw, 1.6rem); flex-wrap: wrap; align-items: baseline; }
+.site-nav a {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--lime);
+  text-decoration: none; border-bottom: 2px solid transparent; padding-bottom: 2px;
+}
+.site-nav a:hover { border-bottom-color: var(--lime); }
+.act { padding: clamp(1.6rem, 4vw, 2.6rem) clamp(1rem, 4vw, 3rem); }
+.act + .act { border-top: 1px solid rgba(181, 255, 0, 0.25); }
+.act-head { max-width: 900px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 0.85rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--lime);
+}
+h1, h2 {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  line-height: 1.08; margin: 0.5rem 0 1rem; letter-spacing: -0.015em;
+}
+h1 { font-size: clamp(1.8rem, 4.4vw, 2.9rem); }
+h1 em, h2 em { font-style: normal; color: var(--lime); }
+.lede { font-size: clamp(1rem, 1.6vw, 1.1rem); max-width: 68ch; color: var(--ink); }
+.lede strong { color: var(--lime); font-weight: 600; }
+.btn {
+  font-family: var(--mono); font-size: 0.95rem; font-weight: 600;
+  color: var(--lightblue); background: transparent;
+  border: 2px solid var(--lightblue); border-radius: 999px;
+  padding: 0.5rem 1.15rem; cursor: pointer; text-decoration: none;
+  display: inline-block; transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+}
+.btn:hover { transform: translateY(-1px); background: rgba(13, 237, 247, 0.12); }
+.btn-lime { color: var(--darkblue); background: var(--lime); border-color: var(--lime); }
+.btn-lime:hover { background: var(--yellow); border-color: var(--yellow); }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+.ctl { display: flex; flex-direction: column; gap: 0.3rem; }
+.ctl > span {
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em;
+  color: var(--lime); text-transform: uppercase;
+}
+.ctl select, .ctl input {
+  font-family: var(--mono); font-size: 0.92rem; color: var(--ink);
+  background: rgba(0, 0, 0, 0.25); border: 1.5px solid var(--panel-line);
+  border-radius: 8px; padding: 0.42rem 0.6rem;
+}
+.panel {
+  border: 1px solid var(--panel-line); border-radius: 14px;
+  background: var(--panel); padding: 1rem; min-width: 0;
+}
+.panel-title {
+  font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--lime); margin-bottom: 0.7rem;
+}
+.site-footer {
+  border-top: 1px solid rgba(181, 255, 0, 0.25);
+  padding: 1.6rem clamp(1rem, 4vw, 3rem) 2.4rem;
+  display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+}
+.site-footer p { font-family: var(--mono); font-size: 0.85rem; margin: 0; color: var(--lightblue); }
+.code-comment { color: #8FB3FF; }
+.code-keyword { color: var(--lime); font-weight: 600; }
+.code-func    { color: var(--lightblue); }
+.code-number  { color: #CFE8FF; }
+
+/* ============================================================
+   PEN DOWN — page-specific
+   ============================================================ */
+.mode-nav { align-items: center; gap: clamp(.5rem, 1.6vw, 1.2rem); }
+.mode {
+  font-family: var(--mono); font-size: 0.86rem; letter-spacing: .02em;
+  color: rgba(234, 242, 255, 0.42); padding: 0.15rem 0.55rem;
+  border: 1.5px solid transparent; border-radius: 999px; white-space: nowrap; text-decoration: none;
+}
+.mode.is-active { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+@media (hover: hover) { .mode:not(.is-active):hover { color: var(--lime); } }
+
+.act-hero { padding-bottom: 0; }
+.act-hero h1 { margin-bottom: .6rem; }
+.lede .rule { font-family: var(--mono); color: var(--lightblue); white-space: nowrap; }
+
+/* ---- layout ---- */
+.lab-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr) 18px var(--side-w, 330px);
+  column-gap: .12rem; align-items: start;
+}
+/* the splitter between picture and side panel */
+.splitter { align-self: stretch; min-height: 140px; display: flex; justify-content: center; cursor: col-resize; touch-action: none; border-radius: 8px; }
+.splitter span { width: 3px; margin: 1.4rem 0; border-radius: 3px; background: rgba(13, 237, 247, .2); transition: background 120ms ease, width 120ms ease; }
+.splitter:hover span, .splitter.is-dragging span { background: var(--lime); width: 4px; }
+.splitter:focus-visible { outline: none; }
+.splitter:focus-visible span { background: var(--yellow); width: 4px; }
+body.is-resizing { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+@media (max-width: 1080px) { .lab-grid { grid-template-columns: 1fr; row-gap: 1rem; } .splitter { display: none; } }
+
+/* ---- stage ---- */
+.panel-stage { padding: 0.9rem 1rem 1rem; background: rgba(0, 0, 0, 0.16); }
+.stage-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: .7rem;
+}
+.level-line { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; min-width: 0; flex: 1 1 22rem; }
+.level-line .lvl {
+  font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--darkblue); background: var(--lightblue); border-radius: 999px; padding: .05rem .55rem; font-weight: 600;
+}
+.level-line .lvl.is-custom { background: rgba(13,237,247,.18); color: var(--lightblue); }
+.level-line .lname { font-family: var(--mono); font-size: 1rem; color: var(--lightblue); font-weight: 600; }
+.level-line .lhint { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.6); flex: 1 1 100%; }
+.cost-readout { text-align: right; line-height: 1.05; flex: 0 0 auto; margin-left: auto; }
+.cost-readout .cost-label {
+  display: block; font-family: var(--mono); font-size: .68rem;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--lime);
+}
+.cost-readout .cost-value {
+  font-family: var(--mono); font-weight: 700; color: var(--lightblue);
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem); letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  display: inline-block; transition: color 250ms ease;
+}
+.cost-readout .cost-value.is-bump { color: var(--yellow); }
+.cost-readout .cost-sub { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.62); display: block; }
+.cost-readout .cost-sub b { color: var(--lightblue); font-weight: 600; }
+
+#stage { width: 100%; height: auto; display: block; touch-action: none; overflow: visible; }
+#stage:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.stage-hint {
+  font-family: var(--mono); font-size: .72rem; color: rgba(234, 242, 255, 0.55);
+  margin-top: .5rem; line-height: 1.7;
+}
+.stage-hint kbd {
+  font-family: var(--mono); font-size: .95em; color: var(--lightblue);
+  border: 1px solid rgba(13,237,247,.3); border-radius: 4px; padding: 0 .28em;
+}
+
+/* the picture -- the same vocabulary as the merge game: white lines still
+   to draw, lime for what is drawn, yellow for the pen and where it can go,
+   green for where it went down */
+.stage-wrap { position: relative; min-height: 300px; display: flex; align-items: center; justify-content: center; }
+#stage { display: block; touch-action: none; overflow: visible; user-select: none; -webkit-user-select: none; }
+body.is-kbd #stage:focus-visible { outline: 3px solid var(--yellow); outline-offset: 6px; border-radius: 8px; }
+#stage:focus { outline: none; }
+.line { fill: none; stroke: rgba(234, 242, 255, .82); stroke-linecap: round; transition: stroke 160ms ease, opacity 200ms ease; }
+.line.is-next { stroke: var(--lightblue); }
+.line.is-used { stroke: rgba(234, 242, 255, .18); }
+.line.is-cand { stroke: var(--yellow); }
+.line.is-left { animation: left 1100ms ease-in-out infinite; }
+@keyframes left { 50% { stroke: var(--yellow); } }
+.hitline { fill: none; stroke: transparent; stroke-linecap: round; }
+.drawn { fill: none; stroke: var(--lime); stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.drawn.is-last { stroke: #D8FF6A; }
+.drawn.is-preview { stroke: #D8FF6A; }
+#gDrawn.is-flash .drawn { animation: flashglow 260ms ease-out; }
+@keyframes flashglow { 0% { stroke: #FFFFFF; filter: drop-shadow(0 0 5px var(--lime)); } 100% { stroke: var(--lime); filter: none; } }
+.ghost { fill: none; stroke: var(--green); stroke-dasharray: 5 5; pointer-events: none; opacity: .9; }
+.hotline { fill: none; stroke: var(--yellow); stroke-linecap: round; pointer-events: none; opacity: .9; }
+.step-chip { fill: var(--lime); pointer-events: none; }
+.step-num { font-family: var(--mono); font-weight: 700; fill: var(--darkblue); pointer-events: none; }
+.dot { cursor: pointer; }
+.dot .core { fill: var(--ink); transition: fill 160ms ease; }
+.dot .ring { fill: none; stroke: transparent; transition: stroke 160ms ease; }
+.dot.is-done .core { fill: rgba(234, 242, 255, .45); }
+.dot.is-target .ring { stroke: var(--yellow); }
+.dot.is-cand .ring { stroke: var(--yellow); stroke-dasharray: 3 2.5; }
+.dot.is-start .ring { stroke: var(--green); }
+.dot.is-fixed .core { fill: var(--green); }
+.dot.is-nogo { cursor: not-allowed; }
+.dot-label { font-family: var(--mono); font-weight: 600; fill: rgba(234, 242, 255, .8); pointer-events: none; }
+.dot.is-fixed .dot-label, .dot.is-start .dot-label { fill: var(--green); }
+.deg { font-family: var(--mono); font-weight: 700; fill: var(--lightblue); pointer-events: none; }
+.deg.odd { fill: var(--lime); }
+.halo { fill: rgba(0, 214, 0, .32); pointer-events: none; }
+.pen .tip { fill: var(--yellow); }
+.pen .pulse { fill: none; stroke: var(--yellow); transform-box: fill-box; transform-origin: center; animation: pulse 1600ms ease-out infinite; }
+@keyframes pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(2.4); opacity: 0; } }
+.pen.is-stuck .tip { fill: #FFD000; }
+.confetti { pointer-events: none; }
+.fx { pointer-events: none; }
+
+/* the brand glyph: Nikolaus' house in one stroke, drawn once on load */
+.brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
+.brand-glyph { width: 30px; height: 44px; overflow: visible; }
+.glyph-line { fill: none; stroke: var(--lime); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 0; animation: glyph 2200ms cubic-bezier(.45,.05,.35,1) 300ms both; }
+.glyph-pen { fill: var(--yellow); }
+@keyframes glyph { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.brand-word { white-space: nowrap; font-family: var(--mono); font-weight: 700; font-size: 1.28rem; color: var(--lightblue); letter-spacing: -.02em; }
+
+@media (hover: none) and (pointer: coarse) { .stage-hint .keys { display: none; } }
+/* the lines drawn so far, below the picture; in the hint mode followed by a ghost drawing */
+.trail-list { display: flex; flex-wrap: wrap; gap: .3rem .35rem; align-items: center; margin-top: .6rem; font-family: var(--mono); font-size: .74rem; line-height: 1.4; }
+.trail-list .tl-head { color: var(--lime); letter-spacing: .1em; text-transform: uppercase; font-size: .68rem; margin-right: .3rem; }
+.trail-list .tl-empty, .trail-list .tl-note { color: rgba(234, 242, 255, .55); }
+.trail-list .tl-note { flex-basis: 100%; margin-top: .15rem; }
+.trail-list .tl-start { color: rgba(234, 242, 255, .7); margin-right: .15rem; }
+.trail-list .tl-start b { color: var(--green); font-weight: 600; }
+.tl-step {
+  display: inline-flex; align-items: baseline; gap: .3rem; padding: .08rem .45rem .08rem .3rem; border-radius: 6px;
+  color: var(--ink); background: rgba(181, 255, 0, .12); border: 1.5px solid rgba(181, 255, 0, .45); cursor: default; white-space: nowrap;
+}
+.tl-step b { color: var(--lime); font-weight: 700; min-width: 1.1em; text-align: right; }
+.tl-step small { color: rgba(234, 242, 255, .5); font-size: .9em; }
+.tl-step.is-last { border-color: var(--lime); background: rgba(181, 255, 0, .22); }
+.tl-step.is-ghost { background: none; border: 1.5px dashed rgba(0, 214, 0, .75); color: var(--green); }
+.tl-step.is-ghost b { color: var(--green); }
+.tl-step:hover { border-color: var(--yellow); border-style: solid; }
+.trail-list .link { font-family: var(--mono); font-size: .7rem; background: none; border: none; color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0; margin-left: .3rem; }
+.stage-msg { font-family: var(--mono); font-size: .8rem; color: var(--yellow); min-height: 1.3em; margin: .5rem 0 0; }
+.stage-msg.is-calm { color: rgba(234, 242, 255, .65); }
+.level-line .sheet { font-family: var(--mono); font-size: .7rem; color: rgba(234,242,255,.5); border: 1px solid rgba(13,237,247,.25); border-radius: 999px; padding: 0 .5rem; }
+.level-line .sheet:empty { display: none; }
+.tool[hidden] { display: none; }
+.btn-claim { font-size: .8rem; padding: .3rem .95rem; color: var(--yellow); border-color: var(--yellow); }
+.btn-claim:hover { background: rgba(255, 255, 0, .12); }
+.btn-claim.is-right { color: var(--darkblue); background: var(--green); border-color: var(--green); opacity: 1; }
+.btn-claim-go { color: var(--darkblue); background: var(--yellow); border-color: var(--yellow); }
+.btn-claim-go:hover { background: var(--lime); border-color: var(--lime); }
+.popup-card.is-wrong { border-color: var(--yellow); cursor: pointer; }
+.popup-card.is-wrong .popup-title { color: var(--yellow); }
+.popup-card.is-wrong .popup-action { background: var(--yellow); }
+.popup-card.is-solved { border-color: var(--green); }
+.popup-card.is-solved .popup-title { color: var(--green); }
+.popup-card.is-solved .popup-action { background: var(--green); }
+.popup-card.is-solved:hover .popup-action, .popup-card.is-wrong:hover .popup-action { background: var(--lime); }
+.popup-card.is-solved:hover { border-color: var(--lime); }
+.emblem-star { font-size: 2.6rem; line-height: 1.1; display: inline-block; animation: trophy 1400ms 250ms cubic-bezier(.22,.61,.36,1) both; }
+.popup-sub .star-note { color: var(--green); }
+.shake { animation: shake 420ms ease; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .line.is-left, .pen .pulse, .glyph-line, .shake { animation: none; }
+  .line, .dot .core, .dot .ring { transition: none; }
+}
+
+/* ---- finish pop-up over the tree ---- */
+.stage-wrap { position: relative; }
+.popup { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 5; }
+.popup[hidden] { display: none; }
+.popup-card {
+  pointer-events: auto; cursor: pointer; position: relative;
+  width: min(92%, 400px); padding: 1rem 1.1rem 1rem; text-align: center;
+  background: rgba(0, 12, 64, 0.94); border: 2px solid var(--lime); border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+  font-family: var(--mono); color: var(--ink);
+  animation: popin 420ms cubic-bezier(.2,.9,.3,1.2) both;
+}
+.popup-card.is-opt { border-color: var(--green); }
+.popup-card:hover { border-color: var(--yellow); }
+body.is-kbd .popup-card:focus-visible { outline: 2px solid var(--yellow); outline-offset: 3px; }
+.popup-card:focus { outline: none; }
+@keyframes popin { from { transform: scale(.7) translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.popup-x {
+  position: absolute; top: .3rem; right: .45rem; background: none; border: none; color: rgba(234,242,255,.55);
+  font-size: 1.25rem; line-height: 1; cursor: pointer; padding: .2rem .4rem;
+}
+.popup-x:hover { color: var(--yellow); }
+.popup-emblems { display: flex; justify-content: center; align-items: center; gap: 1.2rem; min-height: 0; margin-bottom: .2rem; }
+.popup-emblems:empty { display: none; }
+.emblem-trophy { font-size: 3.2rem; line-height: 1.1; display: inline-block; animation: trophy 1400ms cubic-bezier(.22,.61,.36,1) both; }
+@keyframes trophy { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 55% { transform: scale(1.25) rotate(6deg); opacity: 1; } 75% { transform: scale(.95) rotate(-3deg); } 100% { transform: none; opacity: 1; } }
+.popup-title { font-size: 1.05rem; font-weight: 700; color: var(--lime); letter-spacing: -.01em; line-height: 1.3; }
+.popup-card.is-opt .popup-title { color: var(--green); }
+.popup-cost { font-size: .8rem; color: var(--lightblue); margin-top: .25rem; }
+.popup-cost b { font-size: 1.15rem; color: var(--lightblue); }
+.popup-sub { font-size: .78rem; color: rgba(234,242,255,.78); margin-top: .35rem; line-height: 1.5; }
+.popup-sub .ps { color: var(--lime); }
+.popup-action {
+  margin-top: .8rem; display: inline-block; font-size: .86rem; font-weight: 600;
+  color: var(--darkblue); background: var(--lime); border-radius: 999px; padding: .45rem 1.1rem;
+}
+.popup-card.is-opt .popup-action { background: var(--green); }
+.popup-card:hover .popup-action { background: var(--yellow); }
+.popup-name { cursor: default; }
+.popup-name .popup-title { color: var(--lightblue); }
+.popup-name .popup-sub { margin: .4rem 0 .8rem; }
+.popup-name input {
+  width: 100%; font-family: var(--mono); font-size: .95rem; text-align: center;
+  color: var(--ink); background: #001050; border: 1.5px solid rgba(13, 237, 247, 0.35);
+  border-radius: 10px; padding: .5rem .7rem;
+}
+.popup-name input:focus { outline: none; border-color: var(--lime); }
+.name-btns { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: .8rem; }
+.name-btns .btn { font-size: .82rem; padding: .4rem 1rem; }
+.popup-hint { display: block; font-size: .66rem; color: rgba(0,28,107,.7); font-weight: 400; margin-top: .25rem; }
+@media (prefers-reduced-motion: reduce) { .popup-card, .emblem-trophy, .emblem-star { animation: none; } }
+
+/* ---- tools ---- */
+.run-tools { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; align-items: center; }
+.tool {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .02em;
+  color: var(--ink); background: rgba(0, 0, 0, .25);
+  border: 1.5px solid var(--panel-line); border-radius: 8px;
+  padding: .3rem .6rem; cursor: pointer;
+}
+.tool:hover { border-color: var(--lime); color: var(--lime); }
+.tool[disabled] { opacity: .4; cursor: not-allowed; }
+.tool[disabled]:hover { border-color: var(--panel-line); color: var(--ink); }
+.tool .k { color: rgba(234,242,255,.45); margin-left: .35rem; }
+.tool.is-on { color: var(--darkblue); background: var(--lime); border-color: var(--lime); font-weight: 600; }
+.tool.is-on:hover { color: var(--darkblue); }
+.tool-sep { width: 1px; height: 1.4rem; background: rgba(13,237,247,.25); margin: .1rem .4rem; }
+.tool-right { margin-left: auto; display: flex; gap: .4rem; }
+
+/* result banner */
+.result {
+  margin-top: .9rem; padding: .8rem 1rem; border-radius: 12px;
+  border: 1px solid var(--panel-line); background: var(--panel);
+  display: grid; grid-template-columns: auto 1fr auto; gap: .2rem 1rem; align-items: baseline;
+  font-family: var(--mono); font-size: .82rem; line-height: 1.5;
+}
+.result .next { grid-column: 3; grid-row: 1 / span 2; align-self: center; display: flex; flex-direction: column; gap: .3rem; align-items: flex-end; }
+.result .next:empty { display: none; }
+.result .next .btn { white-space: nowrap; }
+.result .next .done-note { font-size: .7rem; color: rgba(234,242,255,.6); text-align: right; }
+.result.is-opt { border-color: var(--green); }
+.result.is-opt .big { color: var(--green); }
+.result[hidden] { display: none; }
+.result .big { font-size: 1.7rem; font-weight: 700; color: var(--lime); grid-column: 1; grid-row: 1 / span 2; align-self: center; letter-spacing: -.02em; }
+.result .verdict { color: var(--ink); grid-column: 2; }
+.result .verdict b { color: var(--yellow); font-weight: 600; }
+.result .detail { color: rgba(234,242,255,.65); font-size: .74rem; grid-column: 2; }
+.result.is-best { border-color: var(--yellow); }
+.result .badge {
+  font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; vertical-align: middle;
+  background: var(--yellow); color: var(--darkblue); border-radius: 999px; padding: 0 .45rem; margin-left: .35rem; font-weight: 600;
+}
+.result .badge.opt { background: var(--green); }
+
+/* ---- side panel ---- */
+.panel-side { display: flex; flex-direction: column; gap: 1.1rem; }
+.input-summary { font-family: var(--mono); font-size: .8rem; color: var(--lightblue); margin: 0 0 .6rem; }
+.input-summary b { color: var(--lime); font-weight: 600; }
+.side-io { display: flex; flex-direction: column; gap: .6rem; }
+.side-io .ctl select, .side-io .ctl input { width: 100%; }
+.gen-row { display: grid; grid-template-columns: 1fr 5rem 5rem; gap: .5rem; align-items: end; }
+.gen-row .ctl input { min-width: 0; }
+.side-btns { display: flex; gap: .4rem; flex-wrap: wrap; }
+.side-btns .btn { font-size: .82rem; padding: .38rem .9rem; }
+.metrics { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: .82rem; }
+.metrics td { padding: .22rem 0; border-bottom: 1px solid rgba(13, 237, 247, .12); }
+.metrics td:last-child { text-align: right; color: var(--lightblue); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.metrics tr.hi td:last-child { color: var(--lime); }
+.metrics tr.opt td { color: var(--green); }
+.metrics tr.opt td:last-child { color: var(--green); }
+.metrics td .unit { color: rgba(234,242,255,.45); font-weight: 400; }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-family: var(--mono); font-size: .72rem; color: rgba(234,242,255,.7); }
+.legend span { display: flex; align-items: center; gap: .35rem; }
+.legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+.legend i.hollow { border: 1.5px solid #fff; background: rgba(181,255,0,.16) !important; }
+.legend i.dim { opacity: .4; }
+
+/* leaderboard */
+.board-tabs { display: flex; gap: .25rem; margin-left: auto; }
+.board-tabs .tab {
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .02em; color: rgba(234,242,255,.6);
+  background: none; border: 1.5px solid rgba(13,237,247,.25); border-radius: 999px; padding: .1rem .55rem; cursor: pointer;
+}
+.board-tabs .tab.is-on { color: var(--darkblue); background: var(--lightblue); border-color: var(--lightblue); font-weight: 600; }
+.board-tabs .tab:hover:not(.is-on) { border-color: var(--lime); color: var(--lime); }
+.board-status { font-family: var(--mono); font-size: .7rem; color: rgba(234,242,255,.55); margin: 0 0 .5rem; min-height: 1.2em; }
+.board-status b { color: var(--lightblue); font-weight: 600; }
+.board-status.is-err { color: var(--yellow); }
+.board-row.is-other { cursor: default; }
+.board-row.is-other:hover { border-color: rgba(13,237,247,.18); }
+.board-row .you { color: var(--yellow); font-weight: 600; }
+.board-note .link { font-family: var(--mono); font-size: .68rem; background: none; border: none; color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0; }
+.board-note .flag { color: var(--lime); }
+.board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.board-head .link, .io-head .link {
+  font-family: var(--mono); font-size: .72rem; background: none; border: none;
+  color: var(--lightblue); cursor: pointer; text-decoration: underline; padding: 0;
+}
+.player-row { display: flex; gap: .5rem; align-items: end; margin-bottom: .6rem; }
+.player-row .ctl { flex: 1; }
+.player-row .ctl input { width: 100%; }
+.board { display: flex; flex-direction: column; gap: .25rem; }
+.board-row {
+  display: grid; grid-template-columns: 1.6rem 4.2rem minmax(0, 1fr) auto; gap: .5rem; align-items: center;
+  font-family: var(--mono); font-size: .76rem; padding: .32rem .45rem;
+  border: 1.5px solid rgba(13, 237, 247, .18); border-radius: 8px; background: rgba(0,0,0,.18);
+  cursor: pointer; color: rgba(234,242,255,.85); text-align: left; width: 100%;
+}
+.board-row:hover { border-color: var(--lime); }
+.board-row.is-viewing { border-color: var(--yellow); }
+.board-row .rank { color: rgba(234,242,255,.45); }
+.board-row .cost { color: var(--lime); font-weight: 700; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.board-row .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-row .who small { color: rgba(234,242,255,.45); }
+.board-row .star { color: var(--green); font-weight: 700; }
+.board-row .replay {
+  font-family: var(--mono); font-size: .72rem; background: none; border: 1px solid rgba(13,237,247,.3);
+  color: var(--lightblue); border-radius: 6px; padding: 0 .4rem; cursor: pointer; line-height: 1.5;
+}
+.board-row .replay:hover { border-color: var(--lime); color: var(--lime); }
+.board-empty { font-family: var(--mono); font-size: .74rem; color: rgba(234,242,255,.45); }
+.board-note { font-family: var(--mono); font-size: .68rem; color: rgba(234,242,255,.45); margin: .5rem 0 0; }
+
+/* import / export */
+.io-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+details.io summary { font-family: var(--mono); font-size: .78rem; color: var(--lime); cursor: pointer; }
+.io-body { margin-top: .6rem; display: flex; flex-direction: column; gap: .5rem; }
+.io-body textarea {
+  width: 100%; min-height: 8.5rem; resize: vertical; font-family: var(--mono); font-size: .74rem; line-height: 1.5;
+  color: #DDEBFF; background: #001050; border: 1px solid rgba(13, 237, 247, 0.22); border-radius: 10px; padding: .6rem .7rem;
+}
+.io-note { font-family: var(--mono); font-size: .7rem; color: rgba(234,242,255,.55); margin: 0; line-height: 1.6; }
+.io-note code { color: var(--lightblue); }
+.io-msg { font-family: var(--mono); font-size: .74rem; color: var(--yellow); min-height: 1.2em; margin: 0; }
+.io-msg.ok { color: var(--green); }
+
+/* secret */
+.secret-pill {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  background: var(--green); color: var(--darkblue); border-radius: 999px; padding: .05rem .5rem; font-weight: 700;
+  border: none; cursor: pointer;
+}
+[data-secret] { display: none; }
+body.is-secret [data-secret] { display: revert; }
+body.is-secret .metrics tr[data-secret] { display: table-row; }
+body.is-secret .tool[data-secret] { display: inline-block; }
+
+/* footer */
+.selftest { font-family: var(--mono); font-size: .8rem; }
+.selftest .ok { color: var(--lime); }
+.selftest .fail { color: var(--yellow); }
+.selftest ul { margin: .5rem 0 0; padding-left: 1.1rem; color: rgba(234,242,255,.75); font-size: .76rem; }
+.selftest summary { cursor: pointer; color: var(--lightblue); }
+.site-footer .dim { color: rgba(234,242,255,.5); }
+
+@media (max-width: 640px) {
+  .result { grid-template-columns: auto 1fr; }
+  .result .next { grid-column: 1 / -1; grid-row: auto; align-items: stretch; }
+  .result .next .btn { white-space: normal; text-align: center; }
+  .result .next .done-note { text-align: left; }
+}
+
+
+/* leaderboard rows: time, then mistakes */
+.board-row { grid-template-columns: 1.6rem 4.6rem minmax(0, 1fr) auto; }
+.board-row .miss { color: var(--yellow); font-size: .72rem; font-weight: 600; margin-left: .25rem; }
+.board-row .star { color: var(--green); font-weight: 700; margin-left: .2rem; }
+.board-row .prog { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: .35rem; }
+.board-row .prog i { width: 5px; height: 9px; border-radius: 1.5px; background: rgba(13,237,247,.2); display: inline-block; }
+.board-row .prog i.on { background: var(--lime); }
+.board-row .tot { color: rgba(234,242,255,.6); font-size: .72rem; white-space: nowrap; }
+.board-tabs .tab { white-space: nowrap; }
+.board-tabs[hidden] { display: none; }
+.board-head { flex-wrap: wrap; row-gap: .45rem; }
+.board-head .board-tabs { margin-left: 0; flex: 1 1 100%; }
+.legend i.ln { width: 16px; height: 3px; border-radius: 2px; background: rgba(234,242,255,.82); }
+.legend i.ln.drawn { height: 5px; background: var(--lime); }
+.legend i.dt { width: 11px; height: 11px; border-radius: 50%; background: var(--ink); }
+.legend i.dt.pen { background: var(--yellow); }
+.legend i.dt.start { background: transparent; border: 2.5px solid var(--green); }
+.legend i.dt.target { background: var(--ink); box-shadow: 0 0 0 2px var(--darkblue), 0 0 0 3.5px var(--yellow); }
+.legend i.dt.halo { background: rgba(0,214,0,.45); width: 14px; height: 14px; }
+.gen-row { grid-template-columns: 1fr 1fr; }
+body.is-secret .gen-row .ctl[data-secret] { display: flex; grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html" aria-label="back to the Powersort site">
+    <svg class="brand-glyph" viewBox="-6 -44 72 108" aria-hidden="true">
+      <path class="glyph-line" pathLength="1" d="M0 60 L0 0 L60 60 L60 0 L0 0 L30 -38 L60 0 L0 60 L60 60"/>
+      <circle class="glyph-pen" cx="60" cy="60" r="7"/>
+    </svg>
+    <span class="brand-word">pen down</span>
+  </a>
+  <nav class="site-nav mode-nav" aria-label="pages">
+    <a class="mode is-active" href="pen-down.html" id="selfLink">pen down</a>
+    <a href="index.html">back to site</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="act act-hero">
+  <div class="act-head">
+    <span class="eyebrow" id="eyebrow">pen down · a one-stroke drawing game</span>
+    <h1>Draw every line once.<br><em>Never lift the pen.</em></h1>
+    <p class="lede">
+      Each picture is made of <strong>dots</strong> and <strong>lines</strong>. Put the pen on a dot and trace the
+      lines, <strong>each exactly once</strong>, without lifting the pen. Passing through a dot again is fine;
+      going over a line twice is not. Some pictures cannot be drawn like that — if you are sure, say
+      <span class="rule">can’t be done</span>, but a wrong claim counts as a mistake. Your time and your
+      mistakes go on the leaderboard.
+    </p>
+  </div>
+</section>
+
+<section class="act">
+  <div class="lab-grid" id="labGrid">
+
+    <!-- ============ stage ============ -->
+    <div class="panel panel-stage">
+      <div class="stage-head">
+        <div class="level-line">
+          <span class="lvl" id="lvl">level 1</span>
+          <span class="lname" id="lname">hook</span>
+          <span class="sheet" id="sheet"></span>
+          <button class="secret-pill" id="secretPill" data-secret type="button" title="hide the hints again">deg</button>
+          <span class="lhint" id="lhint"></span>
+        </div>
+        <div class="cost-readout">
+          <span class="cost-label">time</span>
+          <span class="cost-value" id="clock">0:00</span>
+          <span class="cost-sub" id="clockSub">&nbsp;</span>
+        </div>
+      </div>
+
+      <div class="stage-wrap" id="stageWrap">
+        <svg id="stage" tabindex="0" role="application"
+             aria-label="The picture. Put the pen on a dot, then slide or click along the lines. Arrow keys pick the next line, Enter draws it.">
+          <defs id="skinDefs"></defs>
+          <g id="gHalo"></g>
+          <g id="gLines"></g>
+          <g id="gGhost"></g>
+          <g id="gDrawn"></g>
+          <g id="gPreview"></g>
+          <g id="gSteps"></g>
+          <g id="gDots"></g>
+          <g id="gPen"></g>
+          <g id="gFx"></g>
+        </svg>
+        <div class="popup" id="popup" hidden>
+          <div class="popup-card" id="popupCard" role="button" tabindex="0" hidden>
+            <button class="popup-x" id="popupX" type="button" aria-label="close">×</button>
+            <div class="popup-emblems" id="popupEmblems"></div>
+            <div class="popup-title" id="popupTitle"></div>
+            <div class="popup-cost" id="popupCost"></div>
+            <div class="popup-sub" id="popupSub"></div>
+            <div class="popup-action" id="popupAction"></div>
+          </div>
+          <div class="popup-card popup-name" id="claimCard" hidden>
+            <div class="popup-title">Can’t be done?</div>
+            <div class="popup-sub" id="claimSub"></div>
+            <div class="name-btns">
+              <button class="btn btn-claim-go" id="claimGo" type="button">yes, it can’t be done</button>
+              <button class="btn" id="claimBack" type="button">keep drawing</button>
+            </div>
+          </div>
+          <div class="popup-card popup-name" id="nameCard" hidden>
+            <div class="popup-title">Who is playing?</div>
+            <div class="popup-sub" id="nameSub"></div>
+            <input type="text" id="nameInput" maxlength="24" placeholder="your name" autocomplete="off" spellcheck="false" aria-label="your name for the leaderboard">
+            <div class="name-btns">
+              <button class="btn btn-lime" id="nameGo" type="button">let’s play</button>
+              <button class="btn" id="nameSkip" type="button">play as anonymous</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="trail-list" id="trailList"></div>
+      <p class="stage-msg" id="stageMsg" aria-live="polite"></p>
+      <p class="stage-hint">
+        put the pen on a dot and slide along the lines · or tap dots (or lines) one after the other
+        <span class="keys">· <kbd>←</kbd><kbd>→</kbd> pick a line &nbsp;<kbd>enter</kbd> draw it
+        &nbsp;<kbd>u</kbd> undo &nbsp;<kbd>y</kbd> redo &nbsp;<kbd>c</kbd> clear</span>
+      </p>
+
+      <div class="run-tools">
+        <button class="tool" id="btnUndo" type="button">undo<span class="k">u</span></button>
+        <button class="tool" id="btnRedo" type="button">redo<span class="k">y</span></button>
+        <button class="tool" id="btnClear" type="button" title="lift the pen: take the whole drawing back">clear<span class="k">c</span></button>
+        <span class="tool-sep"></span>
+        <button class="tool" id="btnReplay" type="button" title="watch the drawing again from the start">replay ▶</button>
+        <button class="tool" id="btnLabels" type="button" aria-pressed="false" title="show the names of the dots">names</button>
+        <button class="tool" id="btnSteps" type="button" aria-pressed="false" title="number the lines in the order you drew them">order</button>
+        <button class="tool" id="btnGhost" data-secret type="button" title="overlay one complete drawing">ghost</button>
+        <div class="tool-right">
+          <button class="tool" id="btnVibrate" type="button" aria-pressed="true" title="vibration on / off (phones and tablets)" hidden>📳 vibrate</button>
+          <button class="tool" id="btnSound" type="button" aria-pressed="true" title="sound on / off">🔊 sound</button>
+          <button class="btn btn-claim" id="btnNone" type="button" title="claim that this picture cannot be drawn in one stroke">can’t be done</button>
+        </div>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <span class="big" id="resBig">—</span>
+        <span class="verdict" id="resVerdict"></span>
+        <span class="detail" id="resDetail"></span>
+        <span class="next" id="resNext"></span>
+      </div>
+    </div>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="width of the side panel: drag, or use the arrow keys" title="drag to resize · double-click to reset"><span></span></div>
+
+    <!-- ============ side ============ -->
+    <aside class="panel panel-side">
+      <div>
+        <div class="panel-title">picture</div>
+        <p class="input-summary" id="inputSummary"></p>
+        <div class="side-io">
+          <label class="ctl"><span>level</span><select id="preset"></select></label>
+          <div class="gen-row">
+            <label class="ctl"><span>random: dots</span><input type="number" id="genN" value="7" min="3" max="24" step="1"></label>
+            <label class="ctl"><span>lines</span><input type="number" id="genM" value="10" min="2" max="72" step="1"></label>
+            <label class="ctl" data-secret><span>odd dots</span><select id="genOdd">
+              <option value="">0, 2 or 4 at random</option><option value="0">0</option><option value="2">2</option><option value="4">4</option><option value="6">6</option>
+            </select></label>
+          </div>
+          <div class="side-btns">
+            <button class="btn btn-lime" id="btnGen" type="button">random picture</button>
+            <button class="btn" id="btnLink" type="button" title="copy a link that opens this page with this picture">copy link</button>
+          </div>
+          <p class="io-msg" id="linkMsg"></p>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-title">drawing</div>
+        <table class="metrics"><tbody id="metrics"></tbody></table>
+      </div>
+
+      <div>
+        <div class="board-head">
+          <div class="panel-title" style="margin:0">leaderboard</div>
+          <div class="board-tabs" id="boardTabs" role="tablist">
+            <button class="tab" data-view="level" role="tab" type="button">this picture</button>
+            <button class="tab" data-view="top" role="tab" type="button">all levels</button>
+            <button class="tab" data-view="local" role="tab" type="button">this browser</button>
+          </div>
+        </div>
+        <p class="board-status" id="boardStatus"></p>
+        <div class="player-row">
+          <label class="ctl"><span>player</span><input type="text" id="player" maxlength="24" placeholder="your name" autocomplete="off"></label>
+        </div>
+        <div class="board" id="board"></div>
+        <p class="board-note" id="boardNote"></p>
+      </div>
+
+      <div>
+        <details class="io" id="io">
+          <summary>import / export a picture</summary>
+          <div class="io-body">
+            <textarea id="ioText" spellcheck="false" aria-label="picture and drawing as text"></textarea>
+            <div class="side-btns">
+              <button class="btn" id="btnImport" type="button">import</button>
+              <button class="btn" id="btnCopy" type="button">copy</button>
+              <button class="btn" id="btnDownload" type="button">download .py</button>
+              <label class="btn" for="fileIn" style="cursor:pointer">load file…</label>
+              <input type="file" id="fileIn" accept=".py,.txt,.json" hidden>
+            </div>
+            <p class="io-msg" id="ioMsg"></p>
+            <p class="io-note">
+              The export is valid Python: <code>dots</code> maps each name to a position (y grows downwards),
+              <code>lines</code> lists pairs of dots, an optional <code>start</code> fixes the first dot, and
+              <code>trail</code> is the drawing so far as the dots the pen visits. With parallel lines,
+              <code>trail_lines</code> gives the line numbers as well. Import also takes JSON with the same
+              fields, so you can make your own pictures.
+            </p>
+          </div>
+        </details>
+      </div>
+
+      <div>
+        <div class="panel-title">legend</div>
+        <div class="legend" id="legend">
+          <span><i class="ln"></i> line still to draw</span>
+          <span><i class="ln drawn"></i> line drawn</span>
+          <span><i class="dt pen"></i> the pen</span>
+          <span><i class="dt start"></i> where the pen went down</span>
+          <span><i class="dt target"></i> a dot the pen can go to</span>
+          <span><i class="dt halo"></i> a finished drawing started here</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="selftest" id="selftest">checking…</div>
+  <p style="margin-left:auto">pen down · <span class="dim">every line once, never lift the pen</span></p>
+</footer>
+
+<script>
+/* ==========================================================================
+   MODEL  --  graphs, trails and the levels.  Everything between the shared
+   markers is copied verbatim into worker/src/model.js by build.py, so the
+   page and the leaderboard server check trails with the very same code.
+   ========================================================================== */
+/* @shared-begin */
+/* A graph is { v: [[x, y], ...], e: [[a, b], ...], labels, start }:
+   dots are indices into v, lines are pairs of dots (parallel lines allowed,
+   no loops), start is a dot every drawing has to begin at, or null.        */
+
+const sum = a => a.reduce((x, y) => x + y, 0);
+
+function degrees(g) {
+  const d = new Array(g.v.length).fill(0);
+  for (const [a, b] of g.e) { d[a]++; d[b]++; }
+  return d;
+}
+/* incidence lists: for every dot the indices of its lines */
+function incidence(g) {
+  const inc = g.v.map(() => []);
+  g.e.forEach(([a, b], i) => { inc[a].push(i); inc[b].push(i); });
+  return inc;
+}
+const other = (g, i, x) => (g.e[i][0] === x ? g.e[i][1] : g.e[i][0]);
+
+/* all lines in one piece?  (dots without lines do not matter) */
+function linesConnected(g) {
+  if (!g.e.length) return true;
+  const inc = incidence(g), seen = new Array(g.v.length).fill(false);
+  const stack = [g.e[0][0]]; seen[g.e[0][0]] = true;
+  while (stack.length) {
+    const x = stack.pop();
+    for (const i of inc[x]) { const y = other(g, i, x); if (!seen[y]) { seen[y] = true; stack.push(y); } }
+  }
+  return g.e.every(([a]) => seen[a]);
+}
+
+/* The dots a one-stroke drawing of all lines can begin at (respecting a fixed
+   start).  Empty when the picture cannot be drawn in one stroke.            */
+function possibleStarts(g) {
+  if (!g.e.length || !linesConnected(g)) return [];
+  const d = degrees(g), odd = [];
+  d.forEach((k, x) => { if (k % 2) odd.push(x); });
+  let starts;
+  if (odd.length === 0) starts = d.map((k, x) => x).filter(x => d[x] > 0);
+  else if (odd.length === 2) starts = odd;
+  else starts = [];
+  if (g.start !== null && g.start !== undefined) starts = starts.filter(x => x === g.start);
+  return starts;
+}
+const trailExists = g => possibleStarts(g).length > 0;
+
+/* Walk a trail given as a start dot and a list of line indices.  Returns
+   { ok, dots, end, err }; ok means every step follows an unused line that
+   touches the pen's current dot.  complete: every line used exactly once.   */
+function walkTrail(g, start, lines) {
+  if (!Number.isInteger(start) || start < 0 || start >= g.v.length) return { ok: false, err: 'no valid start dot' };
+  if (g.start !== null && g.start !== undefined && start !== g.start) return { ok: false, err: 'this picture has to be started at its marked dot' };
+  const used = new Array(g.e.length).fill(false), dots = [start];
+  let x = start;
+  for (let k = 0; k < lines.length; k++) {
+    const i = lines[k];
+    if (!Number.isInteger(i) || i < 0 || i >= g.e.length) return { ok: false, err: `step ${k + 1}: no such line` };
+    if (used[i]) return { ok: false, err: `step ${k + 1}: that line is drawn already` };
+    const [a, b] = g.e[i];
+    if (a !== x && b !== x) return { ok: false, err: `step ${k + 1}: the line does not touch the pen` };
+    used[i] = true; x = a === x ? b : a; dots.push(x);
+  }
+  return { ok: true, dots, end: x, complete: lines.length === g.e.length };
+}
+function isFullTrail(g, start, lines) { const w = walkTrail(g, start, lines); return w.ok && w.complete; }
+
+/* One full drawing (Hierholzer), starting at `from` if that works. */
+function findTrail(g, from = null) {
+  const starts = possibleStarts(g);
+  if (!starts.length) return null;
+  const s = starts.includes(from) ? from : starts[0];
+  const inc = incidence(g), used = new Array(g.e.length).fill(false), ptr = new Array(g.v.length).fill(0);
+  const stack = [[s, -1]], out = [];
+  while (stack.length) {
+    const [x] = stack[stack.length - 1];
+    while (ptr[x] < inc[x].length && used[inc[x][ptr[x]]]) ptr[x]++;
+    if (ptr[x] === inc[x].length) { out.push(stack.pop()[1]); continue; }
+    const i = inc[x][ptr[x]]; used[i] = true;
+    stack.push([other(g, i, x), i]);
+  }
+  out.pop();                                   // the -1 of the start
+  return { start: s, lines: out.reverse() };
+}
+
+/* A canonical key for a graph: the dot count, the fixed start and the sorted
+   line list.  Positions do not matter; the same drawing moved around is the
+   same puzzle.  Used for leaderboards and to recognise levels.              */
+function graphKey(g) {
+  const es = g.e.map(([a, b], i) => [Math.min(a, b), Math.max(a, b), i]).sort((p, q) => p[0] - q[0] || p[1] - q[1] || p[2] - q[2]).map(([a, b]) => a + '-' + b);
+  return `${g.v.length}${g.start !== null && g.start !== undefined ? '@' + g.start : ''}:${es.join(',')}`;
+}
+/* Where each of g's lines sits in the key's order (sorted by their dots; lines between the
+   same two dots keep their order, which is all that matters since they are interchangeable).
+   A drawing sent along with a key must use these positions: the server rebuilds the
+   picture from the key alone, so its line 0 is the key's first line, not g's.            */
+function keyLineOrder(g) {
+  const order = g.e.map(([a, b], i) => [Math.min(a, b), Math.max(a, b), i]).sort((p, q) => p[0] - q[0] || p[1] - q[1] || p[2] - q[2]);
+  const pos = new Array(g.e.length);
+  order.forEach(([, , i], k) => { pos[i] = k; });
+  return pos;
+}
+/* the same, parsed back (the server gets graphs in this form) */
+function graphFromKey(key) {
+  const m = /^(\d+)(?:@(\d+))?:([\d,\-]*)$/.exec(String(key || ''));
+  if (!m) throw new Error('bad graph key');
+  const n = +m[1], e = m[3] ? m[3].split(',').map(p => p.split('-').map(Number)) : [];
+  const g = { v: Array.from({ length: n }, () => [0, 0]), e, start: m[2] !== undefined ? +m[2] : null };
+  checkGraph(g);
+  return g;
+}
+function checkGraph(g, { maxDots = 200, maxLines = 400 } = {}) {
+  const n = g.v.length;
+  if (n < 1 || n > maxDots) throw new Error(`between 1 and ${maxDots} dots, please`);
+  if (g.e.length < 1 || g.e.length > maxLines) throw new Error(`between 1 and ${maxLines} lines, please`);
+  for (const l of g.e) {
+    if (!Array.isArray(l) || l.length !== 2 || !l.every(x => Number.isInteger(x) && x >= 0 && x < n)) throw new Error('a line joins two existing dots');
+    if (l[0] === l[1]) throw new Error('a line has to join two different dots');
+  }
+  if (g.start !== null && g.start !== undefined && !(Number.isInteger(g.start) && g.start >= 0 && g.start < n)) throw new Error('the start dot does not exist');
+  return true;
+}
+
+/* A short, stable fingerprint of a string (cyrb53). */
+function strHash(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+}
+
+/* ---------------------------------------------------------------- levels
+   The pictures of the workshop handout, sheets 1 and 2.  Coordinates are in
+   handout units (a square of sheet 1 is 100 wide); y grows downwards.      */
+const letters = n => Array.from({ length: n }, (_, i) => String.fromCharCode(97 + i));
+function named(dots, lines, extra = {}) {         // dots: {label: [x, y]}, lines: 'a-b c-d …'
+  const labels = Object.keys(dots), idx = new Map(labels.map((l, i) => [l, i]));
+  const e = lines.trim().split(/\s+/).map(p => p.split('-').map(l => {
+    if (!idx.has(l)) throw new Error('unknown dot ' + l);
+    return idx.get(l);
+  }));
+  return { v: labels.map(l => dots[l]), e, labels, start: extra.start ? idx.get(extra.start) : null, lineLabels: extra.lineLabels || null };
+}
+const SQ = { a: [0, 0], b: [100, 0], c: [0, 100], d: [100, 100] };
+const HOUSE = { a: [50, -76], b: [0, 0], c: [100, 0], d: [0, 100], e: [100, 100] };
+const HOUSE2 = { a: [50, -76], b: [150, -76], c: [0, 0], d: [100, 0], e: [200, 0], f: [0, 100], g: [100, 100], h: [200, 100] };
+const HOUSE2_BASE = 'a-c a-d b-d b-e c-d d-e c-f d-g e-h f-g g-h';
+
+/* sheet 2.1: the windmill.  Lines in the handout's order e1 … e20. */
+const MILL = { a: [100, 0], b: [200, 0], c: [0, 100], d: [100, 100], e: [200, 100], f: [300, 100], g: [150, 131], h: [150, 169],
+  i: [0, 200], v: [100, 200], j: [200, 200], k: [300, 200], l: [100, 300], m: [200, 300] };
+const MILL_LINES = 'd-v b-f v-j e-g d-e b-e e-f k-m i-l a-d j-k c-a v-l i-v j-m v-g v-h e-h e-j c-d';
+
+/* sheet 2.2: the star fort — a pentagram inside a ten-sided ring, with a
+   little triangle on every second corner of the ring.                      */
+function starFort() {
+  const cx = 140, cy = 128, P = (r, deg) => { const t = deg * Math.PI / 180; return [Math.round(cx + r * Math.cos(t)), Math.round(cy + r * Math.sin(t))]; };
+  const dots = {};
+  [-90, -18, 54, 126, 198].forEach((a, k) => { dots['v' + (k + 1)] = P(50, a); });                 // v1 … v5, the star
+  for (let k = 0; k < 10; k++) dots['v' + (k + 6)] = P(98, -90 + 36 * k);                          // v6 … v15, the ring
+  [[-54, 16], [18, 18], [90, 20], [162, 22], [234, 24]].forEach(([a, first]) => {                // v16/v17 on v7, v18/v19 on v9, …
+    dots['v' + first] = P(138, a - 9); dots['v' + (first + 1)] = P(138, a + 9);
+  });
+  const lines = [
+    'v1-v14 v1-v8 v1-v4 v1-v3 v2-v5 v2-v6 v2-v4 v2-v10 v3-v5 v3-v8 v3-v12 v4-v14 v4-v10 v5-v6 v5-v12',
+    'v6-v15 v6-v7 v7-v15 v7-v8 v7-v9 v8-v9 v9-v10 v9-v11 v10-v11 v11-v12 v11-v13 v12-v13 v13-v14 v13-v15 v14-v15',
+    'v7-v16 v7-v17 v16-v17 v9-v18 v9-v19 v18-v19 v11-v20 v11-v21 v20-v21 v13-v22 v13-v23 v22-v23 v15-v24 v15-v25 v24-v25'
+  ].join(' ');
+  const ordered = {};
+  for (let k = 1; k <= 25; k++) ordered['v' + k] = dots['v' + k];
+  return named(ordered, lines, { start: 'v1' });
+}
+
+/* ---- bonus pictures, after the handout: the same game, getting harder, each with
+   something new -- lines that run twice between the same two places, a picture in
+   two pieces, a start that decides everything, and two big ones to finish */
+const polar = (r, deg, cx, cy) => [Math.round(cx + r * Math.cos(deg * Math.PI / 180)), Math.round(cy + r * Math.sin(deg * Math.PI / 180))];
+const ring = (labels, r, a0, cx, cy) => Object.fromEntries(labels.split('').map((l, k, all) => [l, polar(r, a0 + 360 * k / all.length, cx, cy)]));
+const ISLANDS = { n: [110, 0], i: [110, 110], e: [260, 110], s: [110, 220] };           // two banks, two islands
+function snowflake() {                     // a hexagon with the six-pointed star inside, and a kite on every corner
+  const d = {}, L = 'abcdefghijklmnopqrstuvwx'.split(''), A = [], kites = [];
+  for (let k = 0; k < 6; k++) {
+    const ang = -90 + 60 * k, [t, l, r, a] = L.slice(4 * k, 4 * k + 4);
+    d[t] = polar(145, ang, 150, 150); d[l] = polar(100, ang - 15, 150, 150); d[r] = polar(100, ang + 15, 150, 150); d[a] = polar(58, ang, 150, 150);
+    A.push(a); kites.push(`${a}-${l} ${l}-${t} ${t}-${r} ${r}-${a}`);
+  }
+  const hexagon = A.map((a, k) => `${a}-${A[(k + 1) % 6]}`), star = A.map((a, k) => `${a}-${A[(k + 2) % 6]}`);
+  return named(d, [...hexagon, ...star, ...kites].join(' '), { start: 'a' });
+}
+/* the woven rose: twelve dots round a circle, six rings of six lines woven through each
+   other, each ring stepping round the circle in its own rhythm -- every other dot; one
+   and three; one and seven; two and six; and twice three and five.  No two rings share
+   a line, and every dot lies on three of them.  Given as the dots each ring visits. */
+const WOVEN_RINGS = ['c d g h k l', 'b c j k f g', 'b d f h j l', 'a c i k e g', 'a d i l e h', 'b e j a f i'];
+const ringLines = rings => rings.map(r => { const d = r.split(' '); return d.map((x, k) => x + '-' + d[(k + 1) % d.length]).join(' '); }).join(' ');
+const CASTLE = {                           // two towers, battlements between them, an arched gate
+  m: [40, -52], p: [82, -34], c: [40, 0], a: [0, 60], b: [80, 60], x: [0, 150], w: [80, 150], d: [0, 300], e: [80, 300],
+  r: [300, -52], s: [342, -34], h: [300, 0], f: [260, 60], g: [340, 60], y: [260, 150], z: [340, 150], i: [260, 300], j: [340, 300],
+  A: [112, 150], B: [112, 116], C: [148, 116], D: [148, 150], E: [192, 150], F: [192, 116], G: [228, 116], H: [228, 150],
+  k: [135, 300], n: [135, 235], o: [170, 205], q: [205, 235], l: [205, 300] };
+const CASTLE_LINES = 'c-a c-b a-b a-x b-w x-w a-w b-x x-d d-e c-m m-p p-c  h-f h-g f-g f-y g-z y-z f-z g-y z-j j-i h-r r-s s-h ' +
+  'w-A A-B B-C C-D D-E E-F F-G G-H H-y  e-k k-n n-o o-q q-l l-i k-l';
+
+const LEVELS = [
+  { id: '1.1', name: 'hook', hint: 'Three lines. Put the pen down and go.', ...named(SQ, 'a-b a-c c-d') },
+  { id: '1.2', name: 'flag', hint: 'Does it matter where you start?', ...named(SQ, 'a-b a-c a-d c-d') },
+  { id: '1.3', name: 'claw', hint: 'Not every picture can be drawn in one stroke. If you are sure this one can’t, say so.', ...named(SQ, 'a-b a-c a-d') },
+  { id: '1.4', name: 'square', hint: 'Where can you start? Where do you end up?', ...named(SQ, 'a-b b-d d-c c-a') },
+  { id: '1.5', name: 'slashed square', hint: 'One line more than the square.', ...named(SQ, 'a-b b-d d-c c-a a-d') },
+  { id: '1.6', name: 'crossed square', hint: 'The crossing in the middle is not a dot: you cannot turn there.', ...named(SQ, 'a-b b-d d-c c-a a-d b-c') },
+  { id: '1.7', name: 'house', hint: 'A roof on the square.', ...named(HOUSE, 'a-b a-c b-c b-d c-e d-e') },
+  { id: '1.8', name: 'house with a slash', hint: 'Which dots are good places to start?', ...named(HOUSE, 'a-b a-c b-c b-d c-e d-e b-e') },
+  { id: '1.9', name: 'Nikolaus’ house', hint: '“Das ist das Haus vom Ni-ko-laus” — one syllable per line.', ...named(HOUSE, 'a-b a-c b-c b-d c-e d-e b-e c-d') },
+  { id: '1.10', name: 'semi-detached', hint: 'Two houses, one shared wall.', ...named(HOUSE2, HOUSE2_BASE) },
+  { id: '1.11', name: 'semi-detached, slashed', hint: 'Two more lines than next door.', ...named(HOUSE2, HOUSE2_BASE + ' c-g d-h') },
+  { id: '1.12', name: 'semi-detached, crossed', hint: 'Fifteen lines. Think before you draw?', ...named(HOUSE2, HOUSE2_BASE + ' c-g d-f d-h e-g') },
+  { id: '2.1', name: 'windmill', hint: 'Twenty lines, and the pen has to start at dot v.',
+    ...named(MILL, MILL_LINES, { start: 'v', lineLabels: Array.from({ length: 20 }, (_, i) => 'e' + (i + 1)) }) },
+  { id: '2.2', name: 'star fort', hint: 'Forty-five lines, starting at v1. A plan helps.', ...starFort() },
+  { id: 'B1', bonus: true, name: 'star in a ring', hint: 'Every dot is joined to every other one.', ...named(ring('abcde', 95, -90, 100, 100), 'a-b b-c c-d d-e e-a a-c c-e e-b b-d d-a') },
+  { id: 'B2', bonus: true, name: 'island town', hint: 'Two islands, seven bridges. Can you cross every bridge exactly once?', ...named(ISLANDS, 'n-i n-i s-i s-i n-e i-e s-e') },
+  { id: 'B3', bonus: true, name: 'island town, new bridge', hint: 'The town built an eighth bridge. Does it help?', ...named(ISLANDS, 'n-i n-i s-i s-i n-e i-e s-e n-e') },
+  { id: 'B4', bonus: true, name: 'cartwheel', hint: 'Six spokes and a rim.', ...named({ h: [100, 100], ...ring('abcdef', 100, -90, 100, 100) }, 'h-a h-b h-c h-d h-e h-f a-b b-c c-d d-e e-f f-a') },
+  { id: 'B5', bonus: true, name: 'rose window', hint: 'Two big triangles in a hexagon. The crossings are not dots.', ...named(ring('abcdef', 100, -90, 100, 100), 'a-b b-c c-d d-e e-f f-a a-c c-e e-a b-d d-f f-b') },
+  { id: 'B6', bonus: true, name: 'twin stars', hint: 'Two stars. One stroke?', ...named({ ...ring('abcde', 80, -90, 80, 90), ...ring('fghij', 80, -90, 270, 90) }, 'a-c c-e e-b b-d d-a f-h h-j j-g g-i i-f') },
+  { id: 'B7', bonus: true, name: 'flag tower', hint: 'The pen has to start at the top of the flagpole, dot f.',
+    ...named({ f: [50, -95], g: [115, -72], h: [50, -45], v: [50, 20], t: [0, 100], u: [100, 100], r: [0, 200], s: [100, 200], p: [0, 300], q: [100, 300] },
+      'p-q p-r q-s r-s r-t s-u t-u t-v u-v v-h h-f f-g g-h r-u s-t', { start: 'f' }) },
+  { id: 'B8', bonus: true, name: 'snowflake', hint: 'Thirty-six lines, starting at the top tip, dot a.', ...snowflake() },
+  { id: 'B9', bonus: true, name: 'castle', hint: 'Forty-two lines, and the pen has to start at the gate, dot k.', ...named(CASTLE, CASTLE_LINES, { start: 'k' }) },
+  { id: 'B10', bonus: true, name: 'woven rose', hint: 'Six rings of six lines, woven through each other. The crossings are not dots.', ...named(ring('abcdefghijkl', 100, -90, 100, 100), ringLines(WOVEN_RINGS)) }
+];
+LEVELS.forEach(L => { if (!L.labels) L.labels = letters(L.v.length); L.key = graphKey(L); });
+/* how a level is labelled: its number on the handout, or a bonus picture */
+const levelTag = L => L.bonus ? 'bonus ' + L.id : 'handout ' + L.id;
+const levelById = id => LEVELS.find(L => L.id === id) || null;
+/* @shared-end */
+
+/* ==========================================================================
+   CONFIGURATION — the global leaderboard
+   The URL of the deployed Cloudflare Worker (leaderboard-readme.md walks
+   through it).  With an empty string the page runs with the browser-local
+   board only; if the Worker cannot be reached the page notices and carries on.
+   ========================================================================== */
+const BOARD_URL = 'https://pendown-board.wild-inter-net.workers.dev/';
+
+/* ==========================================================================
+   SMALL HELPERS
+   ========================================================================== */
+const $ = id => document.getElementById(id);
+const store = {                                  // localStorage may be blocked; the game still works without it
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+  json(k, d) { try { return JSON.parse(localStorage.getItem(k) || '') || d; } catch (e) { return d; } },
+  put(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+};
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const T = k => REDUCED ? 0 : k;
+function escapeHTML(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function fmtClock(ms, tenths = false) {
+  const s = Math.max(0, ms) / 1000, m = Math.floor(s / 60), r = s - 60 * m;
+  const sec = tenths ? r.toFixed(1).padStart(4, '0') : String(Math.floor(r)).padStart(2, '0');
+  return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
+function timeAgo(t) {
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  return new Date(t).toLocaleDateString();
+}
+const plural = (k, one, many) => `${k} ${k === 1 ? one : (many || one + 's')}`;
+
+/* ==========================================================================
+   STATE
+   ========================================================================== */
+const state = {
+  pic: null,                                    // { g, level (index or null), key }
+  start: null, lines: [], redo: [],             // the drawing: where the pen went down, then line indices
+  show: null,                                   // during a replay: how many lines are visible
+  replaying: null,
+  cand: -1,                                     // keyboard: index into candidates()
+  wanted: null,                                 // a locked level a link asked for (opened if the gate turns out to be off)
+  secret: false, ghost: false,
+  labels: store.get('pendown.labels') === 'on',
+  steps: store.get('pendown.steps') === 'on',
+  sound: store.get('pendown.sound') !== 'off',
+  vibrate: store.get('pendown.vibrate') !== 'off',
+  /* the global board: ?board=<id> picks a board (default "public"), ?board=local switches it off,
+     ?gate=0 lets players pick any level, ?api=<url> points at another Worker (testing) */
+  boardId: 'public', boardMode: 'global', gateParam: null, api: BOARD_URL, view: 'level',
+  global: { key: null, entries: [], total: 0, status: 'idle', msg: '' },
+  top: { entries: [], status: 'idle', msg: '', levels: LEVELS.length },
+  player: store.get('pendown.player') || '',
+  client: null
+};
+const G = () => state.pic.g;
+const complete = () => state.start !== null && state.lines.length === G().e.length;
+
+/* a random id for this browser; the server only ever sees it, the board only a fingerprint of it */
+state.client = store.get('pendown.client');
+if (!state.client || !/^[A-Za-z0-9_-]{8,64}$/.test(state.client)) {
+  const a = new Uint8Array(12); (crypto.getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => { a[i] = Math.random() * 256; }));
+  state.client = Array.from(a, b => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[b & 63]).join('');
+  store.set('pendown.client', state.client);
+}
+const MY_WHO = strHash('pendown:' + state.client);
+
+/* ---- progress, kept in this browser, one record per picture ----
+   attempt: { elapsed, mistakes, solved, result }  -- the clock runs until the first solve
+   drawings: finished drawings of that picture (the first one and any later ones)          */
+const ATT_KEY = 'pendown.attempts.v1', DRAW_KEY = 'pendown.drawings.v1';
+let attempts = store.json(ATT_KEY, {});
+function att(key = state.pic.key) {
+  if (!attempts[key]) attempts[key] = { elapsed: 0, mistakes: 0, solved: false, result: null };
+  return attempts[key];
+}
+function saveAttempts() { store.put(ATT_KEY, attempts); }
+function drawings(key = state.pic.key) { return (store.json(DRAW_KEY, {})[key] || []); }
+function pushDrawing(entry, key = state.pic.key) {
+  const all = store.json(DRAW_KEY, {}), list = all[key] || [];
+  const sig = entry.verdict + ':' + entry.start + ':' + (entry.lines || []).join(',');
+  const dup = list.find(d => d.verdict + ':' + d.start + ':' + (d.lines || []).join(',') === sig);
+  if (dup) return { entry: dup, isNew: false };
+  list.push(entry); all[key] = list.slice(-100); store.put(DRAW_KEY, all);
+  return { entry, isNew: true };
+}
+function forgetPicture(key = state.pic.key) {
+  delete attempts[key]; saveAttempts();
+  const all = store.json(DRAW_KEY, {}); delete all[key]; store.put(DRAW_KEY, all);
+}
+const levelSolved = i => !!(attempts[LEVELS[i].key] && attempts[LEVELS[i].key].solved);
+function startsFound(key = state.pic.key) { return new Set(drawings(key).filter(d => d.verdict === 'trail').map(d => d.start)); }
+/* the star: every dot a one-stroke drawing can start from has been used as a start */
+function allStartsFound(g = G(), key = state.pic.key) {
+  if (g.start !== null) return false;
+  const ps = possibleStarts(g); if (ps.length < 2) return false;
+  const f = startsFound(key); return ps.every(x => f.has(x));
+}
+
+/* the level gate: only on the global board, off in the hint mode, ?gate=0 or ?gate=1 override */
+function gateOn() {
+  if (state.secret) return false;
+  if (state.gateParam !== null) return state.gateParam;
+  return state.boardMode === 'global' && state.global.status !== 'error';   // an unreachable board must not lock players out
+}
+const levelLocked = i => gateOn() && i > 0 && !levelSolved(i - 1);
+
+/* ==========================================================================
+   PICTURES  --  levels, random ones, and text / link formats
+   ========================================================================== */
+function picFromGraph(g, level = null) {
+  const labels = g.labels && g.labels.length === g.v.length ? g.labels : letters(g.v.length).map((l, i) => i < 26 ? l : 'd' + i);
+  const gg = { v: g.v.map(p => [+p[0], +p[1]]), e: g.e.map(l => [l[0], l[1]]), labels, start: g.start === undefined ? null : g.start, lineLabels: g.lineLabels || null };
+  checkGraph(gg, { maxDots: 60, maxLines: 150 });
+  return { g: gg, level, key: graphKey(gg) };
+}
+const levelPic = i => picFromGraph(LEVELS[i], i);
+
+/* ---- random pictures ------------------------------------------------------
+   Random pictures from the configuration model: first a degree sequence with
+   a chosen number of odd dots (0, 2 or 4 -- an odd number is impossible, the
+   degrees always add up to twice the lines), then the "stubs" of all dots are
+   paired at random.  Loops are removed and at most two lines may join the
+   same two dots; a picture in pieces is joined up.  All of these repairs are
+   degree-preserving switches (a-b, c-d -> a-c, b-d), so the degrees stay
+   exactly as chosen.  Without a choice the odd count is 0, 2 or 4 at random,
+   so about two thirds of the pictures can be drawn.                          */
+const ODD_WEIGHTS = [[0, 0.3], [2, 0.4], [4, 0.3]];
+const MAX_PARALLEL = 2;
+const rndInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+/* the fewest lines n dots with k odd ones can have (odd dots at least 1, even at least 2; in one piece) */
+const minLines = (n, k) => Math.max(n - 1, n - k / 2);
+function degreeSequence(n, m, k) {
+  const d = Array.from({ length: n }, (_, i) => i < k ? (Math.random() < 0.35 && 2 * m >= n * 2 + 2 ? 3 : 1) : 2);
+  let rest = 2 * m - sum(d);
+  while (rest < 0) { const i = d.findIndex(x => x === 3); d[i] = 1; rest += 2; }
+  let cap = Math.max(2, Math.min(6, n - 1));      // simple pictures need a degree below n
+  while (rest > 0) {                             // hand out the remaining ends two at a time, keeping parities
+    const open = d.map((x, i) => i).filter(i => d[i] + 2 <= cap + (d[i] % 2));
+    if (!open.length) { cap++; continue; }
+    const i = open[Math.floor(Math.random() * open.length)];
+    d[i] += 2; rest -= 2;
+  }
+  return shuffle(d);
+}
+/* Pair the stubs at random, then repair by degree-preserving switches until
+   there are no loops, no more than two lines between the same two dots, at
+   most `budget` such parallel pairs, and the picture is in one piece.  A
+   switch is kept when it does not make things worse (so the search can drift
+   across plateaus).  Returns null if that does not work out.               */
+function configurationGraph(deg, budget) {
+  const n = deg.length, stubs = [];
+  deg.forEach((k, x) => { for (let j = 0; j < k; j++) stubs.push(x); });
+  shuffle(stubs);
+  const e = [];
+  for (let i = 0; i < stubs.length; i += 2) e.push([stubs[i], stubs[i + 1]]);
+  const key = (a, b) => a < b ? a * 64 + b : b * 64 + a;
+  const energy = () => {
+    const c = new Map(), parent = [...Array(n).keys()], find = x => parent[x] === x ? x : (parent[x] = find(parent[x]));
+    let loops = 0, excess = 0, pp = 0;
+    for (const [a, b] of e) { if (a === b) { loops++; continue; } const k = key(a, b); c.set(k, (c.get(k) || 0) + 1); parent[find(a)] = find(b); }
+    for (const v of c.values()) { if (v > MAX_PARALLEL) excess += v - MAX_PARALLEL; if (v >= 2) pp++; }
+    const comps = new Set(deg.map((_, x) => find(x))).size;
+    return { E: 3 * loops + 3 * excess + Math.max(0, pp - budget) + (comps - 1), c, find, fixLines: loops + excess > 0 || pp > budget };
+  };
+  let cur = energy();
+  for (let round = 0; round < 1200 && cur.E > 0; round++) {
+    let i;
+    if (cur.fixLines) {                          // a loop, or a line with a parallel partner
+      const bad = e.map((_, j) => j).filter(j => e[j][0] === e[j][1] || cur.c.get(key(...e[j])) >= 2);
+      i = bad[Math.floor(Math.random() * bad.length)];
+    } else i = Math.floor(Math.random() * e.length);
+    let j = Math.floor(Math.random() * e.length);
+    if (!cur.fixLines) {                         // in pieces: switch with a line of another piece -- that joins them
+      const other = e.map((_, k) => k).filter(k => cur.find(e[k][0]) !== cur.find(e[i][0]));
+      if (other.length) j = other[Math.floor(Math.random() * other.length)];
+    }
+    if (i === j) continue;
+    const [a, b] = e[i], [c, d] = e[j], old = [e[i], e[j]];
+    [e[i], e[j]] = Math.random() < 0.5 ? [[a, c], [b, d]] : [[a, d], [b, c]];
+    const next = energy();
+    if (next.E <= cur.E) cur = next; else { e[i] = old[0]; e[j] = old[1]; }
+  }
+  return cur.E === 0 ? { v: deg.map(() => [0, 0]), e, start: null } : null;
+}
+/* where the dots go: stress majorization (dots as far apart as their graph
+   distance), best of several starts -- fewest dots sitting on somebody else's
+   line, then fewest crossings; turned so the picture is wider than tall and
+   named in reading order */
+function layoutPicture(g, tries = g.v.length > 14 ? 9 : 14) {
+  const n = g.v.length, L = 100;
+  const adj = Array.from({ length: n }, () => new Set());
+  g.e.forEach(([a, b]) => { adj[a].add(b); adj[b].add(a); });
+  const D = new Float64Array(n * n), W = new Float64Array(n * n);   // target distances and stress weights
+  for (let s0 = 0; s0 < n; s0++) {
+    const d = new Array(n).fill(-1); d[s0] = 0; const q = [s0];
+    for (let h = 0; h < q.length; h++) { const x = q[h]; for (const y of adj[x]) if (d[y] < 0) { d[y] = d[x] + 1; q.push(y); } }
+    for (let j = 0; j < n; j++) { const dij = (d[j] < 0 ? n : d[j]) * L; D[s0 * n + j] = dij; W[s0 * n + j] = j === s0 ? 0 : 1 / (dij * dij); }
+  }
+  const simple = [...new Set(g.e.map(([a, b]) => a < b ? a * 64 + b : b * 64 + a))].map(k => [Math.floor(k / 64), k % 64]);
+  const SA = Int32Array.from(simple.map(p => p[0])), SB = Int32Array.from(simple.map(p => p[1])), S = simple.length;
+  const orient = (X, Y, a, b, c) => Math.sign((X[b] - X[a]) * (Y[c] - Y[a]) - (Y[b] - Y[a]) * (X[c] - X[a]));
+  let best = null;
+  for (let t = 0; t < tries; t++) {
+    const X = new Float64Array(n), Y = new Float64Array(n), span = L * Math.sqrt(n);
+    for (let i = 0; i < n; i++) { X[i] = Math.random() * span; Y[i] = Math.random() * span; }
+    /* stress majorization, one dot at a time */
+    for (let it = 0; it < 100; it++) for (let i = 0; i < n; i++) {
+      let sx = 0, sy = 0, sw = 0;
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const w = W[i * n + j], vx = X[i] - X[j], vy = Y[i] - Y[j], len = Math.sqrt(vx * vx + vy * vy) || 1e-3, dl = D[i * n + j] / len;
+        sx += w * (X[j] + vx * dl); sy += w * (Y[j] + vy * dl); sw += w;
+      }
+      X[i] = sx / sw; Y[i] = sy / sw;
+    }
+    /* nudge: dots off lines that are not theirs, and apart from each other */
+    const pushLine = 0.28 * L, farLine = 0.26 * L, pushDot = 0.6 * L, farDot = 0.55 * L;
+    for (let r = 0; r < 50; r++) {
+      let moved = false;
+      for (let k = 0; k < n; k++) for (let e = 0; e < S; e++) {
+        const a = SA[e], b = SB[e]; if (k === a || k === b) continue;
+        const dx = X[b] - X[a], dy = Y[b] - Y[a], l = dx * dx + dy * dy || 1;
+        const tt = Math.max(0, Math.min(1, ((X[k] - X[a]) * dx + (Y[k] - Y[a]) * dy) / l));
+        let vx = X[k] - X[a] - tt * dx, vy = Y[k] - Y[a] - tt * dy, dd = Math.sqrt(vx * vx + vy * vy);
+        if (dd >= farLine) continue;
+        if (dd < 1e-6) { vx = -dy; vy = dx; dd = Math.sqrt(vx * vx + vy * vy) || 1; }
+        const push = (pushLine - dd) * 0.5 / dd; X[k] += vx * push; Y[k] += vy * push; moved = true;
+      }
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        const vx = X[i] - X[j], vy = Y[i] - Y[j], dd = Math.sqrt(vx * vx + vy * vy) || 1e-3;
+        if (dd >= farDot) continue;
+        const push = (pushDot - dd) / 4 / dd; X[i] += vx * push; Y[i] += vy * push; X[j] -= vx * push; Y[j] -= vy * push; moved = true;
+      }
+      if (!moved) break;
+    }
+    let near = 0, close = 0, crossings = 0;
+    for (let k = 0; k < n; k++) for (let e = 0; e < S; e++) {
+      const a = SA[e], b = SB[e]; if (k === a || k === b) continue;
+      const dx = X[b] - X[a], dy = Y[b] - Y[a], l = dx * dx + dy * dy || 1;
+      const tt = Math.max(0, Math.min(1, ((X[k] - X[a]) * dx + (Y[k] - Y[a]) * dy) / l));
+      if (Math.hypot(X[k] - X[a] - tt * dx, Y[k] - Y[a] - tt * dy) < 0.2 * L) near++;
+    }
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (Math.hypot(X[i] - X[j], Y[i] - Y[j]) < 0.5 * L) close++;
+    for (let i = 0; i < S; i++) for (let j = i + 1; j < S; j++) {
+      const a = SA[i], b = SB[i], c = SA[j], d = SB[j];
+      if (a !== c && a !== d && b !== c && b !== d && orient(X, Y, a, b, c) * orient(X, Y, a, b, d) < 0 && orient(X, Y, c, d, a) * orient(X, Y, c, d, b) < 0) crossings++;
+    }
+    const score = 1000 * (near + close) + crossings;
+    if (!best || score < best.score) best = { X, Y, score, near, close, crossings };
+  }
+  /* wider than tall, named in reading order */
+  const { X, Y } = best;
+  let cx = 0, cy = 0; for (let i = 0; i < n; i++) { cx += X[i] / n; cy += Y[i] / n; }
+  let sxx = 0, syy = 0, sxy = 0; for (let i = 0; i < n; i++) { sxx += (X[i] - cx) ** 2; syy += (Y[i] - cy) ** 2; sxy += (X[i] - cx) * (Y[i] - cy); }
+  const th = -0.5 * Math.atan2(2 * sxy, sxx - syy), c = Math.cos(th), s = Math.sin(th);
+  const x = Array.from({ length: n }, (_, i) => [Math.round((X[i] - cx) * c - (Y[i] - cy) * s), Math.round((X[i] - cx) * s + (Y[i] - cy) * c)]);
+  const order = x.map((p, i) => i).sort((i, j) => x[i][1] - x[j][1] || x[i][0] - x[j][0]), inv = [];
+  order.forEach((old, k) => { inv[old] = k; });
+  return { v: order.map(i => x[i]), e: g.e.map(([a, b]) => [inv[a], inv[b]]), start: null, quality: { near: best.near, close: best.close, crossings: best.crossings } };
+}
+/* n dots, m lines, k odd dots (null: 0, 2 or 4 at random).  If that cannot
+   be done (a dense picture on few dots), the nearest one that can: another
+   odd count when it was left to chance, otherwise fewer lines.  The result
+   tells what it became in .odd and .e.length.                              */
+function randomPicture(n, m, k = null) {
+  n = Math.max(3, Math.min(24, Math.round(n)));
+  m = Math.max(n - 1, Math.min(3 * n, n * (n - 1), Math.round(m)));   // at most two lines per pair of dots
+  let ks;
+  if (k === null) {                               // the odd counts in a random order, by their weights
+    const pool = ODD_WEIGHTS.filter(([kk]) => kk <= n).map(o => o.slice()); ks = [];
+    while (pool.length) { let r = Math.random() * sum(pool.map(o => o[1])); const i = pool.findIndex(o => (r -= o[1]) < 0); ks.push(pool.splice(i < 0 ? pool.length - 1 : i, 1)[0][0]); }
+  } else ks = [Math.max(0, Math.min(n - (n % 2), k - (k % 2)))];
+  const top = k === null ? m : Math.max(m, minLines(n, ks[0]));
+  for (let mm = top; mm >= n - 1; mm--) for (const kk of ks) {
+    if (minLines(n, kk) > mm) continue;
+    /* some parallel lines are fine: none in half of the pictures, otherwise about one pair per twelve lines */
+    let budget = Math.random() < 0.5 ? 0 : Math.max(1, Math.round(mm / 12));
+    for (let t = 0; t < 16; t++) {
+      const g = configurationGraph(degreeSequence(n, mm, kk), budget);
+      if (g) return { ...layoutPicture(g), odd: kk, lines: mm };
+      if (t % 4 === 3) budget++;                  // dense pictures on few dots need parallel lines
+    }
+  }
+  throw new Error('could not make that picture — try other numbers');
+}
+
+/* ---- text: valid Python, or JSON with the same fields ---- */
+function pyStr(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"'; }
+function exportText(pic, start, lines, { url } = {}) {
+  const g = pic.g, L = g.labels;
+  const out = ['# pen down — a picture to draw in one stroke'];
+  if (pic.level !== null) out.push(`# level ${pic.level + 1}: ${LEVELS[pic.level].name} (${levelTag(LEVELS[pic.level])})`);
+  if (url) out.push('# ' + url);
+  out.push('dots = {' + g.v.map((p, i) => `${pyStr(L[i])}: (${p[0]}, ${p[1]})`).join(', ') + '}');
+  out.push('lines = [' + g.e.map(([a, b]) => `(${pyStr(L[a])}, ${pyStr(L[b])})`).join(', ') + ']');
+  if (g.start !== null) out.push(`start = ${pyStr(L[g.start])}`);
+  if (start !== null) {
+    const w = walkTrail(g, start, lines);
+    out.push('trail = [' + (w.ok ? w.dots : [start]).map(x => pyStr(L[x])).join(', ') + ']' + (lines.length === g.e.length ? '   # every line, one stroke' : `   # ${lines.length} of ${g.e.length} lines so far`));
+    const pairs = new Map(); g.e.forEach(([a, b]) => { const k = Math.min(a, b) + '-' + Math.max(a, b); pairs.set(k, (pairs.get(k) || 0) + 1); });
+    if ([...pairs.values()].some(c => c > 1)) out.push('trail_lines = [' + lines.join(', ') + ']');
+  }
+  return out.join('\n') + '\n';
+}
+function listBlock(text, name) {
+  const m = new RegExp('\\b' + name + '\\s*=\\s*([\\[{])').exec(text);
+  if (!m) return null;
+  const open = m[1], close = open === '[' ? ']' : '}';
+  let depth = 0, i = m.index + m[0].length - 1;
+  for (let j = i; j < text.length; j++) { if (text[j] === open) depth++; else if (text[j] === close && --depth === 0) return text.slice(i + 1, j); }
+  throw new Error(`the ${name} list is not closed`);
+}
+/* returns { pic, start, lines } -- the drawing may be empty */
+function parseImport(text, current) {
+  text = String(text || '').trim();
+  if (!text) throw new Error('nothing to import');
+  let dots = null, lines = null, start = null, trail = null, trailLines = null;
+  if (/^\{/.test(text)) {
+    let o; try { o = JSON.parse(text); } catch (e) { throw new Error('not valid JSON: ' + e.message); }
+    if (o.dots) dots = Array.isArray(o.dots) ? o.dots.map((p, i) => [letters(26)[i] || 'd' + i, p]) : Object.entries(o.dots);
+    lines = o.lines || null; start = o.start ?? null; trail = o.trail || null; trailLines = o.trail_lines || null;
+  } else {
+    const db = listBlock(text, 'dots');
+    if (db !== null) {
+      dots = [];
+      const re = /["']([^"']+)["']\s*:\s*[(\[]\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*[)\]]/g; let m;
+      while ((m = re.exec(db))) dots.push([m[1], [+m[2], +m[3]]]);
+    }
+    const lb = listBlock(text, 'lines');
+    if (lb !== null) { lines = []; const re = /[(\[]\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*[)\]]/g; let m; while ((m = re.exec(lb))) lines.push([m[1], m[2]]); }
+    const sm = /\bstart\s*=\s*["']([^"']+)["']/.exec(text); if (sm) start = sm[1];
+    const tb = listBlock(text, 'trail'); if (tb !== null) trail = (tb.match(/["']([^"']+)["']/g) || []).map(s => s.slice(1, -1));
+    const tl = listBlock(text, 'trail_lines'); if (tl !== null) trailLines = (tl.match(/\d+/g) || []).map(Number);
+  }
+  let pic;
+  if (dots) {
+    if (!dots.length) throw new Error('no dots found');
+    const labels = dots.map(d => String(d[0])), idx = new Map(labels.map((l, i) => [l, i]));
+    if (idx.size !== labels.length) throw new Error('two dots have the same name');
+    const at = l => { if (typeof l === 'number' && l >= 0 && l < labels.length) return l; if (!idx.has(String(l))) throw new Error('unknown dot ' + l); return idx.get(String(l)); };
+    if (!lines || !lines.length) throw new Error('no lines found');
+    const g = { v: dots.map(d => d[1].map(Number)), e: lines.map(([a, b]) => [at(a), at(b)]), labels, start: start === null ? null : at(start) };
+    pic = picFromGraph(g, null);
+    const li = LEVELS.findIndex(L => L.key === pic.key);
+    if (li >= 0) pic = levelPic(li);
+    pic.at = at;
+  } else {
+    if (!current) throw new Error('no dots = {…} found');
+    pic = current;
+    const idx = new Map(pic.g.labels.map((l, i) => [l, i]));
+    pic.at = l => { if (!idx.has(String(l))) throw new Error('unknown dot ' + l); return idx.get(String(l)); };
+    if (!trail && !trailLines) throw new Error('no dots, lines or trail found');
+  }
+  let s = null, ls = [];
+  if (trailLines && trail && trail.length) { s = pic.at(trail[0]); ls = trailLines; }
+  else if (trail && trail.length) ({ start: s, lines: ls } = linesFromDots(pic.g, trail.map(pic.at)));
+  if (s !== null) { const w = walkTrail(pic.g, s, ls); if (!w.ok) throw new Error('the trail: ' + w.err); }
+  delete pic.at;
+  return { pic, start: s, lines: ls };
+}
+/* a drawing given as the dots the pen visits (parallel lines: the first free one) */
+function linesFromDots(g, seq) {
+  const used = new Array(g.e.length).fill(false), lines = [];
+  for (let k = 1; k < seq.length; k++) {
+    const a = seq[k - 1], b = seq[k];
+    const i = g.e.findIndex(([p, q], j) => !used[j] && ((p === a && q === b) || (p === b && q === a)));
+    if (i < 0) throw new Error(`no free line from ${g.labels[a]} to ${g.labels[b]}`);
+    used[i] = true; lines.push(i);
+  }
+  return { start: seq[0], lines };
+}
+
+/* ---- URL: ?level=3 (or ?level=1.3), or ?dots=0,0,100,0,…&lines=0-1,…&start=2;
+        &trail=2:0,1,4 adds a drawing (start dot, then line numbers) ---- */
+function readURL() {
+  const q = new URLSearchParams(location.search);
+  const out = { secret: q.has('deg') || location.hash === '#deg' };
+  out.board = (q.get('board') || '').toLowerCase() || null;
+  out.gate = q.has('gate') ? !/^(0|off|no|false)$/i.test(q.get('gate') || '') : null;
+  out.api = q.get('api') || null;
+  const lv = q.get('level');
+  if (lv) {
+    const i = /^\d+$/.test(lv) ? +lv - 1 : LEVELS.findIndex(L => L.id === lv);
+    if (i >= 0 && i < LEVELS.length) out.level = i; else out.warn = 'no level ' + lv;
+  } else if (q.get('dots') && q.get('lines')) {
+    try {
+      const xs = (q.get('dots').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+      const v = []; for (let i = 0; i + 1 < xs.length; i += 2) v.push([xs[i], xs[i + 1]]);
+      const e = q.get('lines').split(',').filter(Boolean).map(p => p.split('-').map(Number));
+      const st = q.get('start');
+      out.pic = picFromGraph({ v, e, start: st !== null && st !== '' ? +st : null });
+      const li = LEVELS.findIndex(L => L.key === out.pic.key);
+      if (li >= 0) { out.level = li; delete out.pic; }
+    } catch (e) { out.warn = 'the picture in the link could not be read: ' + e.message; }
+  }
+  const tr = q.get('trail');
+  if (tr) { const m = /^(\d+)(?::([\d,]*))?$/.exec(tr); if (m) out.trail = { start: +m[1], lines: m[2] ? m[2].split(',').filter(Boolean).map(Number) : [] }; }
+  return out;
+}
+function pageURL(pic, drawing, extra) {
+  const u = new URL(location.href);
+  u.search = ''; u.hash = '';
+  if (pic.level !== null) u.searchParams.set('level', String(pic.level + 1));
+  else {
+    u.searchParams.set('dots', pic.g.v.map(p => p.join(',')).join(','));
+    u.searchParams.set('lines', pic.g.e.map(l => l.join('-')).join(','));
+    if (pic.g.start !== null) u.searchParams.set('start', String(pic.g.start));
+  }
+  if (drawing && drawing.start !== null) u.searchParams.set('trail', drawing.start + (drawing.lines.length ? ':' + drawing.lines.join(',') : ''));
+  for (const k in (extra || {})) if (extra[k] !== null && extra[k] !== undefined) u.searchParams.set(k, extra[k]);
+  return u.toString().replace(/%2C/g, ',').replace(/%3A/g, ':');
+}
+function urlExtra() {
+  return { board: state.boardMode === 'local' ? 'local' : (state.boardId !== 'public' ? state.boardId : null),
+           gate: state.gateParam === null ? null : (state.gateParam ? '1' : '0'),
+           api: state.api && state.api !== BOARD_URL ? state.api : null };
+}
+function syncURL() { try { history.replaceState(null, '', pageURL(state.pic, null, urlExtra())); } catch (e) { /* file:// may refuse */ } }
+
+/* ==========================================================================
+   SOUND  --  all synthesised, nothing is loaded from the network
+   ========================================================================== */
+let actx = null;
+function audio() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+/* a pen stroke: a scratch of filtered noise and a soft tick that rises as the picture fills up */
+function scratch(progress) {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    const len = Math.floor(c.sampleRate * 0.16);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) { const x = i / len; d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * x) * (0.6 + 0.4 * Math.sin(x * 60)); }
+    const s = c.createBufferSource(); s.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3200 + 1400 * progress; bp.Q.value = 1.4;
+    const g = c.createGain(); g.gain.value = 0.22;
+    s.connect(bp).connect(g).connect(c.destination); s.start(t);
+    const o = c.createOscillator(), og = c.createGain();
+    o.type = 'sine'; o.frequency.value = 440 * Math.pow(2, progress * 1.5);
+    og.gain.setValueAtTime(0.0001, t + 0.1); og.gain.exponentialRampToValueAtTime(0.12, t + 0.115); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    o.connect(og).connect(c.destination); o.start(t + 0.1); o.stop(t + 0.3);
+  } catch (e) { /* audio is optional */ }
+}
+/* undo: the pen scratch backwards -- a falling rub of an eraser; clear rubs the whole page */
+function erase(big = false) {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime, dur = big ? 0.42 : 0.14;
+    const len = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) { const x = i / len; d[i] = (Math.random() * 2 - 1) * Math.pow(Math.sin(Math.PI * x), .7) * (big ? 0.75 + 0.25 * Math.sin(x * 70) : 1); }
+    const s = c.createBufferSource(); s.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
+    bp.frequency.setValueAtTime(big ? 5200 : 4000, t); bp.frequency.exponentialRampToValueAtTime(big ? 500 : 1100, t + dur);
+    const g = c.createGain(); g.gain.value = big ? 0.26 : 0.2;
+    s.connect(bp).connect(g).connect(c.destination); s.start(t);
+    const o = c.createOscillator(), og = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(big ? 620 : 700, t); o.frequency.exponentialRampToValueAtTime(big ? 180 : 330, t + dur);
+    og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.08, t + 0.02); og.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.04);
+    o.connect(og).connect(c.destination); o.start(t); o.stop(t + dur + 0.06);
+  } catch (e) { /* optional */ }
+}
+/* stuck, or a wrong claim: a low double knock */
+function knock(twice = false) {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    (twice ? [0, 0.16] : [0]).forEach((dt, k) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(k ? 150 : 190, t + dt); o.frequency.exponentialRampToValueAtTime(70, t + dt + 0.18);
+      g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(0.4, t + dt + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.22);
+      o.connect(g).connect(c.destination); o.start(t + dt); o.stop(t + dt + 0.25);
+    });
+  } catch (e) { /* optional */ }
+}
+function sparkle() {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime + 1.2;
+    [1568, 2093, 2637, 3136].forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = f; const t0 = t + i * 0.07;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+      o.connect(g).connect(c.destination); o.start(t0); o.stop(t0 + 0.55);
+    });
+  } catch (e) { /* optional */ }
+}
+/* ==========================================================================
+   HAPTICS  --  vibration on phones, for touch input only (never for mouse or keys).
+   The motor can only be switched on and off, so "strong" and "light" are longer and
+   shorter pulses.  Android browsers have the Vibration API; iOS Safari has none, but
+   on iOS 18+ toggling a (hidden) switch control makes the phone tick -- one fixed,
+   light tap, used for the firm moments only.  Undocumented behaviour: best effort.
+   ========================================================================== */
+const HAPTICS = { lock: 32, tick: 6, bump: 14, stuck: [22, 70, 22], wrong: [40, 50, 40, 50, 40], solved: [25, 45, 25, 45, 25, 45, 90] };
+const TICK_PX = 26, TICK_GAP = 40;          // sliding: a tick every TICK_PX screen pixels of line, at most every TICK_GAP ms
+const canVibrate = typeof navigator.vibrate === 'function';
+const iosSwitch = !canVibrate && 'switch' in document.createElement('input');
+const touchDevice = (navigator.maxTouchPoints || 0) > 0 || matchMedia('(pointer: coarse)').matches;
+const hapticsAvailable = touchDevice && (canVibrate || iosSwitch);
+let hapticTouch = false;                    // was the last input a finger (or stylus)?
+let hapticBusyUntil = 0, iosLabel = null;
+addEventListener('pointerdown', e => { hapticTouch = e.pointerType === 'touch' || e.pointerType === 'pen'; }, true);
+addEventListener('keydown', () => { hapticTouch = false; }, true);
+function haptic(kind) {
+  if (!state.vibrate || !hapticTouch || !hapticsAvailable) return;
+  const now = performance.now();
+  if (kind === 'tick' && now < hapticBusyUntil) return;         // a new call would cut a firmer one short
+  const p = HAPTICS[kind];
+  hapticBusyUntil = now + (Array.isArray(p) ? sum(p) : p) + 30;
+  if (canVibrate) { try { navigator.vibrate(p); } catch (e) { /* optional */ } return; }
+  if (kind === 'tick') return;                                  // iOS: one kind of tap only, kept for the firm moments
+  if (!iosLabel) {
+    iosLabel = document.createElement('label');
+    iosLabel.setAttribute('aria-hidden', 'true');
+    iosLabel.style.cssText = 'position:fixed;left:-100px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.setAttribute('switch', ''); input.tabIndex = -1;
+    iosLabel.appendChild(input); document.body.appendChild(iosLabel);
+  }
+  iosLabel.click();
+}
+/* "Ta-daa!" plus a cheering crowd -- the same as in the merge game */
+function tadaa() {
+  if (!state.sound) return;
+  try {
+    const c = audio(), t = c.currentTime;
+    const out = c.createGain(); out.gain.value = 0.9; out.connect(c.destination);
+    const brass = (f, t0, dur, peak) => {
+      const o = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.value = f;
+      const vib = c.createOscillator(), vg = c.createGain();
+      vib.frequency.value = 5.5; vg.gain.value = f * 0.006; vib.connect(vg).connect(o.frequency);
+      lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t0); lp.frequency.linearRampToValueAtTime(2600, t0 + 0.12);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(peak, t0 + 0.04);
+      g.gain.setValueAtTime(peak, t0 + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(lp).connect(g).connect(out);
+      o.start(t0); vib.start(t0); o.stop(t0 + dur + 0.05); vib.stop(t0 + dur + 0.05);
+    };
+    brass(392.0, t, 0.18, 0.11);
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => brass(f, t + 0.2, 1.5, i === 3 ? 0.06 : 0.085));
+    const len = Math.floor(c.sampleRate * 2.4);
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    let flutter = 0;
+    for (let i = 0; i < len; i++) { if ((i & 255) === 0) flutter = 0.55 + Math.random() * 0.45; d[i] = (Math.random() * 2 - 1) * flutter; }
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.7;
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 500;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t + 0.15); g.gain.exponentialRampToValueAtTime(0.16, t + 0.55);
+    g.gain.setValueAtTime(0.16, t + 1.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.5);
+    src.connect(hp).connect(bp).connect(g).connect(out); src.start(t + 0.15);
+    [0.45, 0.9].forEach((dt, i) => {
+      const o = c.createOscillator(), wg = c.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1800 + i * 300, t + dt); o.frequency.exponentialRampToValueAtTime(1900, t + dt + 0.5);
+      wg.gain.setValueAtTime(0.0001, t + dt); wg.gain.exponentialRampToValueAtTime(0.03, t + dt + 0.08); wg.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.5);
+      o.connect(wg).connect(out); o.start(t + dt); o.stop(t + dt + 0.55);
+    });
+  } catch (e) { /* optional */ }
+}
+
+/* ==========================================================================
+   SKIN: clean -- the look of the Powersort site.
+   A skin decides only how things look: the game core (game_a.js, game_b.js)
+   keeps the exact geometry for hit-testing and calls these functions to draw.
+   Every skin provides the same functions; see crayon-picture.js for the crayon ones.
+     px          sizes in screen pixels (merged over the defaults in game_b.js)
+     prepare     after each layout: precompute what the drawing functions need
+     defs        fill the stage's <defs> and set filters on the layers
+     lineD       the visible path of line i, drawn from dot `from`
+     partialD    the first fraction t of it (sliding previews)
+     pointAt     the point at fraction t on it (where the pen rides)
+     track       points along it (the pen's way when a line is drawn)
+     dot / pen / halo / chip / confettiPiece   shapes
+     decorate    once at start: the brand glyph, the legend
+     id          which edition this is (the header's look switch marks it)
+   ========================================================================== */
+const SKIN = {
+  id: 'clean',
+  px: {},
+  prepare() {},
+  defs() {},
+  lineD(i, from) { return pathD(i, from); },
+  partialD(i, from, t) {
+    const path = geo.paths[i], P = geo.pts[from], Q = geo.pts[from === path.a ? path.b : path.a];
+    if (!path.c) return `M${P[0]} ${P[1]} L${P[0] + t * (Q[0] - P[0])} ${P[1] + t * (Q[1] - P[1])}`;
+    const C = path.c, m1 = [P[0] + t * (C[0] - P[0]), P[1] + t * (C[1] - P[1])];              // de Casteljau: the first part of the curve
+    const e = [(1 - t) * (1 - t) * P[0] + 2 * t * (1 - t) * C[0] + t * t * Q[0], (1 - t) * (1 - t) * P[1] + 2 * t * (1 - t) * C[1] + t * t * Q[1]];
+    return `M${P[0]} ${P[1]} Q${m1[0]} ${m1[1]} ${e[0]} ${e[1]}`;
+  },
+  pointAt(i, from, t) { const path = geo.paths[i]; return path.at(from === path.a ? t : 1 - t); },
+  track(i, from) { const path = geo.paths[i]; return from === path.a ? path.samples : path.samples.slice().reverse(); },
+  dot(grp, x, p) {
+    el('circle', { class: 'ring', cx: p[0], cy: p[1], r: u(PX.ring), 'stroke-width': u(PX.ringW) }, grp);
+    el('circle', { class: 'core', cx: p[0], cy: p[1], r: u(PX.dot) }, grp);
+  },
+  pen(grp) {
+    el('circle', { class: 'pulse', cx: 0, cy: 0, r: u(PX.pen + 2), 'stroke-width': u(2) }, grp);
+    el('circle', { class: 'tip', cx: 0, cy: 0, r: u(PX.pen) }, grp);
+  },
+  halo(parent, p) { return el('circle', { class: 'halo', cx: p[0], cy: p[1], r: u(PX.halo) }, parent); },
+  chip(parent, p) { return el('circle', { class: 'step-chip', cx: p[0], cy: p[1], r: u(PX.chip) }, parent); },
+  confettiPiece(parent, x, y, color) {
+    return el('rect', { class: 'confetti', x: x.toFixed(1), y: y.toFixed(1), width: u(4 + Math.random() * 4).toFixed(2), height: u(2.5 + Math.random() * 2).toFixed(2), fill: color, rx: u(1) }, parent);
+  },
+  decorate() {}
+};
+
+/* ==========================================================================
+   STAGE  --  the picture as SVG.  Sizes are given in screen pixels and
+   converted with the current scale, so dots and lines look the same on a
+   small hook and on the star fort.
+   ========================================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+const stage = $('stage');
+const layer = { halo: $('gHalo'), lines: $('gLines'), ghost: $('gGhost'), drawn: $('gDrawn'), preview: $('gPreview'), steps: $('gSteps'), dots: $('gDots'), pen: $('gPen'), fx: $('gFx') };
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const PX = Object.assign({ line: 3.4, hit: 24, drawn: 7, dot: 7.5, ring: 12.5, ringW: 2.6, halo: 19, pen: 6.5, label: 13, chip: 9.5, chipFont: 10.5, deg: 11, spread: 26, pad: 36 }, SKIN.px);
+const GRAB = 24, ENTER = 17, LINE_TOL = 12;     // pointer tolerances in screen pixels
+let geo = null;                                  // { s, pts, paths[], lab[] }
+const dotEls = [], lineEls = [];
+
+function layout() {
+  const g = G(), wrap = $('stageWrap');
+  const xs = g.v.map(p => p[0]), ys = g.v.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const bw = Math.max(1, x1 - x0), bh = Math.max(1, y1 - y0);
+  const availW = Math.max(240, (wrap.clientWidth || 700) - 2 * PX.pad);
+  const availH = Math.max(220, Math.min(540, innerHeight * 0.62) - 2 * PX.pad);
+  const s = Math.min(availW / bw, availH / bh, 2.6);
+  const pad = PX.pad / s;
+  /* parallel lines bend apart; the bend is fixed in screen pixels */
+  const groups = new Map();
+  g.e.forEach(([a, b], i) => { const k = Math.min(a, b) + '-' + Math.max(a, b); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); });
+  const paths = g.e.map(([a, b], i) => {
+    const k = Math.min(a, b) + '-' + Math.max(a, b), grp = groups.get(k), j = grp.indexOf(i);
+    const P = g.v[a], Q = g.v[b];
+    let c = null;
+    if (grp.length > 1) {
+      const lo = g.v[Math.min(a, b)], hi = g.v[Math.max(a, b)];
+      const dx = hi[0] - lo[0], dy = hi[1] - lo[1], L = Math.hypot(dx, dy) || 1;
+      const off = (j - (grp.length - 1) / 2) * PX.spread / s * 2;
+      c = [(P[0] + Q[0]) / 2 - dy / L * off, (P[1] + Q[1]) / 2 + dx / L * off];
+    }
+    const at = t => c ? [(1 - t) * (1 - t) * P[0] + 2 * t * (1 - t) * c[0] + t * t * Q[0], (1 - t) * (1 - t) * P[1] + 2 * t * (1 - t) * c[1] + t * t * Q[1]]
+                      : [P[0] + t * (Q[0] - P[0]), P[1] + t * (Q[1] - P[1])];
+    const samples = c ? Array.from({ length: 17 }, (_, k) => at(k / 16)) : [P, Q];
+    return { a, b, c, at, samples };
+  });
+  /* dot names go on the side facing away from the dot's lines */
+  const lab = g.v.map((p, x) => {
+    let dx = 0, dy = 0;
+    g.e.forEach(([a, b]) => { if (a === x || b === x) { const q = g.v[a === x ? b : a], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1; dx += (q[0] - p[0]) / L; dy += (q[1] - p[1]) / L; } });
+    let L = Math.hypot(dx, dy); if (L < 0.3) { dx = 0.6; dy = -0.8; L = 1; }
+    return [p[0] - dx / L * 19 / s, p[1] - dy / L * 19 / s];
+  });
+  geo = { s, pts: g.v, paths, lab, vb: [x0 - pad, y0 - pad, bw + 2 * pad, bh + 2 * pad] };
+  stage.setAttribute('viewBox', geo.vb.map(v => v.toFixed(2)).join(' '));
+  stage.style.width = (geo.vb[2] * s).toFixed(1) + 'px';
+  stage.style.height = (geo.vb[3] * s).toFixed(1) + 'px';
+  SKIN.prepare(geo, g, state.pic.key);
+}
+const u = px => px / geo.s;                     // screen pixels -> picture units
+function pathD(i, from) {
+  const p = geo.paths[i], P = geo.pts[p.a], Q = geo.pts[p.b];
+  const [A, B] = from === p.b ? [Q, P] : [P, Q];
+  return p.c ? `M${A[0]} ${A[1]} Q${p.c[0]} ${p.c[1]} ${B[0]} ${B[1]}` : `M${A[0]} ${A[1]} L${B[0]} ${B[1]}`;
+}
+
+/* build the static picture (lines and dots); paint() then only changes classes */
+function build() {
+  layout();
+  for (const k in layer) layer[k].replaceChildren();
+  lineEls.length = 0; dotEls.length = 0;
+  SKIN.defs($('skinDefs'), layer, geo);
+  const g = G();
+  g.e.forEach((_, i) => {
+    const grp = el('g', { 'data-line': i }, layer.lines);
+    el('path', { class: 'hitline', d: pathD(i), 'stroke-width': u(PX.hit) }, grp);
+    lineEls.push(el('path', { class: 'line', d: SKIN.lineD(i, geo.paths[i].a), 'stroke-width': u(PX.line) }, grp));
+  });
+  g.v.forEach((p, x) => {
+    const grp = el('g', { class: 'dot', 'data-dot': x }, layer.dots);
+    el('circle', { class: 'hit', cx: p[0], cy: p[1], r: u(GRAB), fill: 'transparent' }, grp);
+    SKIN.dot(grp, x, p);
+    const t = el('text', { class: 'dot-label', x: geo.lab[x][0], y: geo.lab[x][1], 'font-size': u(PX.label), 'text-anchor': 'middle', 'dominant-baseline': 'central' }, grp);
+    t.textContent = g.labels[x];
+    const d = el('text', { class: 'deg', x: p[0] + u(11), y: p[1] + u(13), 'font-size': u(PX.deg), 'data-secret': '' }, grp);
+    d.textContent = '';
+    dotEls.push(grp);
+  });
+  const pen = el('g', { class: 'pen', id: 'pen' }, layer.pen);
+  SKIN.pen(pen);
+  paint();
+}
+
+function visibleLines() { return state.show === null ? state.lines : state.lines.slice(0, state.show); }
+function penAt() {
+  if (state.start === null) return null;
+  const w = walkTrail(G(), state.start, visibleLines());
+  return w.ok ? w.end : null;
+}
+function usedSet() { const u = new Set(visibleLines()); return u; }
+function freeLinesAt(x, used = usedSet()) { return G().e.map((l, i) => i).filter(i => !used.has(i) && (G().e[i][0] === x || G().e[i][1] === x)); }
+function stuck() { const p = penAt(); return p !== null && state.show === null && !complete() && freeLinesAt(p).length === 0; }
+
+/* candidates for the keyboard: dots to put the pen on, or lines out of the pen */
+function candidates() {
+  const g = G();
+  if (state.start === null) {
+    if (g.start !== null) return [{ dot: g.start }];
+    return g.v.map((p, x) => ({ dot: x, p })).filter(c => g.e.some(([a, b]) => a === c.dot || b === c.dot))
+      .sort((A, B) => A.p[1] - B.p[1] || A.p[0] - B.p[0]).map(c => ({ dot: c.dot }));
+  }
+  const p = penAt(); if (p === null) return [];
+  return freeLinesAt(p).map(i => ({ line: i, to: other(g, i, p) }))
+    .sort((A, B) => { const a = geo.pts[A.to], b = geo.pts[B.to], o = geo.pts[p];
+      return Math.atan2(a[1] - o[1], a[0] - o[0]) - Math.atan2(b[1] - o[1], b[0] - o[0]); });
+}
+
+function paint({ animateLast = false, dur = 170 } = {}) {
+  if (!geo) return;
+  const g = G(), vis = visibleLines(), used = new Set(vis), pen = penAt(), isStuck = stuck();
+  const free = pen === null ? [] : freeLinesAt(pen, used);
+  const targets = new Set(free.map(i => other(g, i, pen)));
+  const cands = candidates(), cand = state.cand >= 0 && state.cand < cands.length ? cands[state.cand] : null;
+  const deg = degrees(g), usedDeg = new Array(g.v.length).fill(0);
+  vis.forEach(i => { usedDeg[g.e[i][0]]++; usedDeg[g.e[i][1]]++; });
+  lineEls.forEach((p, i) => {
+    p.classList.toggle('is-used', used.has(i));
+    p.classList.toggle('is-next', free.includes(i));
+    p.classList.toggle('is-left', isStuck && !used.has(i));
+    p.classList.toggle('is-cand', !!cand && cand.line === i);
+  });
+  dotEls.forEach((d, x) => {
+    d.classList.toggle('is-target', targets.has(x));
+    d.classList.toggle('is-start', state.start === x);
+    d.classList.toggle('is-fixed', g.start === x && state.start === null);
+    d.classList.toggle('is-done', deg[x] > 0 && usedDeg[x] === deg[x] && pen !== x);
+    d.classList.toggle('is-cand', !!cand && (cand.dot === x || cand.to === x));
+    d.classList.toggle('is-nogo', state.start === null && g.start !== null && g.start !== x);
+    const lbl = d.querySelector('.dot-label');
+    lbl.style.display = state.labels || g.start === x ? '' : 'none';
+    const dg = d.querySelector('.deg');
+    dg.textContent = state.secret ? String(deg[x]) : '';
+    dg.classList.toggle('odd', deg[x] % 2 === 1);
+  });
+  /* drawn lines, in drawing order; the newest one is drawn out like ink */
+  layer.drawn.replaceChildren(); layer.steps.replaceChildren();
+  let x = state.start;
+  vis.forEach((i, k) => {
+    const last = k === vis.length - 1;
+    const p = el('path', { class: 'drawn' + (last ? ' is-last' : ''), d: SKIN.lineD(i, x), 'stroke-width': u(PX.drawn) }, layer.drawn);
+    if (last && animateLast && !REDUCED) {
+      const len = p.getTotalLength();
+      p.style.strokeDasharray = len; p.style.strokeDashoffset = len;
+      p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: T(dur), easing: 'ease-out', fill: 'forwards' });
+    }
+    if (state.steps) {
+      const m = geo.paths[i].at(0.5);
+      SKIN.chip(layer.steps, m);
+      const t = el('text', { class: 'step-num', x: m[0], y: m[1], 'font-size': u(PX.chipFont), 'text-anchor': 'middle', 'dominant-baseline': 'central' }, layer.steps);
+      t.textContent = k + 1;
+    }
+    x = other(g, i, x);
+  });
+  /* hint mode: the ghost drawing as dashed green lines (its order is in the list below the picture) */
+  layer.ghost.replaceChildren();
+  const plan = ghostPlan();
+  if (plan) plan.lines.slice(plan.from).forEach(i => el('path', { class: 'ghost', d: SKIN.lineD(i, geo.paths[i].a), 'stroke-width': u(2.2) }, layer.ghost));
+  /* where finished drawings have started */
+  layer.halo.replaceChildren();
+  for (const s of startsFound()) { const p = geo.pts[s]; if (p) SKIN.halo(layer.halo, p); }
+  /* the pen */
+  const penEl = $('pen');
+  penEl.style.display = pen === null ? 'none' : '';
+  penEl.classList.toggle('is-stuck', isStuck);
+  if (pen !== null && !(animateLast && !REDUCED)) placePen(geo.pts[pen]);
+  if (pen !== null && animateLast && !REDUCED && vis.length) movePen(vis[vis.length - 1], other(g, vis[vis.length - 1], pen), dur);
+  else if (pen !== null && animateLast) placePen(geo.pts[pen]);
+  renderTrailList(plan);
+}
+
+/* The hint mode's ghost: the current drawing finished, if it still can be;
+   otherwise one complete drawing from scratch.  from = where the ghost part starts. */
+function ghostPlan() {
+  if (!state.secret || !state.ghost || state.show !== null) return null;
+  const g = G();
+  if (state.start !== null) {
+    const w = walkTrail(g, state.start, state.lines);
+    if (w.complete) return null;
+    const used = new Set(state.lines), rest = g.e.map((_, i) => i).filter(i => !used.has(i));
+    const t = findTrail({ v: g.v, e: rest.map(i => g.e[i]), start: w.end }, w.end);
+    if (t) return { continued: true, start: state.start, lines: state.lines.concat(t.lines.map(k => rest[k])), from: state.lines.length };
+  }
+  const full = findTrail(g, state.start);
+  return full ? { continued: false, start: full.start, lines: full.lines, from: 0 } : { none: true, lines: [], from: 0 };
+}
+
+/* the list of lines drawn so far, below the picture */
+function renderTrailList(plan) {
+  const g = G(), vis = visibleLines(), host = $('trailList'), nm = x => escapeHTML(g.labels[x]);
+  const chip = (n, i, a, b, cls) => `<span class="tl-step ${cls}" data-line="${i}"><b>${n}</b>${nm(a)}→${nm(b)}` +
+    (g.lineLabels ? `<small>${escapeHTML(g.lineLabels[i])}</small>` : '') + '</span>';
+  const run = (start, lines, first, cls) => { let x = start; return lines.map((i, k) => { const y = other(g, i, x), s = chip(first + k, i, x, y, cls(k)); x = y; return s; }).join(''); };
+  let html = '<span class="tl-head">lines drawn</span>';
+  if (state.start === null) html += `<span class="tl-empty">none yet — put the pen on a dot${g.start !== null ? ' (this picture starts at ' + nm(g.start) + ')' : ''}</span>`;
+  else {
+    html += `<span class="tl-start">pen down at <b>${nm(state.start)}</b></span>`;
+    html += run(state.start, vis, 1, k => k === vis.length - 1 ? 'is-last' : '');
+  }
+  if (plan && plan.none) html += '<span class="tl-note">ghost: this picture cannot be drawn in one stroke</span>';
+  else if (plan && plan.continued) {
+    let x = state.start; state.lines.forEach(i => { x = other(g, i, x); });
+    html += run(x, plan.lines.slice(plan.from), plan.from + 1, () => 'is-ghost');
+  } else if (plan) {
+    html += `<span class="tl-note">ghost: ${state.start !== null ? 'the drawing so far cannot be finished — ' : ''}one complete drawing, pen down at <b>${nm(plan.start)}</b></span>`;
+    html += run(plan.start, plan.lines, 1, () => 'is-ghost');
+  }
+  if (!state.labels && (state.start !== null || plan)) html += '<button class="link" id="tlNames" type="button">show the names on the picture</button>';
+  host.innerHTML = html;
+}
+$('trailList').addEventListener('click', e => { if (e.target.closest('#tlNames')) $('btnLabels').click(); });
+/* pointing at an entry lights up its line on the picture */
+$('trailList').addEventListener('mouseover', e => {
+  const s = e.target.closest('.tl-step'); layer.fx.querySelectorAll('.hotline').forEach(x => x.remove());
+  if (s && geo) el('path', { class: 'hotline', d: SKIN.lineD(+s.dataset.line, geo.paths[+s.dataset.line].a), 'stroke-width': u(PX.drawn + 3) }, layer.fx);
+});
+$('trailList').addEventListener('mouseleave', () => layer.fx.querySelectorAll('.hotline').forEach(x => x.remove()));
+function placePen(p) { const pe = $('pen'); pe.getAnimations().forEach(a => a.cancel()); pe.style.transform = `translate(${p[0]}px, ${p[1]}px)`; }
+function movePen(i, from, dur = 170) {
+  const pts = SKIN.track(i, from);
+  const pe = $('pen'), last = pts[pts.length - 1];
+  pe.getAnimations().forEach(a => a.cancel());
+  const frames = (pts.length > 2 ? pts : [pts[0], pts[1]]).map(p => ({ transform: `translate(${p[0]}px, ${p[1]}px)` }));
+  pe.style.transform = `translate(${last[0]}px, ${last[1]}px)`;
+  pe.animate(frames, { duration: T(dur), easing: 'ease-out' });
+}
+function confetti() {
+  if (REDUCED) return;
+  const vb = geo.vb, colors = ['#B5FF00', '#0DEDF7', '#FFFF00', '#00D600', '#FFFFFF'];
+  for (let i = 0; i < 70; i++) {
+    const x = vb[0] + Math.random() * vb[2], y0 = vb[1];
+    const r = SKIN.confettiPiece(layer.fx, x, y0, colors[i % colors.length]);
+    r.style.transformBox = 'fill-box'; r.style.transformOrigin = 'center';
+    const drift = (Math.random() - .5) * u(90), fall = vb[3] + u(20), rot = (Math.random() - .5) * 900;
+    const a = r.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity: 0 },
+      { transform: `translate(${(drift * .3).toFixed(1)}px,${(fall * .1).toFixed(1)}px) rotate(${(rot * .1).toFixed(0)}deg)`, opacity: 1, offset: .1 },
+      { transform: `translate(${drift.toFixed(1)}px,${fall.toFixed(1)}px) rotate(${rot.toFixed(0)}deg)`, opacity: .9 }
+    ], { duration: 1600 + Math.random() * 1400, delay: Math.random() * 700, easing: 'cubic-bezier(.3,.2,.7,1)', fill: 'forwards' });
+    a.onfinish = () => r.remove();
+  }
+}
+
+/* ==========================================================================
+   ACTIONS
+   ========================================================================== */
+function say(text, calm = false) { const m = $('stageMsg'); m.textContent = text || ''; m.classList.toggle('is-calm', calm); }
+function stopReplay() {
+  if (!state.replaying) return;
+  clearTimeout(state.replaying); state.replaying = null;
+  if (state.show !== null) { state.show = null; paint(); syncControls(); }   // interrupted: show the whole drawing again
+}
+function putPen(x) {
+  stopReplay();
+  const g = G();
+  if (g.start !== null && x !== g.start) { say(`this picture has to be started at the green dot ${g.labels[g.start]}`); knock(); return false; }
+  if (!g.e.some(([a, b]) => a === x || b === x)) { say('no line touches that dot'); return false; }
+  state.start = x; state.lines = []; state.redo = []; state.cand = -1;
+  say('');
+  haptic('lock');
+  afterChange({ animate: false });
+  return true;
+}
+function drawLine(i, { animate = true } = {}) {
+  stopReplay();
+  const g = G(), p = penAt();
+  if (p === null || state.lines.includes(i) || (g.e[i][0] !== p && g.e[i][1] !== p)) return false;
+  state.lines.push(i); state.redo = []; state.cand = -1;
+  say('');
+  haptic('lock');
+  scratch(state.lines.length / g.e.length);
+  afterChange({ animate, stepped: true });
+  return true;
+}
+function undo() {
+  stopReplay();
+  if (state.lines.length) state.redo.push(state.lines.pop());
+  else if (state.start !== null) { state.redo.push({ start: state.start }); state.start = null; }
+  else return;
+  erase();
+  state.cand = -1; say(''); afterChange({ animate: false });
+}
+function redo() {
+  stopReplay();
+  if (!state.redo.length) return;
+  const r = state.redo[state.redo.length - 1];
+  if (typeof r === 'object') { if (state.start !== null) return; state.start = r.start; state.redo.pop(); scratch(0); afterChange({ animate: false }); return; }
+  const p = penAt(), g = G();
+  if (p === null || (g.e[r][0] !== p && g.e[r][1] !== p) || state.lines.includes(r)) { state.redo = []; syncControls(); return; }
+  state.redo.pop(); state.lines.push(r); scratch(state.lines.length / g.e.length);
+  afterChange({ animate: true, stepped: true });
+}
+/* lift the pen: the whole drawing goes, and redo can bring it back line by line */
+function clearDrawing() {
+  stopReplay();
+  if (state.start === null) return;
+  state.redo = state.lines.slice().reverse();     // redo pops from the end: first the dot, then the lines in order
+  state.redo.push({ start: state.start });
+  state.start = null; state.lines = []; state.cand = -1;
+  erase(true);
+  say(''); afterChange({ animate: false });
+}
+/* show a drawing (from the board, a link or an import); a complete one only
+   once this picture is solved here, or in the hint mode */
+function loadDrawing(start, lines, { quiet = false } = {}) {
+  stopReplay();
+  const g = G(), w = walkTrail(g, start, lines);
+  if (!w.ok) { ioMsg('that drawing does not fit this picture: ' + w.err, false); return false; }
+  if (w.complete && !att().solved && !state.secret) {
+    ioMsg('solve this picture yourself first — then complete drawings from links and imports are shown', false);
+    return false;
+  }
+  state.start = start; state.lines = lines.slice(); state.redo = []; state.cand = -1;
+  afterChange({ animate: false, quiet });
+  return true;
+}
+/* The victory lap: once the last line is in, the whole drawing is traced
+   again, quickly -- the speed scales with the number of lines so that the
+   lap plus the closing glow stays under FLASH_MAX ms.  Returns the time until
+   it is over (0 with reduced motion). */
+const FLASH_MAX = 1450, FLASH_GLOW = 260, FLASH_STEP_MAX = 95;
+function flashTrail(delay = 0) {
+  if (REDUCED || state.start === null || !state.lines.length) return 0;
+  stopReplay();
+  const m = state.lines.length;
+  const step = Math.min(FLASH_STEP_MAX, (FLASH_MAX - FLASH_GLOW) / (m + 1));   // m steps, and the last stroke's own animation
+  const lap = (m + 1) * step + FLASH_GLOW;
+  /* every step is scheduled against the lap's start, so late timers do not add up */
+  let t0 = 0;
+  const at = (k, fn) => { state.replaying = setTimeout(fn, Math.max(0, t0 + k * step - performance.now())); };
+  const run = () => {
+    t0 = performance.now();
+    state.show = 0; paint(); syncControls();
+    const next = () => {
+      if (state.show === null) return;                     // interrupted by the player
+      state.show = Math.min(state.lines.length, Math.max(state.show + 1, Math.floor((performance.now() - t0) / step)));
+      paint({ animateLast: true, dur: step });
+      if (state.show >= state.lines.length) {
+        at(m + 1, () => {
+          state.replaying = null; state.show = null; paint(); syncControls();
+          const d = layer.drawn;
+          d.classList.remove('is-flash'); void d.getBoundingClientRect(); d.classList.add('is-flash');
+          setTimeout(() => d.classList.remove('is-flash'), FLASH_GLOW + 40);
+        });
+        return;
+      }
+      at(state.show + 1, next);
+    };
+    at(1, next);
+  };
+  if (delay) state.replaying = setTimeout(run, delay); else run();
+  return delay + lap;
+}
+function replay() {
+  stopReplay();
+  if (state.start === null || !state.lines.length) return;
+  state.show = 0; paint(); syncControls();
+  const step = () => {
+    if (state.show === null) return;
+    state.show++;
+    paint({ animateLast: true }); scratch(state.show / G().e.length);
+    if (state.show >= state.lines.length) { state.replaying = null; state.show = null; paint(); syncControls(); return; }
+    state.replaying = setTimeout(step, T(300) || 30);
+  };
+  state.replaying = setTimeout(step, T(350) || 30);
+}
+
+/* ==========================================================================
+   POINTER  --  put the pen down on a dot and slide; or click dots or lines
+   ========================================================================== */
+let drag = null;
+function svgPoint(e) {
+  const m = stage.getScreenCTM(); if (!m) return [0, 0];
+  const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+  return [p.x, p.y];
+}
+function nearestDot(p, px, filter = () => true) {
+  let best = null, bd = Infinity;
+  geo.pts.forEach((q, x) => { const d = Math.hypot(q[0] - p[0], q[1] - p[1]) * geo.s; if (d <= px && d < bd && filter(x)) { bd = d; best = x; } });
+  return best;
+}
+function segDistance(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  const t = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0;
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+function distToLine(p, i) {
+  const s = geo.paths[i].samples; let d = Infinity;
+  for (let k = 1; k < s.length; k++) d = Math.min(d, segDistance(p, s[k - 1], s[k]));
+  return d;
+}
+function nearestLine(p, px, filter = () => true) {
+  let best = null, bd = Infinity;
+  G().e.forEach((_, i) => { const d = distToLine(p, i) * geo.s; if (d <= px && d < bd && filter(i)) { bd = d; best = i; } });
+  return best;
+}
+/* of the free lines between the pen and dot y, the one closest to the way the pointer went */
+function bestLineTo(y, path) {
+  const g = G(), p = penAt(), free = freeLinesAt(p).filter(i => other(g, i, p) === y);
+  if (free.length <= 1) return free.length ? free[0] : null;
+  const score = i => path.length ? sum(path.map(q => distToLine(q, i))) / path.length : 0;
+  return free.slice().sort((a, b) => score(a) - score(b))[0];
+}
+function reachable(y) { const p = penAt(); return p !== null && freeLinesAt(p).some(i => other(G(), i, p) === y); }
+
+/* ---- sliding with live feedback ----
+   While the pointer is down, the line it is travelling along fills up to the
+   pointer (projected onto the line) and the pen rides with it; reaching the
+   far dot draws the line.  Sliding back along the line drawn last takes it
+   back step by step (undo).  Letting go three quarters of the way finishes
+   the step; before that the preview snaps back.                             */
+const ACTIVE_TOL = 26, NEAR_PEN = 12, SWITCH_MARGIN = 8, RELEASE_COMMIT = 0.75;
+/* cutting corners: once a line is filled to CORNER_REACH, heading off along a
+   line out of its far dot draws it (the dot counts as reached).  Sliding back
+   takes a line back at BACK_COMMIT of the way (on letting go: BACK_RELEASE). */
+const CORNER_REACH = 0.8, CORNER_START = 0.04, STICKY_TOL = 2 * ACTIVE_TOL, BACK_COMMIT = 0.7, BACK_RELEASE = 0.5;
+/* closest point of line i to p, as a fraction t of the way from dot `from` */
+function projectOn(i, from, p) {
+  const s = geo.paths[i].samples, k = s.length - 1;
+  let best = { d: Infinity, t: 0, pt: s[0] };
+  for (let j = 1; j <= k; j++) {
+    const A = s[j - 1], B = s[j], dx = B[0] - A[0], dy = B[1] - A[1], L = dx * dx + dy * dy || 1;
+    const tt = Math.max(0, Math.min(1, ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / L));
+    const q = [A[0] + tt * dx, A[1] + tt * dy], d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+    if (d < best.d) best = { d, t: (j - 1 + tt) / k, pt: q };
+  }
+  best.d *= geo.s;
+  if (from === geo.paths[i].b && from !== geo.paths[i].a) best.t = 1 - best.t;
+  return best;
+}
+const partialD = (i, from, t) => SKIN.partialD(i, from, t);
+const pointAt = (i, from, t) => SKIN.pointAt(i, from, t);
+/* the moves open from the pen: free lines forward, the last drawn line back */
+function slideCandidates() {
+  const g = G(), pen = penAt(), out = [];
+  if (pen === null) return out;
+  if (!complete()) for (const i of freeLinesAt(pen)) out.push({ kind: 'fwd', i, to: other(g, i, pen) });
+  if (state.lines.length) { const i = state.lines[state.lines.length - 1]; out.push({ kind: 'back', i, to: other(g, i, pen) }); }
+  return out;
+}
+const sameMove = (a, b) => !!a && !!b && a.kind === b.kind && a.i === b.i;
+/* The preview is incremental: one path whose shape follows the pointer, and the layers
+   underneath are touched only when the move itself changes.  The drawn lines and the
+   lines to draw may sit under SVG filters (crayon skin); touching them re-renders the
+   whole layer, which would make sliding stutter on slower devices. */
+let previewPath = null, previewBackLine = -1;
+function restoreBack() {
+  const last = layer.drawn.lastElementChild; if (last && last.style.display) last.style.display = '';
+  if (previewBackLine >= 0) { const l = lineEls[previewBackLine]; if (l) { l.classList.remove('is-preview-back'); l.classList.add('is-used'); } previewBackLine = -1; }
+}
+function clearPreview() {
+  if (previewPath) { previewPath.remove(); previewPath = null; }
+  restoreBack();
+  const pen = penAt(); if (pen !== null) placePen(geo.pts[pen]);
+}
+function showPreview(m) {
+  if (!m) { clearPreview(); return; }
+  const pen = penAt();
+  let d, tip;
+  if (m.kind === 'fwd') {
+    restoreBack();
+    d = partialD(m.i, pen, m.t); tip = pointAt(m.i, pen, m.t);
+  } else {                                        // what is left of the last line, from the dot before
+    if (previewBackLine !== m.i) {
+      restoreBack();
+      const last = layer.drawn.lastElementChild; if (last) last.style.display = 'none';
+      lineEls[m.i].classList.remove('is-used'); lineEls[m.i].classList.add('is-preview-back'); previewBackLine = m.i;
+    }
+    d = partialD(m.i, m.to, 1 - m.t); tip = pointAt(m.i, m.to, 1 - m.t);
+  }
+  if (!previewPath || !previewPath.isConnected) previewPath = el('path', { class: 'drawn is-preview', 'stroke-width': u(PX.drawn) }, layer.preview);
+  previewPath.setAttribute('d', d);
+  placePen(tip);
+}
+/* carry out a move; returns false if the drag should end (the picture is finished) */
+function commitMove(m) {
+  clearPreview(); drag.active = null;
+  if (m.kind === 'fwd') drawLine(m.i, { animate: false }); else { undo(); haptic('lock'); }
+  const pen = penAt();
+  drag.path = pen === null ? [] : [geo.pts[pen]];
+  drag.reach = 0; drag.tick = null;
+  return !complete();
+}
+/* average distance of the pointer's recent way to a line: which of several lines to the same dot was meant */
+const pathScore = (i, path) => path.length ? sum(path.map(q => distToLine(q, i))) / path.length : 0;
+function dragStep(p) {
+  const pen = penAt(); if (pen === null) return true;
+  const cands = slideCandidates(); if (!cands.length) return true;
+  for (const c of cands) Object.assign(c, projectOn(c.i, pen, p));
+  /* arriving at a dot: take the move that leads there (the one being previewed, else the best fit to the way the pointer went) */
+  const y = nearestDot(p, ENTER, x => x !== pen && cands.some(c => c.to === x));
+  if (y !== null) {
+    const opts = cands.filter(c => c.to === y);
+    const pick = opts.find(c => sameMove(c, drag.active)) || opts.sort((a, b) => pathScore(a.i, drag.path) - pathScore(b.i, drag.path))[0];
+    return commitMove(pick);
+  }
+  /* cutting the corner: the line in progress is (nearly) done and the pointer has moved on
+     along a line out of its far dot -- draw the line, the next step picks up the new one */
+  const act = drag.active && cands.find(c => sameMove(c, drag.active));
+  if (act && act.kind === 'fwd' && drag.reach >= CORNER_REACH) {
+    const onward = freeLinesAt(act.to).filter(j => j !== act.i)
+      .map(j => ({ j, ...projectOn(j, act.to, p) }))
+      .filter(o => o.d <= ACTIVE_TOL && o.t >= CORNER_START && o.d < act.d);
+    if (onward.length) return commitMove(act);
+  }
+  if (Math.hypot(p[0] - geo.pts[pen][0], p[1] - geo.pts[pen][1]) * geo.s < NEAR_PEN) { if (drag.active) { drag.active = null; drag.reach = 0; drag.tick = null; showPreview(null); } return true; }   // back at the pen's own dot: no bump
+  const valid = cands.filter(c => c.d <= ACTIVE_TOL && c.t > 0.02).sort((a, b) => a.d - b.d);
+  let best = valid[0] || null;
+  const cur = valid.find(c => sameMove(c, drag.active));
+  if (cur && best && !sameMove(best, cur) && best.d + SWITCH_MARGIN > cur.d) best = cur;   // do not flicker between neighbours
+  if (!best && act && act.d <= STICKY_TOL) best = act;                                      // drifting off a little: keep the line
+  if (best && best.kind === 'fwd' && best.t >= 0.985) return commitMove(best);
+  if (best && best.kind === 'back' && best.t >= BACK_COMMIT) return commitMove(best);      // undo is snappy
+  if (!sameMove(best, drag.active)) {
+    if (drag.active) haptic('bump');                                                     // left the line it was on
+    drag.reach = 0; drag.tick = null;
+  }
+  if (best) {
+    drag.reach = Math.max(drag.reach, best.t);
+    /* a light tick every TICK_PX of the line travelled, like a ratchet (both ways) */
+    const notch = Math.floor(best.t * lineLengthPx(best.i) / TICK_PX), now = performance.now();
+    if (drag.tick === null) drag.tick = notch;                                                 // just got onto the line
+    else if (notch !== drag.tick) {
+      if (now - drag.tickAt >= TICK_GAP) { haptic('tick'); drag.tickAt = now; }             // too fast: skip, never pile up
+      drag.tick = notch;
+    }
+  }
+  drag.active = best;
+  showPreview(best);
+  return true;
+}
+/* the length of line i on screen, in pixels */
+function lineLengthPx(i) {
+  const s = geo.paths[i].samples; let L = 0;
+  for (let k = 1; k < s.length; k++) L += Math.hypot(s[k][0] - s[k - 1][0], s[k][1] - s[k - 1][1]);
+  return L * geo.s;
+}
+
+stage.addEventListener('pointerdown', e => {
+  if (e.button !== undefined && e.button > 0) return;
+  hidePopup(true);
+  stage.focus({ preventScroll: true, focusVisible: false });   // arrow keys work on from here, without a focus ring for mouse users
+  const p = svgPoint(e), g = G();
+  let ok = false;
+  if (state.show !== null) stopReplay();
+  const d = nearestDot(p, GRAB);
+  const pen = penAt();
+  if (complete()) {                              // a finished drawing can only be slid back from the pen
+    if (d === pen) ok = true;
+    else { say('every line is drawn — slide back from the pen, undo, or clear to start again', true); return; }
+  } else if (pen === null) {
+    if (d !== null) ok = putPen(d);
+    else {
+      const i = nearestLine(p, LINE_TOL);
+      if (i !== null) {
+        const [a, b] = g.e[i], pa = geo.pts[a], pb = geo.pts[b];
+        let x = Math.hypot(p[0] - pa[0], p[1] - pa[1]) <= Math.hypot(p[0] - pb[0], p[1] - pb[1]) ? a : b;
+        if (g.start !== null) x = g.start === a || g.start === b ? g.start : x;
+        ok = putPen(x) && drawLine(i);
+      }
+    }
+  } else if (d === pen) ok = true;
+  else if (d !== null && reachable(d)) ok = drawLine(bestLineTo(d, [p]));
+  else {
+    const i = nearestLine(p, LINE_TOL, j => !state.lines.includes(j) && (g.e[j][0] === pen || g.e[j][1] === pen));
+    if (i !== null) ok = drawLine(i);
+    else if (d !== null) { say(`no free line from the pen to ${state.labels ? 'dot ' + g.labels[d] : 'that dot'}`); knock(); }
+    else if (nearestLine(p, LINE_TOL, j => state.lines.includes(j)) !== null) say('that line is drawn already — slide back from the pen to take lines back');
+    else if (nearestLine(p, LINE_TOL) !== null) say('that line does not start at the pen');
+  }
+  if (ok && !(complete() && penAt() !== d)) {
+    drag = { id: e.pointerId, last: p, path: [p], active: null, reach: 0, tick: null, tickAt: 0 };
+    try { stage.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+  }
+  e.preventDefault();
+});
+stage.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const q = svgPoint(e), a = drag.last, dist = Math.hypot(q[0] - a[0], q[1] - a[1]) * geo.s;
+  const n = Math.max(1, Math.ceil(dist / 4));
+  for (let k = 1; k <= n; k++) {                 // walk the pointer's way in small steps: fast swipes do not skip dots
+    const p = [a[0] + (q[0] - a[0]) * k / n, a[1] + (q[1] - a[1]) * k / n];
+    drag.path.push(p); if (drag.path.length > 40) drag.path.shift();
+    if (!dragStep(p)) { drag = null; return; }   // finished: the victory lap takes over
+  }
+  drag.last = q;
+});
+function endDrag() {
+  if (!drag) return;
+  const m = drag.active;
+  if (m && m.t >= (m.kind === 'back' ? BACK_RELEASE : RELEASE_COMMIT)) commitMove(m);
+  else { clearPreview(); if (m) haptic('bump'); }                                        // let go early: the line snaps back
+  drag = null;
+}
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', () => { if (drag) { clearPreview(); drag = null; } });
+stage.addEventListener('lostpointercapture', endDrag);
+
+/* keyboard -- the focus ring only shows once the keyboard is in use */
+document.addEventListener('keydown', e => { if (e.key !== 'Shift') document.body.classList.add('is-kbd'); }, true);
+document.addEventListener('pointerdown', () => document.body.classList.remove('is-kbd'), true);
+const secretBuf = [];
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  if (!$('claimCard').hidden || !$('nameCard').hidden) { if (e.key === 'Escape') { if (!$('nameCard').hidden) setPlayer(''); else hidePopup(); } return; }
+  if (!e.ctrlKey && !e.metaKey && /^[a-z]$/.test(e.key)) {         // the secret: type d e g
+    secretBuf.push(e.key); if (secretBuf.length > 3) secretBuf.shift();
+    if (secretBuf.join('') === 'deg') { secretBuf.length = 0; setSecret(!state.secret); return; }
+  }
+  const mod = e.ctrlKey || e.metaKey;
+  if ((mod && e.key.toLowerCase() === 'z' && !e.shiftKey) || (!mod && (e.key === 'u' || e.key === 'Backspace'))) { e.preventDefault(); return undo(); }
+  if ((mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) || (!mod && e.key === 'y')) { e.preventDefault(); return redo(); }
+  if (!mod && e.key === 'c') { e.preventDefault(); return clearDrawing(); }
+  if (e.key === 'Escape') { hidePopup(); state.cand = -1; paint(); return; }
+  if (document.activeElement !== stage) return;
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    const cs = candidates(); if (!cs.length) return;
+    e.preventDefault();
+    const dir = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1;
+    state.cand = state.cand < 0 ? (dir > 0 ? 0 : cs.length - 1) : (state.cand + dir + cs.length) % cs.length;
+    const c = cs[state.cand];
+    say(c.dot !== undefined ? `put the pen on ${G().labels[c.dot]}? enter` : `draw to ${G().labels[c.to]}? enter`, true);
+    paint();
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    const cs = candidates(), c = cs[state.cand];
+    if (!c) return;
+    e.preventDefault();
+    if (c.dot !== undefined) putPen(c.dot); else drawLine(c.line);
+    const n = candidates(); state.cand = n.length ? 0 : -1;
+    if (n.length) paint();
+  }
+});
+
+/* ==========================================================================
+   GAME FLOW  --  after every change: readouts, and whether the picture is done
+   ========================================================================== */
+function afterChange({ animate = false, stepped = false, quiet = false } = {}) {
+  paint({ animateLast: animate });
+  renderMetrics(); renderIO(); syncControls(); renderBoard();
+  if (quiet) return;
+  if (stepped && complete()) finishDrawing();
+  else if (stepped && stuck()) { say('stuck — no line left at this dot. undo, or clear and start again'); setTimeout(() => { knock(); haptic('stuck'); }, T(120)); }
+}
+function finishDrawing() {
+  tick();                                        // the last fraction of a second counts too
+  const g = G(), a = att(), end = penAt();
+  const counts = !a.solved && !state.secret;
+  const entry = { verdict: 'trail', start: state.start, end, lines: state.lines.slice(), player: state.player.trim() || 'anonymous', t: Date.now(),
+    first: counts, time: counts ? a.elapsed : null, mistakes: counts ? a.mistakes : null };
+  const hadStar = allStartsFound();
+  pushDrawing(entry);
+  const star = !hadStar && allStartsFound();
+  if (counts) { a.solved = true; a.result = { verdict: 'trail', time: a.elapsed, mistakes: a.mistakes, start: entry.start, end, t: entry.t }; saveAttempts(); submitGlobal(a.result, entry); }
+  paint(); renderAll();
+  confetti(); tadaa(); if (star) sparkle();
+  setTimeout(() => haptic('solved'), 60);                // after the lock of the last line
+  /* let the last stroke finish, retrace the whole drawing quickly, then the pop-up */
+  const lap = flashTrail(T(190));
+  const key = state.pic.key;                     // only if the player is still on this picture by then
+  setTimeout(() => { if (state.pic.key === key) showSolved({ verdict: 'trail', start: entry.start, end, closed: entry.start === end, first: counts, star }); }, lap ? lap + 120 : T(650));
+}
+function solveNone() {
+  tick();
+  const a = att();
+  const counts = !a.solved && !state.secret;
+  const entry = { verdict: 'none', start: null, end: null, lines: [], player: state.player.trim() || 'anonymous', t: Date.now(),
+    first: counts, time: counts ? a.elapsed : null, mistakes: counts ? a.mistakes : null };
+  pushDrawing(entry);
+  if (counts) { a.solved = true; a.result = { verdict: 'none', time: a.elapsed, mistakes: a.mistakes, t: entry.t }; saveAttempts(); submitGlobal(a.result, entry); }
+  renderAll(); confetti(); tadaa(); haptic('solved');
+  showSolved({ verdict: 'none', first: counts });
+}
+function claim() {
+  if (att().solved && !state.secret) return;
+  if (complete()) return;
+  hidePopup();
+  const a = att();
+  $('claimSub').innerHTML = state.secret ? 'Hint mode: this is just a check, nothing is counted.' :
+    `If it can be drawn after all, that counts as a mistake${a.mistakes ? ` (${a.mistakes} so far)` : ''}.`;
+  $('claimCard').hidden = false; $('popup').hidden = false;
+  setTimeout(() => $('claimBack').focus({ preventScroll: true }), 30);
+}
+function claimConfirmed() {
+  hidePopup();
+  if (!trailExists(G())) return solveNone();
+  const a = att();
+  if (!a.solved && !state.secret) { a.mistakes++; saveAttempts(); }
+  knock(true); haptic('wrong');
+  stage.classList.remove('shake'); void stage.getBoundingClientRect(); stage.classList.add('shake');
+  showWrong();
+  renderAll();
+}
+
+/* ---- the pop-up over the picture: the whole card is the next step ---- */
+let popupAction = null;
+function nextPlan() {
+  const i = state.pic.level;
+  if (i !== null && i + 1 < LEVELS.length) { const L = LEVELS[i + 1]; return { label: `next level: ${L.name}`, hint: `level ${i + 2} of ${LEVELS.length}`, run: () => setLevel(i + 1) }; }
+  return { label: i !== null ? 'all levels done — a random picture' : 'another random picture', hint: 'made up on the spot', run: () => generate() };
+}
+function showSolved(r) {
+  const g = G(), L = state.labels, card = $('popupCard'), a = att();
+  card.className = 'popup-card is-solved';
+  $('popupEmblems').innerHTML = (r.first ? '<span class="emblem-trophy" aria-label="trophy">\u{1F3C6}</span>' : '') +
+    (r.star ? '<span class="emblem-star" aria-label="star">\u{2B50}</span>' : '');
+  let sub = '';
+  if (r.verdict === 'none') {
+    $('popupTitle').textContent = 'Right — this one can’t be drawn in one stroke.';
+    sub = 'Can you say why? What makes it different from the pictures that work?';
+  } else {
+    $('popupTitle').textContent = r.first ? 'Drawn in one stroke!' : 'Drawn in one stroke again.';
+    const where = L ? `at ${g.labels[r.start]}` : 'at the green dot';
+    sub = r.closed ? `You started ${where} and came back to where you started.` :
+      `You started ${where} and ended ${L ? 'at ' + g.labels[r.end] : 'at the yellow one'}.`;
+    if (r.star) sub += '<br><span class="star-note">You have started from every dot a one-stroke drawing can start from.</span>';
+    else if (g.start === null && !allStartsFound()) sub += '<br>Could you have started somewhere else?';
+  }
+  if (!r.first) sub += `<br><span class="dim">Not timed — the clock ran for your first solve${a.result ? ' (' + fmtClock(a.result.time, true) + ')' : ''}.</span>`;
+  $('popupCost').innerHTML = r.first && a.result ? `time <b>${fmtClock(a.result.time, true)}</b> · ${plural(a.result.mistakes, 'mistake')}` : '';
+  $('popupSub').innerHTML = sub;
+  const plan = nextPlan();
+  popupAction = plan.run;
+  $('popupAction').innerHTML = escapeHTML(plan.label) + ` →<span class="popup-hint">${escapeHTML(plan.hint)} · × stays on this picture</span>`;
+  $('claimCard').hidden = true; $('nameCard').hidden = true;
+  card.hidden = false; $('popup').hidden = false;
+  card.focus({ preventScroll: true });
+}
+function showWrong() {
+  const card = $('popupCard'), a = att();
+  card.className = 'popup-card is-wrong';
+  $('popupEmblems').innerHTML = '';
+  $('popupTitle').textContent = 'It can be done!';
+  $('popupCost').innerHTML = state.secret ? '' : `${plural(a.mistakes, 'mistake')} so far`;
+  $('popupSub').innerHTML = 'There is a way to draw every line of this picture in one stroke. Keep looking.';
+  popupAction = null;
+  $('popupAction').innerHTML = 'keep drawing';
+  $('claimCard').hidden = true; $('nameCard').hidden = true;
+  card.hidden = false; $('popup').hidden = false;
+  card.focus({ preventScroll: true });
+}
+function hidePopup(keepName = false) {
+  if (keepName && !$('nameCard').hidden) return;
+  $('popup').hidden = true; $('popupCard').hidden = true; $('claimCard').hidden = true; $('nameCard').hidden = true;
+  popupAction = null;
+}
+$('popupCard').addEventListener('click', e => {
+  if (e.target.closest('.popup-x')) { hidePopup(); return; }
+  const run = popupAction; hidePopup(); if (run) run();
+});
+$('popupCard').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('popupCard').click(); } });
+$('claimGo').addEventListener('click', claimConfirmed);
+$('claimBack').addEventListener('click', () => hidePopup());
+$('btnNone').addEventListener('click', claim);
+
+/* ---- the name prompt, shown once when there is a leaderboard to appear on ---- */
+function askName() {
+  if (state.player.trim() || store.get('pendown.nameAsked') === 'yes') return;
+  if (state.boardMode !== 'global') return;
+  $('popupCard').hidden = true; $('claimCard').hidden = true;
+  $('nameSub').innerHTML = `Your name goes next to your times on the <b>${escapeHTML(state.boardId)}</b> leaderboard. The clock starts when you close this. You can change the name later in the panel on the right.`;
+  $('nameCard').hidden = false; $('popup').hidden = false;
+  $('nameInput').value = '';
+  $('popup').scrollIntoView({ behavior: 'auto', block: 'center' });
+  if (innerWidth > 640) setTimeout(() => $('nameInput').focus({ preventScroll: true }), 60);
+}
+function setPlayer(name) {
+  state.player = name; $('player').value = name;
+  store.set('pendown.player', name); store.set('pendown.nameAsked', 'yes');
+  hidePopup(); renderBoard();
+}
+$('nameGo').addEventListener('click', () => setPlayer($('nameInput').value.trim().slice(0, 24)));
+$('nameSkip').addEventListener('click', () => setPlayer(''));
+$('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); setPlayer($('nameInput').value.trim().slice(0, 24)); }
+  if (e.key === 'Escape') { e.preventDefault(); setPlayer(''); }
+});
+$('player').addEventListener('input', e => { state.player = e.target.value; store.set('pendown.player', state.player); store.set('pendown.nameAsked', 'yes'); });
+
+/* ==========================================================================
+   THE CLOCK  --  runs from opening a picture until its first solve, only
+   while the page is visible; it keeps its time when you switch pictures
+   ========================================================================== */
+let lastTick = null, lastSave = 0;
+function clockRunning() {
+  return !!state.pic && !att().solved && !state.secret && document.visibilityState === 'visible' && $('nameCard').hidden;
+}
+function tick() {
+  const now = performance.now();
+  if (clockRunning()) {
+    if (lastTick !== null) att().elapsed += Math.min(2000, now - lastTick);
+    lastTick = now;
+    if (now - lastSave > 2000) { saveAttempts(); lastSave = now; }
+  } else lastTick = null;
+  renderClock();
+}
+setInterval(tick, 200);
+document.addEventListener('visibilitychange', () => { tick(); saveAttempts(); });
+addEventListener('pagehide', () => { tick(); saveAttempts(); });
+function renderClock() {
+  if (!state.pic) return;
+  const a = att(), g = G();
+  const t = a.solved && a.result ? a.result.time : a.elapsed;
+  $('clock').textContent = fmtClock(t, a.solved);
+  $('clock').parentElement.querySelector('.cost-label').textContent = state.secret ? 'hint mode' : a.solved ? 'solved in' : 'time';
+  $('clockSub').textContent = `${state.lines.length} of ${g.e.length} lines · ${plural(a.solved && a.result ? a.result.mistakes : a.mistakes, 'mistake')}`;
+}
+
+/* ==========================================================================
+   READOUTS
+   ========================================================================== */
+function renderMetrics() {
+  const g = G(), a = att(), d = drawings().filter(x => x.verdict === 'trail'), ps = possibleStarts(g), deg = degrees(g);
+  const pen = penAt();
+  const rows = [
+    ['lines drawn', `${state.lines.length} <span class="unit">of ${g.e.length}</span>`, 'hi'],
+    ['pen went down at', state.start === null ? '—' : escapeHTML(g.labels[state.start])],
+    ['pen is at', pen === null ? '—' : escapeHTML(g.labels[pen])],
+    ['mistakes', String(a.solved && a.result ? a.result.mistakes : a.mistakes)],
+    ['finished drawings', d.length ? `${d.length} <span class="unit">from ${plural(new Set(d.map(x => x.start)).size, 'dot')}</span>` : '—']
+  ];
+  let html = rows.map(([k, v, c]) => `<tr${c ? ` class="${c}"` : ''}><td>${k}</td><td>${v}</td></tr>`).join('');
+  const odd = deg.filter(k => k % 2).length;
+  html += `<tr class="opt" data-secret><td>odd dots</td><td>${odd}</td></tr>` +
+    `<tr class="opt" data-secret><td>one stroke</td><td>${ps.length ? 'from ' + ps.map(x => escapeHTML(g.labels[x])).join(' ') : (linesConnected(g) ? 'impossible' : 'impossible — in pieces')}</td></tr>`;
+  $('metrics').innerHTML = html;
+  const L = state.pic.level;
+  $('inputSummary').innerHTML = `<b>${g.v.length}</b> dots · <b>${g.e.length}</b> lines` + (g.start !== null ? ` · start at <b>${escapeHTML(g.labels[g.start])}</b>` : '') +
+    (L !== null ? ` · ${levelTag(LEVELS[L])}` : '');
+}
+function renderResult() {
+  const a = att(), box = $('result');
+  if (!a.solved || !a.result) { box.hidden = true; return; }
+  box.hidden = false; box.className = 'result is-opt';
+  $('resBig').textContent = fmtClock(a.result.time, true);
+  $('resVerdict').innerHTML = a.result.verdict === 'none' ? 'solved — <b>it can’t be done</b>' : 'solved — <b>drawn in one stroke</b>';
+  const g = state.global;
+  $('resDetail').textContent = plural(a.result.mistakes, 'mistake') + (state.boardMode === 'global' && g.status === 'ok' && g.rank ? ` · #${g.rank} of ${g.total} on the ${state.boardId} board` : '');
+  const plan = nextPlan();
+  $('resNext').innerHTML = `<button class="btn btn-lime" id="btnNext" type="button">${escapeHTML(plan.label)} →</button>`;
+}
+document.addEventListener('click', e => { if (e.target.closest('#btnNext')) { const p = nextPlan(); p.run(); } });
+function renderAll() { renderMetrics(); renderResult(); renderBoard(); renderClock(); syncControls(); renderIO(); }
+
+/* ==========================================================================
+   LEADERBOARD
+   ========================================================================== */
+function apiURL(path, params) {
+  const url = new URL(path, state.api.replace(/\/?$/, '/'));
+  for (const k in params) url.searchParams.set(k, params[k]);
+  return url.toString();
+}
+async function fetchGlobal() {
+  if (state.boardMode !== 'global') return;
+  const key = state.pic.key;
+  state.global = { key, entries: [], total: 0, status: 'loading', msg: '' };
+  renderBoard();
+  try {
+    const r = await fetch(apiURL('board', { b: state.boardId, input: key }));
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('HTTP ' + r.status));
+    const data = await r.json();
+    if (state.pic.key !== key) return;
+    const entries = data.entries || [];
+    const me = entries.findIndex(x => x.who === MY_WHO);
+    state.global = { key, entries, total: data.total || 0, status: 'ok', msg: '', rank: me >= 0 ? me + 1 : null };
+    if (me >= 0 && attempts[key] && attempts[key].solved && attempts[key].sent !== state.boardId) { attempts[key].sent = state.boardId; saveAttempts(); }
+    else if (me < 0) setTimeout(resendIfNeeded, 0);
+  } catch (e) {
+    if (state.pic.key !== key) return;
+    state.global = { key, entries: [], total: 0, status: 'error', msg: e.message };
+    if (state.wanted !== null && state.wanted !== undefined && !gateOn() && state.start === null) {
+      const w = state.wanted; state.wanted = null; setPic(levelPic(w)); return;
+    }
+  }
+  renderBoard(); renderResult(); syncControls();
+}
+async function fetchTop() {
+  if (state.boardMode !== 'global') return;
+  state.top = { ...state.top, status: 'loading' }; renderBoard();
+  try {
+    const r = await fetch(apiURL('top', { b: state.boardId }));
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('HTTP ' + r.status));
+    const data = await r.json();
+    state.top = { entries: data.players || [], status: 'ok', msg: '', levels: data.levels || LEVELS.length };
+  } catch (e) { state.top = { entries: [], status: 'error', msg: e.message, levels: LEVELS.length }; }
+  renderBoard();
+}
+async function submitGlobal(result, entry) {
+  if (state.boardMode !== 'global') return;
+  const pic = state.pic, pos = keyLineOrder(pic.g);
+  try {
+    const r = await fetch(apiURL('submit', {}), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ board: state.boardId, level: pic.level !== null ? LEVELS[pic.level].id : null, graph: pic.key,
+        verdict: result.verdict, start: entry.start, lines: (entry.lines || []).map(i => pos[i]),     // in the key's line order, see keyLineOrder
+        time: Math.round(result.time), mistakes: result.mistakes, player: state.player.trim() || 'anonymous', client: state.client }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+  } catch (e) {
+    if (state.pic === pic) { state.global.status = 'error'; state.global.msg = e.message; renderBoard(); }
+    return;
+  }
+  if (attempts[pic.key]) { attempts[pic.key].sent = state.boardId; saveAttempts(); }            // on the board: no need to send it again
+  if (state.pic === pic) { fetchGlobal(); if (state.view === 'top') fetchTop(); }
+}
+/* a solve that never reached this board (it was offline, or refused by an older version of
+   the page): send it now, with the drawing that solved it */
+function resendIfNeeded() {
+  const a = att();
+  if (state.boardMode !== 'global' || state.secret || !a.solved || !a.result || a.sent === state.boardId) return;
+  const first = drawings().find(d => d.first) || { verdict: a.result.verdict, start: a.result.start ?? null, lines: [] };
+  if (a.result.verdict === 'trail' && !isFullTrail(G(), first.start, first.lines || [])) return;
+  submitGlobal(a.result, first);
+}
+function setView(v) { state.view = v; if (v === 'top') fetchTop(); renderBoard(); }
+$('boardTabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t) setView(t.dataset.view); });
+
+function renderBoard() {
+  if (!state.pic) return;
+  const host = $('board'), status = $('boardStatus'), note = $('boardNote'), g = G();
+  const globalOn = state.boardMode === 'global';
+  $('boardTabs').hidden = !globalOn;
+  if (!globalOn) state.view = 'local';
+  $('boardTabs').querySelectorAll('.tab').forEach(t => t.classList.toggle('is-on', t.dataset.view === state.view));
+  status.classList.remove('is-err');
+  const hintNote = state.secret ? ' · <span class="flag">hint mode: nothing counts right now</span>' : '';
+  const miss = k => k ? `<span class="miss" title="${plural(k, 'mistake')}">✗${k}</span>` : '';
+
+  if (state.view === 'level') {
+    const G_ = state.global;
+    if (G_.status === 'loading') status.textContent = 'loading the ' + state.boardId + ' board …';
+    else if (G_.status === 'error') { status.textContent = 'global board unavailable (' + G_.msg + ') — the “this browser” tab still works'; status.classList.add('is-err'); }
+    else status.innerHTML = `<b>${escapeHTML(state.boardId)}</b> board · ${plural(G_.total, 'player')} solved this picture`;
+    if (!G_.entries.length) host.innerHTML = `<div class="board-empty">${G_.status === 'ok' ? 'nobody has solved this picture on the ' + escapeHTML(state.boardId) + ' board yet' : ''}</div>`;
+    else host.innerHTML = G_.entries.slice(0, 15).map((x, i) => {
+      const me = x.who === MY_WHO;
+      return `<div class="board-row ${me ? 'is-you' : 'is-other'}">` +
+        `<span class="rank">${i + 1}</span><span class="cost">${fmtClock(x.time, true)}${miss(x.mistakes)}</span>` +
+        `<span class="who">${escapeHTML(x.player)}${me ? ' <span class="you">you</span>' : ''} <small>· ${timeAgo(x.created)}</small></span><span></span></div>`;
+    }).join('');
+    note.innerHTML = 'fewest mistakes first, then time · only times are public: nobody sees how a picture was solved' +
+      (gateOn() ? ' · <span class="flag">levels unlock one by one: solve a level to open the next</span>' : '') + hintNote;
+  } else if (state.view === 'top') {
+    const t = state.top;
+    if (t.status === 'loading') status.textContent = 'loading …';
+    else if (t.status === 'error') { status.textContent = 'global board unavailable (' + t.msg + ')'; status.classList.add('is-err'); }
+    else status.innerHTML = `<b>${escapeHTML(state.boardId)}</b> board · progress through the ${LEVELS.length} levels`;
+    if (!t.entries.length) host.innerHTML = `<div class="board-empty">${t.status === 'ok' ? 'nobody has solved a level on this board yet' : ''}</div>`;
+    else host.innerHTML = t.entries.slice(0, 20).map((x, i) => {
+      const me = x.who === MY_WHO, have = new Set(x.levels || []);
+      const bar = `<span class="prog" aria-hidden="true">${LEVELS.map(L => `<i class="${have.has(L.id) ? 'on' : ''}"></i>`).join('')}</span>`;
+      return `<div class="board-row ${me ? 'is-you' : 'is-other'}"><span class="rank">${i + 1}</span>` +
+        `<span class="cost" title="levels solved">${x.solved}/${LEVELS.length}</span>` +
+        `<span class="who">${escapeHTML(x.player || 'anonymous')}${me ? ' <span class="you">you</span>' : ''}${bar}</span>` +
+        `<span class="tot" title="total time · mistakes">${fmtClock(x.time)}${miss(x.mistakes)}</span></div>`;
+    }).join('');
+    note.innerHTML = 'most levels first, then the total time of the solved ones' + hintNote;
+  } else {
+    const list = drawings().slice().sort((a, b) => (b.first ? 1 : 0) - (a.first ? 1 : 0) || a.t - b.t);
+    status.textContent = globalOn ? 'solved in this browser' : (state.api ? 'global board switched off for this link — progress is kept in this browser' : 'no global board configured — progress is kept in this browser');
+    if (!list.length) host.innerHTML = '<div class="board-empty">not solved in this browser yet</div>';
+    else host.innerHTML = list.slice(0, 14).map((x, i) => {
+      const what = x.verdict === 'none' ? 'can’t be done' : (x.start === x.end ? `${escapeHTML(g.labels[x.start])} ↺` : `${escapeHTML(g.labels[x.start])} → ${escapeHTML(g.labels[x.end])}`);
+      return `<div class="board-row" data-i="${i}" ${x.verdict === 'trail' ? 'role="button" tabindex="0"' : ''}>` +
+        `<span class="rank">${i + 1}</span><span class="cost">${x.first ? fmtClock(x.time, true) + miss(x.mistakes) : '<small>again</small>'}</span>` +
+        `<span class="who">${what} <small>· ${escapeHTML(x.player)} · ${timeAgo(x.t)}</small></span>` +
+        (x.verdict === 'trail' ? '<button class="replay" type="button" title="watch this drawing" aria-label="replay">▶</button>' : '<span></span>') + '</div>';
+    }).join('');
+    note.innerHTML = 'click a drawing to see it, ▶ to watch it · the first solve is the timed one · ' +
+      '<button class="link" id="btnForget" type="button">forget this picture here</button>' + hintNote;
+    host.dataset.order = JSON.stringify(list.map(x => x.t));
+  }
+}
+$('board').addEventListener('click', e => {
+  const row = e.target.closest('.board-row[data-i]'); if (!row) return;
+  const list = drawings().slice().sort((a, b) => (b.first ? 1 : 0) - (a.first ? 1 : 0) || a.t - b.t);
+  const x = list[+row.dataset.i]; if (!x || x.verdict !== 'trail') return;
+  if (loadDrawing(x.start, x.lines, { quiet: true }) && e.target.closest('.replay')) replay();
+});
+$('board').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.target.click(); } });
+$('boardNote').addEventListener('click', e => {
+  if (!e.target.closest('#btnForget')) return;
+  if (!confirm('Forget this picture in this browser — the clock, the mistakes and the drawings? (The global board keeps its entry.)')) return;
+  forgetPicture(); state.start = null; state.lines = []; state.redo = [];
+  afterChange({ quiet: true }); renderAll(); renderPresetOptions();
+});
+
+/* ==========================================================================
+   CONTROLS
+   ========================================================================== */
+function renderPresetOptions() {
+  const html = LEVELS.map((L, i) => {
+    const solved = levelSolved(i), lock = levelLocked(i) && i !== state.pic?.level;
+    return `<option value="${i}"${lock ? ' disabled' : ''}>${i + 1} · ${L.name}${solved ? ' ✓' : lock ? ' 🔒' : ''}</option>`;
+  }).join('') + '<option value="">other picture</option>';
+  if ($('preset').innerHTML !== html) $('preset').innerHTML = html;
+  $('preset').value = state.pic && state.pic.level !== null ? String(state.pic.level) : '';
+}
+function syncControls() {
+  if (!state.pic) return;
+  const i = state.pic.level, g = G(), a = att();
+  $('lvl').textContent = i !== null ? 'level ' + (i + 1) : 'custom';
+  $('lvl').classList.toggle('is-custom', i === null);
+  $('lname').textContent = i !== null ? LEVELS[i].name : `${g.v.length} dots, ${g.e.length} lines`;
+  $('sheet').textContent = i !== null ? levelTag(LEVELS[i]) : '';
+  $('lhint').textContent = i !== null ? LEVELS[i].hint : 'A picture of your own. Share it with the “copy link” button.';
+  renderPresetOptions();
+  $('btnUndo').disabled = state.start === null;
+  $('btnRedo').disabled = !state.redo.length;
+  $('btnClear').disabled = state.start === null;
+  $('btnReplay').disabled = !state.lines.length || !!state.replaying;
+  $('btnLabels').classList.toggle('is-on', state.labels); $('btnLabels').setAttribute('aria-pressed', String(state.labels));
+  $('btnSteps').classList.toggle('is-on', state.steps); $('btnSteps').setAttribute('aria-pressed', String(state.steps));
+  $('btnGhost').classList.toggle('is-on', state.ghost);
+  $('btnVibrate').hidden = !hapticsAvailable;
+  $('btnVibrate').classList.toggle('is-on', state.vibrate); $('btnVibrate').setAttribute('aria-pressed', String(state.vibrate));
+  $('btnSound').textContent = state.sound ? '🔊 sound' : '🔇 muted';
+  $('btnSound').setAttribute('aria-pressed', String(state.sound));
+  const none = $('btnNone'), solvedNone = a.solved && a.result && a.result.verdict === 'none';
+  none.disabled = (!state.secret && a.solved && !solvedNone) || complete();
+  none.classList.toggle('is-right', !!solvedNone && !state.secret);
+  none.textContent = solvedNone && !state.secret ? '✓ can’t be done' : 'can’t be done';
+  if (solvedNone && !state.secret) none.disabled = true;
+  $('btnLink').textContent = state.start !== null ? 'copy link (with drawing)' : 'copy link';
+}
+/* the first level that is open and not yet solved here (or the last open one) */
+function firstOpenLevel() {
+  const i = LEVELS.findIndex((L, k) => !levelSolved(k) && !levelLocked(k));
+  if (i >= 0) return i;
+  for (let k = LEVELS.length - 1; k > 0; k--) if (!levelLocked(k)) return k;
+  return 0;
+}
+/* switch pictures.  A locked level is refused -- or, with fallback, replaced
+   by the first open one (links, and leaving the hint mode on a locked level). */
+function setPic(pic, { drawing = null, fallback = false } = {}) {
+  let note = '';
+  if (pic.level !== null && levelLocked(pic.level)) {
+    note = `level ${pic.level + 1} is still locked — solve level ${pic.level} first`;
+    if (!fallback) { say(note); renderPresetOptions(); return false; }
+    state.wanted = pic.level;
+    pic = levelPic(firstOpenLevel()); drawing = null;
+  } else if (fallback === false) state.wanted = null;
+  stopReplay(); hidePopup(true);
+  saveAttempts();
+  state.pic = pic; state.start = null; state.lines = []; state.redo = []; state.cand = -1;
+  lastTick = null;
+  att(); say('');
+  build();
+  if (drawing) loadDrawing(drawing.start, drawing.lines, { quiet: true });
+  renderAll();
+  syncURL();
+  fetchGlobal(); if (state.view === 'top') fetchTop();
+  if (note) say(note);
+  return true;
+}
+/* bring the picture fully into view -- below the sticky header -- scrolling only if part of it is hidden */
+function revealStage() {
+  const hdr = document.querySelector('.site-header'), top = hdr ? hdr.getBoundingClientRect().bottom : 0;
+  const head = document.querySelector('.panel-stage').getBoundingClientRect(), wrap = $('stageWrap').getBoundingClientRect(), gap = 10;
+  let dy = 0;
+  if (head.top < top + gap) dy = head.top - top - gap;                                        // hidden above: show from the level line
+  else if (wrap.bottom > innerHeight - gap) dy = Math.min(wrap.bottom - innerHeight + gap, head.top - top - gap);   // hidden below
+  if (Math.abs(dy) > 2) window.scrollBy({ top: dy, behavior: REDUCED ? 'auto' : 'smooth' });
+}
+function setLevel(i) {
+  if (!setPic(levelPic(i))) return;
+  revealStage();
+}
+function generate() {
+  const n = Math.max(3, Math.min(24, Math.round(+$('genN').value || 7)));
+  const asked = Math.round(+$('genM').value || 10), m = Math.max(n - 1, Math.min(3 * n, asked));
+  const k = state.secret && $('genOdd').value !== '' ? +$('genOdd').value : null;   // only the hint mode picks the odd dots
+  let g;
+  try { g = randomPicture(n, m, k); } catch (e) { say(e.message); return; }
+  $('genN').value = n; $('genM').value = g.e.length;
+  setPic(picFromGraph(g));
+  if (g.e.length !== asked) say(g.e.length > asked ? `${n} dots need at least ${g.e.length} lines — made it ${g.e.length}` : `${n} dots take at most ${g.e.length} lines — made it ${g.e.length}`, true);
+}
+$('preset').addEventListener('change', e => { if (e.target.value === '') { renderPresetOptions(); return; } setLevel(+e.target.value); });
+$('btnGen').addEventListener('click', generate);
+$('btnLink').addEventListener('click', async () => {
+  const url = pageURL(state.pic, state.start !== null ? { start: state.start, lines: state.lines } : null, urlExtra());
+  const m = $('linkMsg');
+  try { await navigator.clipboard.writeText(url); m.textContent = 'link copied'; m.classList.add('ok'); }
+  catch (e) { m.textContent = url; m.classList.remove('ok'); }
+  setTimeout(() => { m.textContent = ''; }, 5000);
+});
+$('btnUndo').addEventListener('click', undo);
+$('btnRedo').addEventListener('click', redo);
+$('btnClear').addEventListener('click', clearDrawing);
+$('btnReplay').addEventListener('click', replay);
+$('btnLabels').addEventListener('click', () => { state.labels = !state.labels; store.set('pendown.labels', state.labels ? 'on' : 'off'); paint(); syncControls(); });
+$('btnSteps').addEventListener('click', () => { state.steps = !state.steps; store.set('pendown.steps', state.steps ? 'on' : 'off'); paint(); syncControls(); });
+$('btnGhost').addEventListener('click', () => { state.ghost = !state.ghost; paint(); syncControls(); });
+$('btnVibrate').addEventListener('click', () => { state.vibrate = !state.vibrate; store.set('pendown.vibrate', state.vibrate ? 'on' : 'off'); syncControls(); if (state.vibrate) haptic('lock'); });
+$('btnSound').addEventListener('click', () => { state.sound = !state.sound; store.set('pendown.sound', state.sound ? 'on' : 'off'); syncControls(); if (state.sound) scratch(0.5); });
+
+/* import / export */
+function renderIO() {
+  const ta = $('ioText');
+  if (document.activeElement === ta || !state.pic) return;
+  ta.value = exportText(state.pic, state.start, state.lines, { url: pageURL(state.pic, null, urlExtra()) });
+}
+function ioMsg(text, ok) { const m = $('ioMsg'); m.textContent = text; m.classList.toggle('ok', !!ok); if (text) setTimeout(() => { if (m.textContent === text) m.textContent = ''; }, 7000);
+  if (text && !ok) { say(text); } }
+function doImport(text) {
+  try {
+    const { pic, start, lines } = parseImport(text, state.pic);
+    if (pic.key !== state.pic.key && !setPic(pic)) { ioMsg(`that is level ${pic.level + 1}, which is still locked — solve level ${pic.level} first`, false); return; }
+    if (start !== null) {
+      if (loadDrawing(start, lines, { quiet: true })) ioMsg(`imported a drawing with ${lines.length} of ${pic.g.e.length} lines`, true);
+    } else ioMsg(pic.level !== null ? `that is level ${pic.level + 1}: ${LEVELS[pic.level].name}` : `imported a picture with ${pic.g.v.length} dots and ${pic.g.e.length} lines`, true);
+    $('ioText').blur(); renderIO();
+  } catch (e) { ioMsg('could not import: ' + e.message, false); }
+}
+$('btnImport').addEventListener('click', () => doImport($('ioText').value));
+$('btnCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('ioText').value); ioMsg('copied', true); } catch (e) { $('ioText').select(); ioMsg('select the text and copy it yourself', false); }
+});
+$('btnDownload').addEventListener('click', () => {
+  const blob = new Blob([$('ioText').value], { type: 'text/x-python' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = state.pic.level !== null ? `pen-down-level-${state.pic.level + 1}.py` : `pen-down-${state.pic.key.length}-${strHash(state.pic.key).slice(0, 6)}.py`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('fileIn').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader(); rd.onload = () => { $('ioText').value = rd.result; doImport(rd.result); }; rd.readAsText(f);
+  e.target.value = '';
+});
+
+/* the hint mode: every dot's number of lines, the verdict, a ghost drawing.
+   ?deg in the URL, typing "deg", or five clicks on the eyebrow.  Nothing counts while it is on. */
+function setSecret(on) {
+  state.secret = on;
+  document.body.classList.toggle('is-secret', on);
+  if (!on) state.ghost = false;
+  paint(); renderAll();
+  if (!on && state.pic.level !== null && levelLocked(state.pic.level)) setPic(state.pic, { fallback: true });
+}
+$('secretPill').addEventListener('click', () => setSecret(false));
+let eyebrowClicks = 0, eyebrowTimer = null;
+$('eyebrow').addEventListener('click', () => {
+  eyebrowClicks++; clearTimeout(eyebrowTimer); eyebrowTimer = setTimeout(() => { eyebrowClicks = 0; }, 1500);
+  if (eyebrowClicks >= 5) { eyebrowClicks = 0; setSecret(!state.secret); }
+});
+/* the picture follows the width of its panel (window size or the splitter) */
+let lastW = 0, resizeFrame = 0;
+function onStageResize() {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(() => { const w = $('stageWrap').clientWidth; if (state.pic && Math.abs(w - lastW) > 1) { lastW = w; build(); } });
+}
+if ('ResizeObserver' in window) new ResizeObserver(onStageResize).observe($('stageWrap'));
+addEventListener('resize', onStageResize);
+
+/* the splitter: drag it to share the width between picture and side panel */
+const SIDE_MIN = 260, SIDE_DEFAULT = 330, splitter = $('splitter');
+const sideMax = () => Math.max(SIDE_MIN, Math.min(760, Math.round($('labGrid').clientWidth * 0.62)));
+function setSide(px, save = true) {
+  const w = Math.round(Math.max(SIDE_MIN, Math.min(sideMax(), px)));
+  $('labGrid').style.setProperty('--side-w', w + 'px');
+  splitter.setAttribute('aria-valuemin', SIDE_MIN); splitter.setAttribute('aria-valuemax', sideMax()); splitter.setAttribute('aria-valuenow', w);
+  if (save) store.set('pendown.side', String(w));
+}
+let split = null;
+splitter.addEventListener('pointerdown', e => {
+  if (e.button > 0) return;
+  split = { id: e.pointerId, x: e.clientX, w: document.querySelector('.panel-side').getBoundingClientRect().width };
+  splitter.setPointerCapture(e.pointerId); splitter.classList.add('is-dragging'); document.body.classList.add('is-resizing');
+  e.preventDefault();
+});
+splitter.addEventListener('pointermove', e => { if (split && e.pointerId === split.id) setSide(split.w - (e.clientX - split.x), false); });
+function endSplit() {
+  if (!split) return;
+  split = null; splitter.classList.remove('is-dragging'); document.body.classList.remove('is-resizing');
+  setSide(parseFloat(getComputedStyle($('labGrid')).getPropertyValue('--side-w')) || SIDE_DEFAULT);
+}
+splitter.addEventListener('pointerup', endSplit);
+splitter.addEventListener('pointercancel', endSplit);
+splitter.addEventListener('lostpointercapture', endSplit);
+splitter.addEventListener('dblclick', () => setSide(SIDE_DEFAULT));
+splitter.addEventListener('keydown', e => {
+  const w = document.querySelector('.panel-side').getBoundingClientRect().width, step = e.shiftKey ? 80 : 24;
+  const to = { ArrowLeft: w + step, ArrowRight: w - step, Home: sideMax(), End: SIDE_MIN }[e.key];
+  if (to !== undefined) { e.preventDefault(); e.stopPropagation(); setSide(to); }
+});
+setSide(+store.get('pendown.side') || SIDE_DEFAULT, false);
+addEventListener('resize', () => { const cur = parseFloat(getComputedStyle($('labGrid')).getPropertyValue('--side-w')); if (cur > sideMax()) setSide(cur, false); });
+
+/* ==========================================================================
+   SELF TESTS  --  shown in the footer, as in the other workshop pages
+   ========================================================================== */
+function runSelfTests() {
+  const results = [];
+  const test = (name, fn) => { try { const r = fn(); results.push({ name, ok: r === true, msg: r === true ? '' : String(r) }); } catch (e) { results.push({ name, ok: false, msg: e.message }); } };
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const randomGraph = () => {
+    const n = rnd(2, 6), m = rnd(1, 8), e = [];
+    while (e.length < m) { const a = rnd(0, n - 1), b = rnd(0, n - 1); if (a !== b) e.push([a, b]); }
+    return { v: Array.from({ length: n }, () => [0, 0]), e, start: Math.random() < .3 ? rnd(0, n - 1) : null };
+  };
+  const brute = g => {                          // try every drawing
+    const used = new Array(g.e.length).fill(false), inc = incidence(g), starts = [];
+    const go = (x, k) => { if (k === g.e.length) return true;
+      for (const i of inc[x]) if (!used[i]) { used[i] = true; const ok = go(other(g, i, x), k + 1); used[i] = false; if (ok) return true; } return false; };
+    for (let s = 0; s < g.v.length; s++) if ((g.start === null || g.start === s) && inc[s].length && go(s, 0)) starts.push(s);
+    return starts;
+  };
+  test('where a one-stroke drawing can start agrees with trying every drawing (400 random pictures)', () => {
+    for (let t = 0; t < 400; t++) {
+      const g = randomGraph(), a = possibleStarts(g).join(','), b = brute(g).join(',');
+      if (a !== b) return `${graphKey(g)}: rule says [${a}], search finds [${b}]`;
+    }
+    return true;
+  });
+  test('findTrail draws every drawable picture completely (400 random pictures, every allowed start)', () => {
+    for (let t = 0; t < 400; t++) {
+      const g = randomGraph();
+      for (const s of possibleStarts(g)) { const tr = findTrail(g, s); if (!tr || tr.start !== s || !isFullTrail(g, tr.start, tr.lines)) return graphKey(g) + ' from ' + s; }
+      if (!possibleStarts(g).length && findTrail(g) !== null) return 'found a drawing for ' + graphKey(g);
+    }
+    return true;
+  });
+  test('the levels (handout and bonus): which ones can be drawn, and from where', () => {
+    const want = { '1.1': 'b d', '1.2': 'a b', '1.3': '', '1.4': 'a b c d', '1.5': 'a d', '1.6': '', '1.7': 'b c', '1.8': 'c e', '1.9': 'd e',
+      '1.10': '', '1.11': 'e h', '1.12': '', '2.1': 'v', '2.2': 'v1',
+      B1: 'a b c d e', B2: '', B3: 'i s', B4: '', B5: 'a b c d e f', B6: '', B7: '', B8: 'a', B9: 'k', B10: 'a b c d e f g h i j k l' };
+    for (const L of LEVELS) { const got = possibleStarts(L).map(x => L.labels[x]).join(' '); if (got !== want[L.id]) return `${L.id}: ${got} instead of ${want[L.id]}`; }
+    return LEVELS.length === 24 || 'expected 24 levels';
+  });
+  test('graph keys ignore line order and direction, and round-trip', () => {
+    for (let t = 0; t < 200; t++) {
+      const g = randomGraph(), h = { ...g, e: g.e.map(([a, b]) => Math.random() < .5 ? [b, a] : [a, b]).sort(() => Math.random() - .5) };
+      if (graphKey(g) !== graphKey(h)) return 'order matters for ' + graphKey(g);
+      if (graphKey(graphFromKey(graphKey(g))) !== graphKey(g)) return 'round trip ' + graphKey(g);
+    }
+    return true;
+  });
+  test('drawings reach the server as it reads them: every level and 300 random pictures, via the key', () => {
+    const check = g => { const t = findTrail(g); if (!t) return true;
+      const pos = keyLineOrder(g), server = graphFromKey(graphKey(g));
+      return isFullTrail(server, t.start, t.lines.map(i => pos[i])); };
+    for (const L of LEVELS) if (!check(L)) return 'level ' + L.id;
+    for (let t = 0; t < 300; t++) { const g = randomGraph(); if (!check(g)) return 'random ' + graphKey(g); }
+    return true;
+  });
+  test('walkTrail refuses lines twice, lines away from the pen, and a wrong start', () => {
+    const L = LEVELS[3];                         // square a-b b-d d-c c-a
+    if (!isFullTrail(L, 0, [0, 1, 2, 3])) return 'the square';
+    if (walkTrail(L, 0, [0, 0]).ok) return 'twice';
+    if (walkTrail(L, 0, [1]).ok) return 'away from the pen';
+    if (walkTrail(LEVELS[12], 0, []).ok) return 'fixed start ignored';
+    return true;
+  });
+  test('export text imports back (picture and drawing), JSON too; bad input is refused', () => {
+    for (const i of [1, 8, 12, 13]) {
+      const pic = levelPic(i), tr = findTrail(pic.g);
+      const back = parseImport(exportText(pic, tr.start, tr.lines.slice(0, 5), { url: 'x' }), null);
+      if (back.pic.key !== pic.key || back.pic.level !== i) return 'level ' + (i + 1);
+      if (back.start !== tr.start || back.lines.join() !== tr.lines.slice(0, 5).join()) return 'drawing of level ' + (i + 1);
+    }
+    const par = picFromGraph({ v: [[0, 0], [100, 0], [50, 80]], e: [[0, 1], [0, 1], [1, 2], [2, 0]], start: null });
+    const b2 = parseImport(exportText(par, 0, [1, 0, 3]), null);
+    if (b2.lines.join() !== '1,0,3') return 'parallel lines';
+    const j = parseImport('{"dots": {"p": [0,0], "q": [10,0], "r": [5,9]}, "lines": [["p","q"],["q","r"],["r","p"]], "trail": ["p","q","r","p"]}', null);
+    if (j.lines.length !== 3 || !isFullTrail(j.pic.g, j.start, j.lines)) return 'json';
+    for (const bad of ['dots = {"a": (0,0)}\nlines = [("a", "z")]', 'lines = [("a","b")]', 'dots = {"a": (0, 0), "b": (1, 1)}\nlines = [("a","b")]\ntrail = ["a", "a"]'])
+      try { parseImport(bad, null); return 'accepted: ' + bad; } catch (e) { /* good */ }
+    return true;
+  });
+  test('links round-trip (levels, custom pictures with a fixed start, drawings)', () => {
+    const u1 = new URL(pageURL(levelPic(4), { start: 0, lines: [0, 1] }));
+    if (u1.searchParams.get('level') !== '5' || u1.searchParams.get('trail') !== '0:0,1') return 'level link ' + u1.search;
+    const pic = picFromGraph({ v: [[0, -20], [100, 0], [50, 80]], e: [[0, 1], [1, 2]], start: 1 });
+    const u2 = new URL(pageURL(pic, null));
+    const xs = u2.searchParams.get('dots').split(',').map(Number);
+    return (xs[1] === -20 && u2.searchParams.get('lines') === '0-1,1-2' && u2.searchParams.get('start') === '1') || 'custom ' + u2.search;
+  });
+  test('random pictures: asked-for size and odd dots, in one piece, no loops, at most two parallel lines', () => {
+    for (let t = 0; t < 16; t++) {
+      const n = rnd(3, 10), m = rnd(n - 1, 2 * n), k = [0, 2, 4, null][t % 4], g = randomPicture(n, m, k);
+      const odd = degrees(g).filter(d => d % 2).length;
+      if (g.v.length !== n) return 'dots ' + g.v.length + ' vs ' + n;
+      if (g.e.length > Math.max(m, minLines(n, g.odd)) || (g.e.length < m && g.e.length < n * (n - 1) / 2)) return `lines ${g.e.length} vs ${m}`;
+      if (odd !== g.odd || (k !== null && odd !== Math.min(k, n - n % 2))) return `odd dots ${odd}, asked ${k}`;
+      if (!linesConnected(g) || degrees(g).some(d => d === 0)) return 'not in one piece';
+      if (g.e.some(([a, b]) => a === b)) return 'a loop';
+      const c = new Map(); g.e.forEach(([a, b]) => { const kk = Math.min(a, b) + '-' + Math.max(a, b); c.set(kk, (c.get(kk) || 0) + 1); });
+      if ([...c.values()].some(v => v > 2)) return 'three parallel lines';
+      if (possibleStarts(g).length > 0 !== (odd <= 2)) return 'drawable does not match the odd dots';
+    }
+    return true;
+  });
+
+  test(`the ${SKIN.id} skin draws every line of the picture from dot to dot, both ways`, () => {
+    const g = G();
+    for (let i = 0; i < g.e.length; i++) for (const from of g.e[i]) {
+      const pts = SKIN.track(i, from), A = geo.pts[from], B = geo.pts[other(g, i, from)], P = pts[0], Q = pts[pts.length - 1];
+      if (Math.hypot(P[0] - A[0], P[1] - A[1]) > 1e-6 || Math.hypot(Q[0] - B[0], Q[1] - B[1]) > 1e-6) return `line ${i} from ${g.labels[from]}`;
+      const end = SKIN.pointAt(i, from, 1); if (Math.hypot(end[0] - B[0], end[1] - B[1]) > 1e-6) return `pointAt of line ${i}`;
+      if (!/^M/.test(SKIN.lineD(i, from)) || !/^M/.test(SKIN.partialD(i, from, 0.5))) return `path of line ${i}`;
+    }
+    return true;
+  });
+  const fails = results.filter(r => !r.ok);
+  $('selftest').innerHTML = `<details><summary>${fails.length ? `<span class="fail">${fails.length} of ${results.length} self-tests fail</span>` : `<span class="ok">${results.length}/${results.length} self-tests pass</span>`}</summary><ul>` +
+    results.map(r => `<li><span class="${r.ok ? 'ok' : 'fail'}">${r.ok ? '✓' : '✗'}</span> ${r.name}${r.msg ? ' — ' + escapeHTML(r.msg) : ''}</li>`).join('') + '</ul></details>';
+  return fails.length === 0;
+}
+
+/* ==========================================================================
+   INIT
+   ========================================================================== */
+/* the header's "pen down" link points at whichever edition this is */
+$('selfLink').href = location.pathname.split('/').pop() || 'pen-down.html';
+(function init() {
+  SKIN.decorate();
+  const q = readURL();
+  if (q.api) state.api = q.api;
+  if (q.board === 'local' || q.board === 'off' || q.board === 'none' || !state.api) state.boardMode = 'local';
+  else if (q.board && /^[a-z0-9][a-z0-9_-]{0,31}$/.test(q.board)) state.boardId = q.board;
+  state.gateParam = q.gate;
+  state.view = state.boardMode === 'global' ? 'level' : 'local';
+  if (q.secret) { state.secret = true; document.body.classList.add('is-secret'); }
+  $('player').value = state.player;
+  let pic;
+  if (q.pic) pic = q.pic;
+  else if (q.level !== undefined) pic = levelPic(q.level);        // a locked one falls back to the first open level
+  else {                                        // the first level not yet solved here
+    const i = LEVELS.findIndex((L, k) => !levelSolved(k));
+    pic = levelPic(i < 0 ? 0 : i);
+  }
+  lastW = $('stageWrap').clientWidth;
+  setPic(pic, { drawing: q.trail || null, fallback: true });
+  if (q.warn) ioMsg(q.warn, false);
+  askName();
+  setTimeout(runSelfTests, 60);
+})();
+
+</script>
+</body>
+</html>
