@@ -174,7 +174,7 @@ function layout() {
   const bx = [];
   for (let b = 0; b <= k; b++) bx.push(b < k ? X0[b] : X1[k - 1]);
   const INSET = 1, gap = 2 * INSET;
-  const bw = e >= 4 ? e * 0.6 : Math.max(0.8, e - 1);    // bar width, the same for every element
+  const bw = e >= 4 ? e * 0.55 : Math.max(0.8, e - 1);    // bar width, the same for every element
   const leafLevel = m.maxP + 1;
   const rowH = clamp(Math.round(Math.min(380, W * 0.5) / (leafLevel + 1)), 24, 46);
   const padTop = 40;
@@ -227,16 +227,18 @@ const blkBox = (blk, top, o = {}) => {
 /* boundary marks: the midpoint interval (a, b] at the depth of the power */
 function markEl(b, color, alpha = 1) {
   if (alpha <= 0.01) return;
-  intervalEl(L.midX(b - 1), L.midX(b), L.Y(model.P[b]), color, alpha, 2.5, 7);
+  intervalEl(L.midX(b - 1), L.midX(b), L.Y(model.P[b]), color, alpha, 1.9, 6.5);
 }
+/** the half-open interval (a, b], drawn like the hero’s: open paren, line, closing bracket;
+ *  hh is the half-height (the hero uses 12 units with strokes 4 and 5) */
 function intervalEl(xa, xb, y, color, alpha, sw, hh) {
   if (alpha <= 0.01) return;
-  hh = Math.min(hh, Math.max(4, (xb - xa) / 2.2));
-  const cw = Math.min(hh * 0.9, (xb - xa) / 3);
+  hh = Math.min(hh, Math.max(3.5, 0.62 * (xb - xa - 2)));    // short intervals get a smaller glyph
+  const u = hh / 12;
   out(`<g opacity="${op(alpha)}" stroke="${color}" fill="none" stroke-linecap="round" stroke-linejoin="round">` +
-      `<line x1="${f1(xa + 2)}" y1="${f1(y)}" x2="${f1(xb - 1.5)}" y2="${f1(y)}" stroke-width="${sw + 1}"/>` +
-      `<path d="M ${f1(xa + cw)} ${f1(y - hh)} Q ${f1(xa - cw)} ${f1(y)} ${f1(xa + cw)} ${f1(y + hh)}" stroke-width="${sw}"/>` +
-      `<path d="M ${f1(xb - cw * 1.2)} ${f1(y - hh)} L ${f1(xb)} ${f1(y - hh)} L ${f1(xb)} ${f1(y + hh)} L ${f1(xb - cw * 1.2)} ${f1(y + hh)}" stroke-width="${sw}"/></g>`);
+      `<line x1="${f1(xa + 4 * u)}" y1="${f1(y)}" x2="${f1(xb - 3 * u)}" y2="${f1(y)}" stroke-width="${f1(sw * 1.25)}"/>` +
+      `<path d="M ${f1(xa + 7.5 * u)} ${f1(y - hh)} Q ${f1(xa - 7.5 * u)} ${f1(y)} ${f1(xa + 7.5 * u)} ${f1(y + hh)}" stroke-width="${f1(sw)}"/>` +
+      `<path d="M ${f1(xb - 11 * u)} ${f1(y - hh)} L ${f1(xb)} ${f1(y - hh)} L ${f1(xb)} ${f1(y + hh)} L ${f1(xb - 11 * u)} ${f1(y + hh)}" stroke-width="${f1(sw)}"/></g>`);
 }
 function powerLabel(b, color, alpha = 1) {
   if (alpha <= 0.01) return;
@@ -301,33 +303,38 @@ function barsEl(items, color, alpha) {
   }
   out(`</g>`);
 }
+/** a run in the array, given by its elements’ extent [x0, x1]: the box outline sits just
+ *  inside the extent, the (slightly thinner) bars keep clear of it, and a faded run fades as a
+ *  whole group, so outline and bars never add up where they meet */
 function arrayBox(x0, x1, start, len, sorted, o = {}) {
-  const y = L.arrY, h = L.arrH, w = x1 - x0;
+  const y = L.arrY, h = L.arrH;
   const clip = o.clip ? ` clip-path="url(#${o.clip})"` : "";
   const fill = o.color || LIME, ghost = !!o.ghost;
-  out(`<g opacity="${op(o.alpha == null ? 1 : o.alpha)}"${clip}>`);
-  if (ghost) out(`<rect x="${f1(x0 + 0.75)}" y="${f1(y + 0.75)}" width="${f1(Math.max(0.5, w - 1.5))}" height="${h - 1.5}" rx="5" fill="none" stroke="${LIME}" stroke-opacity=".38" stroke-width="1.3"/>`);
-  else out(`<rect x="${f1(x0 + 0.8)}" y="${f1(y + 0.8)}" width="${f1(Math.max(0.5, w - 1.6))}" height="${f1(h - 1.6)}" rx="5" fill="${fill}" fill-opacity=".08" stroke="${fill}" stroke-width="1.6"/>`);
-  const vals = sortedVals(start, len, sorted);
-  barsEl(vals.map((v, i) => [L.xOf(start + i + 0.5), v, 0]), ghost ? LIME : fill, ghost ? 0.3 : 1);
+  const alpha = (o.alpha == null ? 1 : o.alpha) * (ghost ? 0.36 : 1);
+  const a = x0 + 0.5, w = Math.max(0.5, x1 - x0 - 1);
+  out(`<g opacity="${op(alpha)}"${clip}>`);
+  if (ghost) out(`<rect x="${f1(a)}" y="${f1(y + 0.7)}" width="${f1(w)}" height="${f1(h - 1.4)}" rx="5" fill="none" stroke="${LIME}" stroke-width="1.3"/>`);
+  else out(`<rect x="${f1(a)}" y="${f1(y + 0.7)}" width="${f1(w)}" height="${f1(h - 1.4)}" rx="5" fill="${fill}" fill-opacity=".08" stroke="${fill}" stroke-width="1.4"/>`);
+  barsEl(sortedVals(start, len, sorted).map((v, i) => [L.xOf(start + i + 0.5), v, 0]), ghost ? LIME : fill, 1);
   out(`</g>`);
 }
 const blkArray = (blk, o = {}) => {
-  const [a, z] = L.boxX(blk);
-  arrayBox(a + 0.6, z - 0.6, blk.start, blk.len, blk.lo !== blk.hi, o);
-  if (isHover(blk) && !o.ghost && !o.clip) out(`<rect x="${f1(a - 1.5)}" y="${f1(L.arrY - 2.5)}" width="${f1(z - a + 3)}" height="${L.arrH + 5}" rx="7" fill="none" stroke="${INK}" stroke-width="2"/>`);
+  const x0 = L.X0[blk.lo], x1 = L.X1[blk.hi];
+  arrayBox(x0, x1, blk.start, blk.len, blk.lo !== blk.hi, o);
+  if (isHover(blk) && !o.ghost && !o.clip) out(`<rect x="${f1(x0 - 1.5)}" y="${f1(L.arrY - 2.5)}" width="${f1(x1 - x0 + 3)}" height="${L.arrH + 5}" rx="7" fill="none" stroke="${INK}" stroke-width="2"/>`);
 };
 
 /** merging in the array: the two run boxes fuse and every bar slides to its place in the result */
 function mergeArray(S, v) {
   const y = L.arrY, h = L.arrH;
-  const [la, lz] = L.boxX(S.L), [ra, rz] = L.boxX(S.R), [ma, mz] = L.boxX(S.M);
-  const box = (a, z, alpha) => out(`<rect x="${f1(a + 1.4)}" y="${f1(y + 0.8)}" width="${f1(Math.max(0.5, z - a - 2.8))}" height="${f1(h - 1.6)}" rx="5" fill="${LIME}" fill-opacity=".08" stroke="${LIME}" stroke-width="1.6" opacity="${op(alpha)}"/>`);
+  const ext = (b) => [L.X0[b.lo], L.X1[b.hi]];
+  const [la, lz] = ext(S.L), [ra, rz] = ext(S.R), [ma, mz] = ext(S.M);
+  const box = (a, z, alpha) => out(`<rect x="${f1(a + 0.5)}" y="${f1(y + 0.7)}" width="${f1(Math.max(0.5, z - a - 1))}" height="${f1(h - 1.4)}" rx="5" fill="${LIME}" fill-opacity=".08" stroke="${LIME}" stroke-width="1.4" opacity="${op(alpha)}"/>`);
   box(la, lz, 1 - v); box(ra, rz, 1 - v);
   if (v > 0) box(ma, mz, v);
   if (L.e < 1.5) {                                        // too dense to slide values: fuse instead
-    arrayBox(ma + 0.6, mz - 0.6, S.M.start, S.M.len, true, { alpha: v });
-    if (v < 1) { arrayBox(la + 0.6, lz - 0.6, S.L.start, S.L.len, true, { alpha: 1 - v }); arrayBox(ra + 0.6, rz - 0.6, S.R.start, S.R.len, true, { alpha: 1 - v }); }
+    arrayBox(ma, mz, S.M.start, S.M.len, true, { alpha: v });
+    if (v < 1) { arrayBox(la, lz, S.L.start, S.L.len, true, { alpha: 1 - v }); arrayBox(ra, rz, S.R.start, S.R.len, true, { alpha: 1 - v }); }
     return;
   }
   const lv = sortedVals(S.L.start, S.L.len, true), rv = sortedVals(S.R.start, S.R.len, true);
@@ -565,7 +572,7 @@ function render(k, t) {
   for (let r = arrivedNow; r < m.k && opt.ghost; r++) blkArray({ lo: r, hi: r, start: m.starts[r], len: m.lens[r] }, { ghost: true });
   if (!opt.ghost && arrivedNow < m.k) {
     const r0 = arrivedNow;
-    arrayBox(L.X0[r0] + 0.6, L.X1[m.k - 1] - 0.6, m.starts[r0], m.n - m.starts[r0], false, { ghost: true });
+    arrayBox(L.X0[r0], L.X1[m.k - 1], m.starts[r0], m.n - m.starts[r0], false, { ghost: true });
   }
 
   /* ---- power computation: tree, ruler, (a, b] dropping, binary digits ---- */
@@ -585,7 +592,7 @@ function render(k, t) {
     const y0 = Y(0) - 22, yl = Y(info.p);   // lands exactly where the mark will stay
     let iy = yl, ia = treeA;
     if (kind === "power") { iy = lerp(y0, yl, easeOutBounce(seg(t, 0.22, landT))); ia = seg(t, 0.12, 0.22); }
-    intervalEl(info.xa, info.xb, iy, LIME, ia, 3.5, 10);
+    intervalEl(info.xa, info.xb, iy, LIME, ia, 2.8, 9.5);
     binaryReadout(info, treeA, kind !== "power" || t >= landT);
   }
 
